@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Elite Unlock — โปรแกรมปลดล็อคมือถือ (ของแท้ ราคาคุ้ม เปิดไว)</title>
+  <meta name="description" content="ขายโปรแกรมปลดล็อคมือถือของแท้ Unlocktool, TSM TOOL PRO ฯลฯ ราคาเป็นมิตร เปิดใช้งานรวดเร็ว มีรับประกัน และดูแลหลังการขายจริง">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card-hover{transition:.25s ease}
+    .card-hover:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,.08)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal.active{display:flex}
+    .badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .7rem;border-radius:.6rem;font-size:.8rem}
+  </style>
+</head>
+<body class="bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 antialiased">
+  <!-- Header -->
+  <header class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-indigo-600 to-pink-500 text-white font-bold flex items-center justify-center">EU</div>
+      <div>
+        <h1 class="text-2xl font-semibold">Elite Unlock — โปรแกรมปลดล็อคมือถือ</h1>
+        <p class="text-sm text-slate-600">
+          ของแท้ 100% • เปิดใช้งานรวดเร็ว • ราคาคุ้มค่ากว่า • มีดูแลหลังการขายจริง
+        </p>
+      </div>
+    </div>
+    <button id="contactBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">ติดต่อ / สั่งซื้อ</button>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 pb-16">
+    <!-- Hero badges -->
+    <section class="mb-6">
+      <div class="rounded-2xl p-6 bg-white shadow">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-2xl md:text-3xl font-extrabold">ปลดล็อคอย่างมั่นใจ — ของแท้ ราคาเป็นมิตร เปิดไว</h2>
+            <p class="text-slate-600 mt-1">
+              คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="badge bg-emerald-50 text-emerald-700">✔ รับประกันเปิดใช้งาน</span>
+            <span class="badge bg-sky-50 text-sky-700">⏱ เปิดไว</span>
+            <span class="badge bg-amber-50 text-amber-700">฿ ราคาเป็นมิตร</span>
+            <span class="badge bg-violet-50 text-violet-700">🛟 ซัพพอร์ตหลังการขาย</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search -->
+    <section class="mb-4">
+      <div class="relative w-full md:w-96">
+        <input id="searchInput" type="search"
+               placeholder="ค้นหา: โปรแกรม หรือ แพ็กเกจ (เช่น Unlocktool, 6 เดือน, 1 ปี)"
+               class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
+        <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+        </svg>
+      </div>
+      <p id="status" class="text-sm text-slate-600 mt-2">กำลังโหลดข้อมูล...</p>
+    </section>
+
+    <!-- Packages (cards grouped) -->
+    <section id="pricing" class="mb-10">
+      <h3 class="text-2xl font-bold mb-4">แพ็กเกจยอดนิยม</h3>
+      <div id="groups" class="grid gap-6 md:grid-cols-2"></div>
+      <p id="emptyState" class="hidden text-sm text-slate-500 mt-4">ไม่พบรายการที่ตรงกับคำค้นหา</p>
+    </section>
+
+    <!-- Trust sections -->
+    <section class="mb-10 grid md:grid-cols-3 gap-4">
+      <div class="p-5 rounded-2xl bg-white shadow">
+        <h4 class="font-bold text-lg mb-2">ทำไมลูกค้าเลือกเรา</h4>
+        <ul class="text-sm space-y-2 text-slate-700">
+          <li>• ไลเซนส์แท้ ตรวจสอบได้</li>
+          <li>• ราคาเป็นมิตร คุ้มค่าการใช้งานระยะยาว</li>
+          <li>• เปิดใช้งานรวดเร็ว ตามคิว ไม่ดองงาน</li>
+          <li>• มีคู่มือ/คำแนะนำเริ่มต้นให้จนใช้งานได้</li>
+          <li>• ติดต่อได้จริง หลายช่องทาง</li>
+        </ul>
+      </div>
+      <div class="p-5 rounded-2xl bg-white shadow">
+        <h4 class="font-bold text-lg mb-2">การรับประกัน & นโยบาย</h4>
+        <ul class="text-sm space-y-2 text-slate-700">
+          <li>• รับประกันการเปิดใช้งานตามเงื่อนไข</li>
+          <li>• เปิดไม่สำเร็จภายใต้ขั้นตอนที่แนะนำ — ดูแลแก้ไข/คืนเงินตามเงื่อนไข</li>
+          <li>• เก็บข้อมูลลูกค้าเพื่อออกหลักฐานเท่านั้น</li>
+          <li>• ออกหลักฐานการชำระ/ใบเสร็จได้</li>
+        </ul>
+      </div>
+      <div class="p-5 rounded-2xl bg-white shadow">
+        <h4 class="font-bold text-lg mb-2">รีวิวจากผู้ใช้งาน</h4>
+        <div class="text-sm text-slate-700">
+          “คีย์แท้ เปิดไว ราคาโอเค ซัพพอร์ตดี” — <span class="text-slate-500">คุณเอ</span><br/>
+          “มือใหม่ก็ทำตามได้ เพราะแนะนำละเอียด” — <span class="text-slate-500">คุณบี</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact (on-page) -->
+    <section id="contact" class="rounded-2xl p-6 bg-white shadow">
+      <h3 class="text-2xl font-bold mb-2">ติดต่อ / สั่งซื้อ</h3>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="space-y-1 text-sm">
+          <div class="font-semibold">โทรศัพท์</div>
+          <div class="text-slate-800 text-base">062-607-2670</div>
+          <div class="text-xs text-slate-500">เวลาทำการ 09:00–21:00 น.</div>
+        </div>
+        <div class="space-y-1 text-sm">
+          <div class="font-semibold">Facebook</div>
+          <a class="text-indigo-600 hover:underline break-all" href="https://www.facebook.com/S.Sonsupap" target="_blank" rel="noopener">
+            facebook.com/S.Sonsupap
+          </a>
+        </div>
+        <div class="space-y-1 text-sm">
+          <div class="font-semibold">LINE</div>
+          <div class="text-slate-700">ID: <span class="font-medium">@yourlineid</span></div>
+          <div class="flex items-center gap-3">
+            <img src="https://via.placeholder.com/120x120.png?text=LINE+QR" alt="LINE QR Code" class="w-24 h-24 rounded-md border" />
+            <a class="text-indigo-600 hover:underline" href="https://line.me/R/ti/p/@yourlineid" target="_blank" rel="noopener">เพิ่มเพื่อน</a>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 text-xs text-slate-500">*ปรับข้อความ/นโยบายให้ตรงกับร้านของคุณได้</div>
+    </section>
+  </main>
+
+  <!-- Modal Contact -->
+  <div id="contactModal" class="modal" aria-hidden="true">
+    <div class="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 relative">
+      <button id="closeModal" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ติดต่อ / สั่งซื้อ</h3>
+      <div class="space-y-4 text-sm">
+        <div>
+          <div class="font-semibold text-slate-700">📞 โทรศัพท์</div>
+          <div class="text-lg text-indigo-700">062-607-2670</div>
+        </div>
+        <div>
+          <div class="font-semibold text-slate-700">📘 Facebook</div>
+          <a href="https://www.facebook.com/S.Sonsupap" target="_blank" class="text-indigo-600 hover:underline">
+            facebook.com/S.Sonsupap
+          </a>
+        </div>
+        <div>
+          <div class="font-semibold text-slate-700">💬 LINE</div>
+          <p>ID: <strong>@yourlineid</strong></p>
+          <div class="flex gap-4 items-center mt-2">
+            <img src="https://via.placeholder.com/120x120.png?text=LINE+QR" alt="LINE QR" class="w-24 h-24 rounded-md border">
+            <a href="https://line.me/R/ti/p/@yourlineid" target="_blank" class="text-indigo-600 hover:underline">เพิ่มเพื่อน</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="max-w-6xl mx-auto px-6 py-6 text-sm text-slate-500 text-center">
+    © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · FB: S.Sonsupap · LINE: @yourlineid
+  </footer>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // ----- Elements (ประกาศครั้งเดียว) -----
+    const CSV_URL   = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
+    const groupsEl  = document.getElementById("groups");
+    const statusEl  = document.getElementById("status");
+    const emptyEl   = document.getElementById("emptyState");
+    const searchEl  = document.getElementById("searchInput");
+    const contactBtn= document.getElementById("contactBtn");
+    const modal     = document.getElementById("contactModal");
+    const closeBtn  = document.getElementById("closeModal");
+
+    // ----- Helpers -----
+    const HEADERS = {
+      program:["โปรแกรม","program","tool","ชื่อโปรแกรม"],
+      pack:["แพ็กเกจ","package","term","ระยะเวลา","duration","plan"],
+      price:["ราคา","price","cost","บาท"]
+    };
+    const norm = s => (s??"").toString().trim();
+    const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
+
+    function parseCSV(text){
+      const rows=[]; let r=[], c="", q=false;
+      for(let i=0;i<text.length;i++){
+        const ch=text[i], n=text[i+1];
+        if(q){
+          if(ch=='"'&&n=='"'){ c+='"'; i++; }
+          else if(ch=='"'){ q=false; }
+          else c+=ch;
+        }else{
+          if(ch=='"') q=true;
+          else if(ch==','){ r.push(c); c=""; }
+          else if(ch=='\n'){ r.push(c); rows.push(r); r=[]; c=""; }
+          else if(ch=='\r'){ }
+          else c+=ch;
+        }
+      }
+      if(c.length>0 || r.length>0){ r.push(c); rows.push(r); }
+      return rows;
+    }
+
+    function mapHeaders(cols){
+      const map={};
+      cols.forEach((c,i)=>{
+        const key=nk(c);
+        for(const std in HEADERS){
+          if(HEADERS[std].some(h=>nk(h)===key)) map[std]=i;
+        }
+      });
+      if(map.program==null||map.pack==null||map.price==null){
+        throw new Error("หัวคอลัมน์อย่างน้อยต้องมี: โปรแกรม, แพ็กเกจ, ราคา");
+      }
+      return map;
+    }
+
+    const currencyTH = v => {
+      const n=Number(String(v).replace(/[^\d.]/g,""));
+      return isNaN(n)?norm(v):n.toLocaleString("th-TH");
+    };
+
+    function groupByProgram(items){
+      const g={};
+      for(const it of items){
+        const k=norm(it.program)||"อื่น ๆ";
+        if(!g[k]) g[k]=[];
+        g[k].push(it);
+      }
+      return g;
+    }
+
+    function render(groups, filter=""){
+      const q=nk(filter);
+      groupsEl.innerHTML="";
+      let total=0;
+
+      Object.entries(groups).forEach(([program,plans])=>{
+        const keep=plans.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
+        if(!keep.length) return;
+        total+=keep.length;
+
+        const card=document.createElement("div");
+        card.className="card-hover bg-white rounded-2xl p-6 shadow";
+        card.innerHTML=`
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h4 class="text-xl font-semibold">${program}</h4>
+              <p class="text-sm text-slate-500">เลือกแพ็กเกจที่เหมาะกับงานของคุณ</p>
+            </div>
+            <span class="text-xs px-2 py-1 bg-slate-100 rounded">ราคาคุ้ม</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
+        const body=card.querySelector("[data-body]");
+
+        keep.forEach(p=>{
+          const item=document.createElement("div");
+          item.className="border rounded-lg p-4 text-center";
+          item.innerHTML=`
+            <div class="text-sm text-slate-500">${p.pack}</div>
+            <div class="text-2xl font-extrabold mt-2">฿${currencyTH(p.price)}</div>
+          `;
+          body.appendChild(item);
+        });
+
+        groupsEl.appendChild(card);
+      });
+
+      emptyEl.classList.toggle("hidden", total>0);
+    }
+
+    function rowsToItems(rows){
+      if(!rows.length) throw new Error("CSV ว่าง");
+      const headers=rows[0];
+      const map=mapHeaders(headers);
+      return rows.slice(1)
+        .filter(r=>r.length && r.some(c=>norm(c)!==""))
+        .map(r=>({ program:r[map.program]??"", pack:r[map.pack]??"", price:r[map.price]??"" }))
+        .filter(x=>norm(x.program)&&norm(x.pack)&&norm(x.price));
+    }
+
+    async function loadData(){
+      if(statusEl) statusEl.textContent="กำลังโหลดข้อมูล...";
+      try{
+        const res=await fetch(CSV_URL,{cache:"no-store"});
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text=await res.text();
+        const rows=parseCSV(text);
+        const items=rowsToItems(rows);
+        window.__DATA = groupByProgram(items);
+        render(window.__DATA, searchEl?.value||"");
+        if(statusEl) statusEl.textContent="อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
+      }catch(e){
+        if(statusEl) statusEl.innerHTML=`<span class="text-red-600">โหลดไม่สำเร็จ:</span> ${e.message}`;
+        console.error(e);
+      }
+    }
+
+    // ----- Bind events -----
+    if(searchEl){
+      searchEl.addEventListener("input", ()=>render(window.__DATA||{}, searchEl.value));
+    }
+    if(contactBtn && modal && closeBtn){
+      contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
+      closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
+      modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
+    }
+
+    // ----- Init -----
+    loadData();
+    setInterval(loadData, 5*60*1000);
+  });
+  </script>
+</body>
+</html>
