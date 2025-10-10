@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Elite Unlock — โปรแกรมปลดล็อคมือถือ (ของแท้ ราคาคุ้ม เปิดไว)</title>
   <meta name="description" content="ขายโปรแกรมปลดล็อคมือถือของแท้ Unlocktool, TSM TOOL PRO ฯลฯ ราคาเป็นมิตร เปิดใช้งานรวดเร็ว มีรับประกัน และดูแลหลังการขายจริง">
+
+  <!-- Favicon / App Icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <meta name="theme-color" content="#4f46e5">
+
+  <!-- Open Graph / Social -->
+  <meta property="og:title" content="Elite Unlock — โปรแกรมปลดล็อคมือถือ">
+  <meta property="og:description" content="ของแท้ 100% • เปิดใช้งานรวดเร็ว • ราคาคุ้มค่า • มีดูแลหลังการขายจริง">
+  <meta property="og:image" content="logo.png">
+  <meta property="og:type" content="website">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .card-hover{transition:.25s ease}
@@ -14,11 +26,13 @@
     .badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .7rem;border-radius:.6rem;font-size:.8rem}
   </style>
 </head>
+
 <body class="bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 antialiased">
   <!-- Header -->
   <header class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-indigo-600 to-pink-500 text-white font-bold flex items-center justify-center">EU</div>
+      <!-- ใช้โลโก้ -->
+      <img src="logo.png" alt="Elite Unlock Logo" class="w-10 h-10 rounded-lg object-contain bg-white shadow" />
       <div>
         <h1 class="text-2xl font-semibold">Elite Unlock — โปรแกรมปลดล็อคมือถือ</h1>
         <p class="text-sm text-slate-600">
@@ -65,7 +79,8 @@
 
     <!-- Packages (cards grouped) -->
     <section id="pricing" class="mb-10">
-      <h3 class="text-2xl font-bold mb-4">แพ็กเกจยอดนิยม</h3>
+      <!-- เปลี่ยนหัวข้อเป็น "แพ็กเกจ" -->
+      <h3 class="text-2xl font-bold mb-4">แพ็กเกจ</h3>
       <div id="groups" class="grid gap-6 md:grid-cols-2"></div>
       <p id="emptyState" class="hidden text-sm text-slate-500 mt-4">ไม่พบรายการที่ตรงกับคำค้นหา</p>
     </section>
@@ -78,7 +93,7 @@
           <li>• ไลเซนส์แท้ ตรวจสอบได้</li>
           <li>• ราคาเป็นมิตร คุ้มค่าการใช้งานระยะยาว</li>
           <li>• เปิดใช้งานรวดเร็ว ตามคิว ไม่ดองงาน</li>
-          <li>• มีคู่มือ/คำแนะนำเริ่มต้นให้จนใช้งานได้</li>
+          <!-- เอาออก: มีคู่มือ/คำแนะนำเริ่มต้นให้จนใช้งานได้ -->
           <li>• ติดต่อได้จริง หลายช่องทาง</li>
         </ul>
       </div>
@@ -87,15 +102,17 @@
         <ul class="text-sm space-y-2 text-slate-700">
           <li>• รับประกันการเปิดใช้งานตามเงื่อนไข</li>
           <li>• เปิดไม่สำเร็จภายใต้ขั้นตอนที่แนะนำ — ดูแลแก้ไข/คืนเงินตามเงื่อนไข</li>
-          <li>• เก็บข้อมูลลูกค้าเพื่อออกหลักฐานเท่านั้น</li>
-          <li>• ออกหลักฐานการชำระ/ใบเสร็จได้</li>
+          <!-- เอาออก: ออกหลักฐานการชำระ/ใบเสร็จได้ -->
+          <!-- เอาออก: เก็บข้อมูลลูกค้าเพื่อออกหลักฐานเท่านั้น -->
+          <li>• โปร่งใส ชี้แจงค่าใช้จ่ายก่อนทำรายการ</li>
         </ul>
       </div>
+      <!-- เอาออกทั้งบล็อกรีวิวจากผู้ใช้งาน -->
       <div class="p-5 rounded-2xl bg-white shadow">
-        <h4 class="font-bold text-lg mb-2">รีวิวจากผู้ใช้งาน</h4>
-        <div class="text-sm text-slate-700">
-          “คีย์แท้ เปิดไว ราคาโอเค ซัพพอร์ตดี” — <span class="text-slate-500">คุณเอ</span><br/>
-          “มือใหม่ก็ทำตามได้ เพราะแนะนำละเอียด” — <span class="text-slate-500">คุณบี</span>
+        <h4 class="font-bold text-lg mb-2">คำถามที่พบบ่อย</h4>
+        <div class="text-sm text-slate-700 space-y-2">
+          <div><span class="font-semibold">Q:</span> เปิดใช้งานใช้เวลานานไหม?<br><span class="text-slate-700">A:</span> โดยทั่วไปเปิดภายในคิวงาน หากข้อมูลพร้อมจะรวดเร็ว</div>
+          <div><span class="font-semibold">Q:</span> ราคาทำไมถูก?<br><span class="text-slate-700">A:</span> เราโฟกัสราคาเป็นมิตรและปริมาณออเดอร์ เพื่อให้ลูกค้าเข้าถึงของแท้ได้ง่าย</div>
         </div>
       </div>
     </section>
@@ -117,14 +134,14 @@
         </div>
         <div class="space-y-1 text-sm">
           <div class="font-semibold">LINE</div>
-          <div class="text-slate-700">ID: <span class="font-medium">@yourlineid</span></div>
+          <div class="text-slate-700">ID: <span class="font-medium">@825lhqmj</span></div>
           <div class="flex items-center gap-3">
-            <img src="https://via.placeholder.com/120x120.png?text=LINE+QR" alt="LINE QR Code" class="w-24 h-24 rounded-md border" />
-            <a class="text-indigo-600 hover:underline" href="https://line.me/R/ti/p/@yourlineid" target="_blank" rel="noopener">เพิ่มเพื่อน</a>
+            <!-- เปลี่ยนเป็น LINE_QR.png -->
+            <img src="LINE_QR.png" alt="LINE QR Code" class="w-24 h-24 rounded-md border" />
+            <a class="text-indigo-600 hover:underline" href="https://line.me/R/ti/p/@825lhqmj" target="_blank" rel="noopener">เพิ่มเพื่อน</a>
           </div>
         </div>
       </div>
-      <div class="mt-4 text-xs text-slate-500">*ปรับข้อความ/นโยบายให้ตรงกับร้านของคุณได้</div>
     </section>
   </main>
 
@@ -146,10 +163,11 @@
         </div>
         <div>
           <div class="font-semibold text-slate-700">💬 LINE</div>
-          <p>ID: <strong>@yourlineid</strong></p>
+          <p>ID: <strong>@825lhqmj</strong></p>
           <div class="flex gap-4 items-center mt-2">
-            <img src="https://via.placeholder.com/120x120.png?text=LINE+QR" alt="LINE QR" class="w-24 h-24 rounded-md border">
-            <a href="https://line.me/R/ti/p/@yourlineid" target="_blank" class="text-indigo-600 hover:underline">เพิ่มเพื่อน</a>
+            <!-- เปลี่ยนเป็น LINE_QR.png -->
+            <img src="LINE_QR.png" alt="LINE QR" class="w-24 h-24 rounded-md border">
+            <a href="https://line.me/R/ti/p/@825lhqmj" target="_blank" class="text-indigo-600 hover:underline">เพิ่มเพื่อน</a>
           </div>
         </div>
       </div>
@@ -157,20 +175,22 @@
   </div>
 
   <footer class="max-w-6xl mx-auto px-6 py-6 text-sm text-slate-500 text-center">
-    © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · FB: S.Sonsupap · LINE: @yourlineid
+    © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · FB: S.Sonsupap · LINE: @825lhqmj
   </footer>
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // ----- Elements (ประกาศครั้งเดียว) -----
-    const CSV_URL   = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
-    const groupsEl  = document.getElementById("groups");
-    const statusEl  = document.getElementById("status");
-    const emptyEl   = document.getElementById("emptyState");
-    const searchEl  = document.getElementById("searchInput");
-    const contactBtn= document.getElementById("contactBtn");
-    const modal     = document.getElementById("contactModal");
-    const closeBtn  = document.getElementById("closeModal");
+    // ----- Config -----
+    const CSV_URL = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
+
+    // ----- Elements -----
+    const groupsEl   = document.getElementById("groups");
+    const statusEl   = document.getElementById("status");
+    const emptyEl    = document.getElementById("emptyState");
+    const searchEl   = document.getElementById("searchInput");
+    const contactBtn = document.getElementById("contactBtn");
+    const modal      = document.getElementById("contactModal");
+    const closeBtn   = document.getElementById("closeModal");
 
     // ----- Helpers -----
     const HEADERS = {
@@ -248,7 +268,6 @@
               <h4 class="text-xl font-semibold">${program}</h4>
               <p class="text-sm text-slate-500">เลือกแพ็กเกจที่เหมาะกับงานของคุณ</p>
             </div>
-            <span class="text-xs px-2 py-1 bg-slate-100 rounded">ราคาคุ้ม</span>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
         const body=card.querySelector("[data-body]");
@@ -280,7 +299,7 @@
     }
 
     async function loadData(){
-      if(statusEl) statusEl.textContent="กำลังโหลดข้อมูล...";
+      statusEl.textContent="กำลังโหลดข้อมูล...";
       try{
         const res=await fetch(CSV_URL,{cache:"no-store"});
         if(!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -289,24 +308,20 @@
         const items=rowsToItems(rows);
         window.__DATA = groupByProgram(items);
         render(window.__DATA, searchEl?.value||"");
-        if(statusEl) statusEl.textContent="อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
+        statusEl.textContent="อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
       }catch(e){
-        if(statusEl) statusEl.innerHTML=`<span class="text-red-600">โหลดไม่สำเร็จ:</span> ${e.message}`;
+        statusEl.innerHTML=`<span class="text-red-600">โหลดไม่สำเร็จ:</span> ${e.message}`;
         console.error(e);
       }
     }
 
-    // ----- Bind events -----
-    if(searchEl){
-      searchEl.addEventListener("input", ()=>render(window.__DATA||{}, searchEl.value));
-    }
-    if(contactBtn && modal && closeBtn){
-      contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
-      closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
-      modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
-    }
+    // Events
+    searchEl.addEventListener("input", ()=>render(window.__DATA||{}, searchEl.value));
+    contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
+    closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
+    modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
 
-    // ----- Init -----
+    // Init
     loadData();
     setInterval(loadData, 5*60*1000);
   });
