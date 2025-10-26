@@ -371,6 +371,10 @@ groupsEl.appendChild(card);
     measurementId: "G-FFR5YG8S8J"
   };
 
+  // Cloudinary (unsigned upload preset)
+  const CLOUD_NAME = "dj3ylqec8";
+  const UPLOAD_PRESET = "slip_unsigned";
+
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import {
     getAuth, onAuthStateChanged,
@@ -482,12 +486,62 @@ headerRight.appendChild(contactBtn);
   const historyModal = document.createElement('div');
   historyModal.className = 'modal'; historyModal.id = 'historyModal'; historyModal.setAttribute('aria-hidden','true');
   historyModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full p-6 relative">
+    <div class="bg-white rounded-xl shadow-lg max-w-4xl w-full p-6 relative">
       <button id="closeHistory" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">ประวัติการสั่งซื้อ</h3>
-      <div id="historyList" class="space-y-3 max-h-[60vh] overflow-auto text-sm"></div>
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold mb-4">ประวัติการสั่งซื้อ</h3>
+        <div class="flex items-center gap-3">
+          <button id="topupBtn" class="bg-emerald-600 text-white text-sm px-3 py-2 rounded-md">เติมเครดิต</button>
+        </div>
+      </div>
+      
+
+      <div class="overflow-auto">
+        <table id="ordersTable" class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="text-left border-b">
+              <th class="p-2">ชื่อโปรแกรม</th>
+              <th class="p-2">สถานะ</th>
+              <th class="p-2">เครดิต</th>
+              <th class="p-2">วันที่</th>
+              <th class="p-2">Order Reply</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTbody" class="text-slate-700"></tbody>
+        </table>
+      </div>
     </div>`;
   document.body.appendChild(historyModal);
+
+  // Top-up Modal (separate from history)
+  const topupModal = document.createElement('div');
+  topupModal.className = 'modal'; topupModal.id = 'topupModal'; topupModal.setAttribute('aria-hidden','true');
+  topupModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeTopup" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">เติมเครดิต</h3>
+      <div class="space-y-3 text-sm text-center flex flex-col items-center">
+        <div>
+          <div class="font-semibold">1. พร้อมเพย์</div>
+          <div class="text-lg">0885698501</div>
+          <div>สถาพร สอนสุภาพ</div>
+        </div>
+        <div>
+          <div class="font-semibold">2. บัญชี</div>
+          <div class="text-lg">4030426581</div>
+          <div>กรุงไทย</div>
+          <div>สถาพร สอนสุภาพ</div>
+        </div>
+        <div class="flex justify-center">
+          <img src="https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/refs/heads/main/LINE_QR.png" alt="LINE QR" class="w-28 h-28 border rounded mx-auto" />
+        </div>
+        <div class="rounded-lg p-3 bg-amber-50 border max-w-[90%]">โปรดติดต่อเพื่อยืนยันการชำระเงินผ่าน LINE เท่านั้น:<br/><strong>LINE ID: @825lhqmj</strong><br/>หากต้องการความสะดวก ให้ส่งภาพสลิปผ่านแชท LINE</div>
+      </div>
+    </div>`;
+  document.body.appendChild(topupModal);
+  // wire topup modal buttons
+  document.getElementById('closeTopup')?.addEventListener('click', ()=>{ document.getElementById('topupModal')?.classList.remove('active'); });
+  document.getElementById('topupModal')?.addEventListener('click', (e)=>{ if(e.target===document.getElementById('topupModal')) document.getElementById('topupModal')?.classList.remove('active'); });
 
   // Cart Modal
   const cartModal = document.createElement('div');
@@ -499,7 +553,7 @@ headerRight.appendChild(contactBtn);
       <div id="cartList" class="space-y-3 max-h-[60vh] overflow-auto text-sm"></div>
       <div class="flex items-center justify-between mt-4">
         <div class="text-lg font-semibold">รวมทั้งหมด: <span id="cartTotal">0</span> เครดิต</div>
-        <button id="continueShopping" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md">เพิ่มสินค้าไปยังตะกร้า</button>
+        <button id="continueShopping" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md">ยืนยันการสั่งซื้อ</button>
       </div>
       <div id="cartMsg" class="mt-2 text-sm"></div>
     </div>`;
@@ -930,8 +984,8 @@ groupsEl.appendChild(card);
   function closeOrder(){ orderModal.classList.remove('active'); PENDING_ORDER=null; }
   function openHistoryModal(){
     if(!CURRENT_USER){ openLoginModal(); return; }
-    const list = document.getElementById('historyList');
-    if(list) list.innerHTML = '<div class="text-slate-500">กำลังโหลด...</div>';
+    const list = document.getElementById('ordersTbody');
+    if(list) list.innerHTML = '<tr><td colspan="5" class="p-4 text-slate-500">กำลังโหลด...</td></tr>';
     historyModal.classList.add('active');
     // Fetch once in case snapshot hasn't arrived yet
     try {
@@ -939,6 +993,15 @@ groupsEl.appendChild(card);
       getDocs(qref).then(snap=>{
         const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
         renderUserHistory(rows);
+        // setup topup UI handlers
+        const topupBtn = document.getElementById('topupBtn');
+        if(topupBtn){
+          topupBtn.addEventListener('click', ()=>{
+            if(!CURRENT_USER){ openLoginModal(); return; }
+            // open separate top-up modal
+            const tmodal = document.getElementById('topupModal'); if(tmodal) tmodal.classList.add('active');
+          });
+        }
       });
     } catch {}
   }
@@ -1164,14 +1227,66 @@ groupsEl.appendChild(card);
     });
   }
 
-  // เปลี่ยนเป็นปุ่ม 'เพิ่มสินค้าไปยังตะกร้า' เพื่อกลับไปเลือกสินค้าเพิ่ม
-  document.getElementById('continueShopping')?.addEventListener('click', ()=>{
-    closeCartModal();
-    try {
-      const target = document.getElementById('groups');
-      if(target) window.scrollTo({ top: target.offsetTop - 40, behavior: 'smooth' });
-    } catch {}
-  });
+  // ปุ่มยืนยันการสั่งซื้อจากตะกร้า: ตรวจสอบการล็อกอิน, ฟิลด์ที่ต้องกรอก, เครดิต แล้วสร้างคำสั่งซื้อ
+  async function confirmCartOrders(){
+    const msg = document.getElementById('cartMsg'); msg.textContent=''; msg.className='mt-2 text-sm';
+    if(!CURRENT_USER){ openLoginModal(); return; }
+    if(!CART.length){ msg.classList.add('text-slate-500'); msg.textContent = 'ตะกร้าว่าง'; return; }
+    // validate required fields for each item
+    for(let i=0;i<CART.length;i++){
+      const it = CART[i];
+      if(it.requiresEmail && !it.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอกอีเมลสำหรับ: ${it.name}`; return; }
+      if(it.requiresUsername && !it.usernameForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก Username สำหรับ: ${it.name}`; return; }
+      if(it.requiresSN && !it.snForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก SN/Serial สำหรับ: ${it.name}`; return; }
+      if(it.requiresIMEI && !it.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก IMEI สำหรับ: ${it.name}`; return; }
+    }
+    const total = CART.reduce((s,it)=> s + Number(it.price||0), 0);
+    try{
+      // Transaction: deduct user credits and create paid orders atomically
+      await runTransaction(db, async (tx)=>{
+        const uref = doc(db,'users',CURRENT_USER.uid);
+        const usnap = await tx.get(uref);
+        const bal = (usnap.data()?.credits) || 0;
+        if(bal < total) throw new Error('เครดิตไม่เพียงพอ');
+        tx.update(uref, { credits: bal - total });
+        const ocol = collection(db,'orders');
+        for(const it of CART){
+          const oref = doc(ocol);
+          tx.set(oref, {
+            userId: CURRENT_USER.uid,
+            userEmail: (CURRENT_USER.email||'').toLowerCase(),
+            status: 'paid',
+            product: {
+              id: it.id,
+              name: it.name,
+              program: it.program,
+              price: Number(it.price)||0,
+              image: it.image||'',
+              requiresEmail: !!it.requiresEmail,
+              requiresUsername: !!it.requiresUsername,
+              requiresSN: !!it.requiresSN,
+              requiresIMEI: !!it.requiresIMEI,
+              source: it.source||'csv'
+            },
+            emailForProduct: it.emailForProduct||'',
+            usernameForProduct: it.usernameForProduct||'',
+            snForProduct: it.snForProduct||'',
+            imeiForProduct: it.imeiForProduct||'',
+            createdAt: serverTimestamp(),
+            paidAt: serverTimestamp()
+          });
+        }
+      });
+      // update local state and UI
+      if(!CURRENT_USER_DOC) CURRENT_USER_DOC = { credits: 0 };
+      CURRENT_USER_DOC.credits = (CURRENT_USER_DOC.credits || 0) - total;
+      CART = []; saveCart(); renderCart(); updateHeaderAuth();
+      msg.classList.add('text-emerald-700'); msg.textContent = 'สั่งซื้อสำเร็จ: หักเครดิตเรียบร้อยแล้ว';
+      setTimeout(()=>{ closeCartModal(); }, 900);
+    }catch(e){ msg.classList.add('text-red-600'); msg.textContent = e.message || 'เกิดข้อผิดพลาดในการทำรายการ'; }
+  }
+
+  document.getElementById('continueShopping')?.addEventListener('click', ()=>{ confirmCartOrders(); });
 
   // Buy now (immediate charge) from product modal
   document.getElementById('pdAddCart').addEventListener('click', ()=>{
@@ -1297,31 +1412,44 @@ groupsEl.appendChild(card);
     }catch(e){ msg.textContent = e.message; }
   });
 
+  // escape HTML to avoid injection when rendering arbitrary text
+  function escapeHtml(str){
+    if(!str && str !== 0) return '';
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
   function renderUserHistory(docs){
-    const list = document.getElementById('historyList');
-    if(!list) return;
-    if(!docs.length){ list.innerHTML = '<div class="text-slate-500">ยังไม่มีคำสั่งซื้อ</div>'; return; }
+    const tbody = document.getElementById('ordersTbody');
+    if(!tbody) return;
+    if(!docs.length){ tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-slate-500">ยังไม่มีคำสั่งซื้อ</td></tr>'; return; }
     // sort by createdAt desc client-side
     docs.sort((a,b)=>{
       const ta = a.createdAt?.toMillis?.() || 0;
       const tb = b.createdAt?.toMillis?.() || 0;
       return tb - ta;
     });
-    list.innerHTML = '';
+    tbody.innerHTML = '';
     docs.forEach(p=>{
-      const item=document.createElement("div");
-      item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
       const prodName = p.product?.name || p.pack || p.name || '';
-      const prodImage = p.product?.image || p.image || '';
       const prodPrice = p.product?.price ?? p.price ?? 0;
-      const prodRequiresEmail = !!(p.product?.requiresEmail || p.requiresEmail);
-      item.innerHTML=`
-        ${prodImage ? `<img src="${prodImage}" alt="${prodName}" class="w-40 object-cover rounded-md border" style="aspect-ratio: 800/550;" />` : ''}
-        <div class="font-semibold text-indigo-700">${prodName}</div>
-        <div class="text-2xl font-extrabold mt-1">฿${currencyTH(prodPrice)}</div>
-        <div class="mt-2 text-sm text-slate-500">สถานะ: ${p.status || '-'}</div>
+      const status = p.status || '-';
+      const ts = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString('th-TH') : (p.createdAt? String(p.createdAt): '');
+      const reply = p.reply || p.orderReply || p.adminMessage || p.resultMessage || p.message || p.note || '';
+      const tr = document.createElement('tr');
+      tr.className = 'border-b';
+      tr.innerHTML = `
+        <td class="p-2 align-top">${escapeHtml(prodName)}</td>
+        <td class="p-2 align-top">${escapeHtml(status)}</td>
+        <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
+        <td class="p-2 align-top">${escapeHtml(ts)}</td>
+        <td class="p-2 align-top">${escapeHtml(reply)}</td>
       `;
-      list.appendChild(item);
+      tbody.appendChild(tr);
     });
   }
   function listenOrdersForUser(){
@@ -1332,8 +1460,8 @@ groupsEl.appendChild(card);
       const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
       renderUserHistory(rows);
     },(err)=>{
-      const list = document.getElementById('historyList');
-      if(list) list.innerHTML = `<div class="text-red-600">เกิดข้อผิดพลาด: ${err.message}</div>`;
+      const tbody = document.getElementById('ordersTbody');
+      if(tbody) tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-red-600">เกิดข้อผิดพลาด: ${err.message}</td></tr>`;
     });
   }
   document.getElementById('closeOrder').addEventListener('click', closeOrder);
