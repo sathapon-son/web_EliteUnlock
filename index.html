@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="th">
 <head>
   <meta charset="utf-8" />
@@ -59,6 +59,32 @@
             <span class="badge bg-sky-50 text-sky-700">⏱ เปิดไว</span>
             <span class="badge bg-amber-50 text-amber-700">฿ ราคาเป็นมิตร</span>
             <span class="badge bg-violet-50 text-violet-700">🛟 ซัพพอร์ตหลังการขาย</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Product Detail (inline on main page) -->
+    <section id="productDetail" class="mb-10 hidden">
+      <div class="rounded-2xl p-6 bg-white shadow">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          <div>
+            <img id="detailImage" src="" alt="" class="w-full rounded-md border bg-slate-50 object-cover" style="aspect-ratio: 800/550;" />
+          </div>
+          <div class="space-y-3">
+            <div class="text-slate-500" id="detailProgram"></div>
+            <h3 id="detailName" class="text-2xl font-bold"></h3>
+            <div class="text-2xl font-extrabold text-indigo-700">฿<span id="detailPrice">0</span></div>
+            <div id="detailRequiresEmail" class="text-sm text-amber-600"></div>
+            <div id="detailFields" class="space-y-2 hidden">
+              <label class="text-sm">อีเมลสำหรับสินค้านี้</label>
+              <input id="detailEmail" type="email" placeholder="example@domain.com" class="w-full border rounded p-2" />
+            </div>
+            <div class="flex gap-2">
+              <button id="detailAddCart" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มในตะกร้า</button>
+              <button id="detailCancel" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ยกเลิก</button>
+            </div>
+            <div id="detailMsg" class="text-sm text-red-600"></div>
           </div>
         </div>
       </div>
@@ -272,17 +298,24 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
         const body=card.querySelector("[data-body]");
 
-        keep.forEach(p=>{
-          const item=document.createElement("div");
-          item.className="border rounded-lg p-4 text-center";
-          item.innerHTML=`
-            <div class="text-sm text-slate-500">${p.pack}</div>
-            <div class="text-2xl font-extrabold mt-2">฿${currencyTH(p.price)}</div>
-          `;
-          body.appendChild(item);
-        });
+keep.forEach(p=>{
+  const item=document.createElement("div");
+  item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
+  item.innerHTML=`
+    ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
+    <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
+    <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
+    ${p.requiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
+    <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
+  `;
+  const open = ()=> openProductModal(p);
+  item.querySelector('button').addEventListener('click', open);
+  const clickable = item.querySelectorAll('[data-open]');
+  clickable.forEach(el=> el.addEventListener('click', open));
+  body.appendChild(item);
+});
 
-        groupsEl.appendChild(card);
+groupsEl.appendChild(card);
       });
 
       emptyEl.classList.toggle("hidden", total>0);
@@ -471,10 +504,7 @@ headerRight.appendChild(contactBtn);
       <div id="cartList" class="space-y-3 max-h-[60vh] overflow-auto text-sm"></div>
       <div class="flex items-center justify-between mt-4">
         <div class="text-lg font-semibold">รวมทั้งหมด: <span id="cartTotal">0</span> เครดิต</div>
-        <div class="flex gap-2">
-          <button id="clearCart" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md">ล้างตะกร้า</button>
-          <button id="checkoutCart" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md">ยืนยันสั่งซื้อ</button>
-        </div>
+        <button id="continueShopping" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md">เพิ่มสินค้าไปยังตะกร้า</button>
       </div>
       <div id="cartMsg" class="mt-2 text-sm"></div>
     </div>`;
@@ -488,7 +518,7 @@ headerRight.appendChild(contactBtn);
       <button id="closeProduct" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-3">
-          <img id="pdImage" src="" alt="" class="w-full h-56 object-cover rounded border bg-slate-50" />
+          <img id="pdImage" src="" alt="" class="w-full object-cover rounded border bg-slate-50" style="aspect-ratio: 800/550;" />
           <div class="text-sm text-slate-500" id="pdProgram"></div>
         </div>
         <div class="space-y-3">
@@ -632,6 +662,9 @@ headerRight.appendChild(contactBtn);
   let PENDING_ORDER = null; // order in modal
   let USER_ORDERS_UNSUB = null; // unsubscribe for user's order stream
   let CART = []; // [{id, program, pack(name), price, image, requiresEmail, emailForProduct?}]
+  // Selection state for main-page selection (does NOT add to cart yet)
+  let SELECTED_IDS = new Set();
+  let CURRENT_DETAIL_PRODUCT = null; // product shown in inline detail panel
 
   function cartKey(){ return CURRENT_USER? `cart_${CURRENT_USER.uid}`: 'cart_guest'; }
   function loadCart(){
@@ -666,24 +699,24 @@ headerRight.appendChild(contactBtn);
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
       const body=card.querySelector("[data-body]");
 
-      keep.forEach(p=>{
-        const item=document.createElement("div");
-        item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
-        item.innerHTML=`
-          ${p.image? `<img src="${p.image}" alt="${p.pack}" class="w-24 h-24 object-cover rounded-md border" />` : ''}
-          <div class="font-semibold">${p.pack}</div>
-          <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
-          ${p.requiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
-          <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">สั่งซื้อ</button>
-        `;
-        item.querySelector('button').textContent = 'เพิ่มในตะกร้า';
-        const priceEl = item.querySelector('.text-2xl.font-extrabold.mt-1');
-        if(priceEl) priceEl.textContent = '฿'+currencyTH(p.price);
-        item.querySelector('button').addEventListener('click',()=> addToCart(p));
-        body.appendChild(item);
-      });
+keep.forEach(p=>{
+  const item=document.createElement("div");
+  item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
+  item.innerHTML=`
+    ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
+    <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
+    <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
+    ${p.requiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
+    <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
+  `;
+  const open = ()=> openProductModal(p);
+  item.querySelector('button').addEventListener('click', open);
+  const clickable = item.querySelectorAll('[data-open]');
+  clickable.forEach(el=> el.addEventListener('click', open));
+  body.appendChild(item);
+});
 
-      groupsEl.appendChild(card);
+groupsEl.appendChild(card);
     });
 
     emptyEl.classList.toggle("hidden", total>0);
@@ -709,6 +742,61 @@ headerRight.appendChild(contactBtn);
     Object.values(CSV_DATA_GROUPED).flat().forEach(push);
     fsItems.forEach(push);
     return grouped;
+  }
+
+  // Show inline product detail panel on main page (does not add to cart by itself)
+  function showProductDetail(p){
+    CURRENT_DETAIL_PRODUCT = p;
+    const panel = document.getElementById('productDetail');
+    document.getElementById('detailImage').src = p.image||'';
+    document.getElementById('detailImage').classList.toggle('hidden', !p.image);
+    document.getElementById('detailProgram').textContent = p.program||'';
+    document.getElementById('detailName').textContent = p.pack||p.name||'';
+    document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+    document.getElementById('detailRequiresEmail').textContent = p.requiresEmail? 'สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ':'';
+    const fields = document.getElementById('detailFields');
+    fields.classList.toggle('hidden', !p.requiresEmail);
+    document.getElementById('detailEmail').value = '';
+    document.getElementById('detailMsg').textContent = '';
+    panel.classList.remove('hidden');
+    // scroll into view
+    try{ panel.scrollIntoView({behavior:'smooth', block:'center'}); }catch{}
+  }
+
+  function hideProductDetail(){
+    CURRENT_DETAIL_PRODUCT = null;
+    document.getElementById('productDetail').classList.add('hidden');
+  }
+
+  function toggleSelected(p, btn){
+    const id = p.id || (p.pack + '|' + p.program);
+    if(SELECTED_IDS.has(id)){
+      SELECTED_IDS.delete(id);
+      if(btn) { btn.textContent = 'เลือกสินค้า'; btn.classList.remove('bg-amber-600'); btn.classList.add('bg-indigo-600'); }
+    } else {
+      SELECTED_IDS.add(id);
+      if(btn) { btn.textContent = 'เลือกแล้ว'; btn.classList.add('bg-amber-600'); btn.classList.remove('bg-indigo-600'); }
+      // show details when selected from main page
+      showProductDetail(p);
+    }
+  }
+
+  // Called from inline detail 'เพิ่มในตะกร้า'
+  function addToCartFromDetail(){
+    const p = CURRENT_DETAIL_PRODUCT;
+    const msgEl = document.getElementById('detailMsg'); msgEl.textContent=''; msgEl.className='text-sm text-red-600';
+    if(!p){ msgEl.textContent = 'ไม่พบสินค้า'; return; }
+    const email = document.getElementById('detailEmail')?.value?.trim()||'';
+    if(p.requiresEmail && !email){ msgEl.textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้'; return; }
+    // Add to cart (will open login modal if user not logged in)
+    addToCart(p, { emailForProduct: email });
+    msgEl.classList.remove('text-red-600'); msgEl.classList.add('text-emerald-700');
+    msgEl.textContent = 'เพิ่มลงตะกร้าแล้ว';
+    // clear selection for that product
+    const id = p.id || (p.pack + '|' + p.program);
+    if(SELECTED_IDS.has(id)) SELECTED_IDS.delete(id);
+    // hide detail after short delay
+    setTimeout(()=>{ hideProductDetail(); }, 800);
   }
 
   async function loadCSV(){
@@ -948,7 +1036,7 @@ headerRight.appendChild(contactBtn);
   }
 
   // ----- Cart functions -----
-  function addToCart(p){
+  function addToCart(p, details={}){
     if(!CURRENT_USER){ openLoginModal(); return; }
     const item = {
       id: p.id,
@@ -958,7 +1046,13 @@ headerRight.appendChild(contactBtn);
       price: Number(p.price)||0,
       image: p.image||'',
       requiresEmail: !!p.requiresEmail,
-      emailForProduct: ''
+      requiresUsername: !!p.requiresUsername,
+      requiresSN: !!p.requiresSN,
+      requiresIMEI: !!p.requiresIMEI,
+      emailForProduct: details.emailForProduct||'',
+      usernameForProduct: details.usernameForProduct||'',
+      snForProduct: details.snForProduct||'',
+      imeiForProduct: details.imeiForProduct||''
     };
     CART.push(item);
     saveCart();
@@ -1014,6 +1108,9 @@ headerRight.appendChild(contactBtn);
         <div class="flex-1">
           <div class="font-semibold">${it.name} <span class="text-slate-500">• ${currencyTH(it.price)} เครดิต</span></div>
           ${it.requiresEmail? `<div class="mt-2"><input data-email-index="${idx}" type="email" value="${it.emailForProduct||''}" placeholder="อีเมลสำหรับสินค้านี้" class="w-full border rounded p-2 text-sm" /></div>`:''}
+          ${it.requiresUsername? `<div class="mt-2"><input data-username-index="${idx}" type="text" value="${it.usernameForProduct||''}" placeholder="Username" class="w-full border rounded p-2 text-sm" /></div>`:''}
+          ${it.requiresSN? `<div class="mt-2"><input data-sn-index="${idx}" type="text" value="${it.snForProduct||''}" placeholder="SN / Serial" class="w-full border rounded p-2 text-sm" /></div>`:''}
+          ${it.requiresIMEI? `<div class="mt-2"><input data-imei-index="${idx}" type="text" value="${it.imeiForProduct||''}" placeholder="IMEI" class="w-full border rounded p-2 text-sm" /></div>`:''}
         </div>
         <button data-remove-index="${idx}" class="text-red-600 text-sm">ลบ</button>`;
       list.appendChild(row);
@@ -1033,54 +1130,55 @@ headerRight.appendChild(contactBtn);
         saveCart();
       });
     });
+    list.querySelectorAll('[data-username-index]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-username-index'));
+        CART[i].usernameForProduct = e.currentTarget.value;
+        saveCart();
+      });
+    });
+    list.querySelectorAll('[data-sn-index]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-sn-index'));
+        CART[i].snForProduct = e.currentTarget.value;
+        saveCart();
+      });
+    });
+    list.querySelectorAll('[data-imei-index]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-imei-index'));
+        CART[i].imeiForProduct = e.currentTarget.value;
+        saveCart();
+      });
+    });
   }
 
-  document.getElementById('clearCart')?.addEventListener('click', ()=>{ CART = []; saveCart(); renderCart(); });
-  document.getElementById('checkoutCart')?.addEventListener('click', async ()=>{
-    if(!CURRENT_USER) { openLoginModal(); return; }
-    const msg = document.getElementById('cartMsg'); msg.textContent=''; msg.className='mt-2 text-sm';
-    // Validate required emails
-    for(const it of CART){
-      if(it.requiresEmail && !it.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอกอีเมลสำหรับสินค้าบางรายการ'; return; }
-    }
-    // Check credits vs total
-    const total = CART.reduce((a,b)=>a+(Number(b.price)||0),0);
-    try{
-      const uref = doc(db,'users',CURRENT_USER.uid);
-      const usnap = await getDoc(uref);
-      const bal = (usnap.data()?.credits)||0;
-      if(bal < total){ msg.classList.add('text-red-600'); msg.textContent = `เครดิตไม่พอ ต้องการ ${currencyTH(total)} แต่มี ${currencyTH(bal)}`; return; }
-    }catch(e){ msg.classList.add('text-red-600'); msg.textContent = e.message; return; }
-
-    // Create one order per item (pending)
-    try{
-      const batch = CART.slice();
-      for(const it of batch){
-        await addDoc(collection(db,'orders'),{
-          userId: CURRENT_USER.uid,
-          userEmail: (CURRENT_USER.email||'').toLowerCase(),
-          status: 'pending',
-          product: {
-            id: it.id,
-            name: it.name,
-            program: it.program,
-            price: Number(it.price)||0,
-            image: it.image||'',
-            requiresEmail: !!it.requiresEmail,
-            source: it.source||'csv'
-          },
-          emailForProduct: it.emailForProduct||'',
-          createdAt: serverTimestamp()
-        });
-      }
-      CART = []; saveCart(); renderCart();
-      msg.classList.add('text-emerald-700'); msg.textContent='ส่งคำสั่งซื้อแล้ว กำลังรอผู้ดูแลยืนยัน';
-      setTimeout(closeCartModal, 1200);
-    }catch(e){ msg.classList.add('text-red-600'); msg.textContent=e.message; }
+  // เปลี่ยนเป็นปุ่ม 'เพิ่มสินค้าไปยังตะกร้า' เพื่อกลับไปเลือกสินค้าเพิ่ม
+  document.getElementById('continueShopping')?.addEventListener('click', ()=>{
+    closeCartModal();
+    try {
+      const target = document.getElementById('groups');
+      if(target) window.scrollTo({ top: target.offsetTop - 40, behavior: 'smooth' });
+    } catch {}
   });
 
   // Buy now (immediate charge) from product modal
-  document.getElementById('pdAddCart').addEventListener('click', ()=>{ if(PRODUCT_SELECTED){ addToCart(PRODUCT_SELECTED); closeProductModal(); } });
+  document.getElementById('pdAddCart').addEventListener('click', ()=>{
+    if(!PRODUCT_SELECTED){ return; }
+    const msg = document.getElementById('pdMsg'); msg.textContent=''; msg.className='text-sm';
+    const details = {
+      emailForProduct: document.getElementById('pdEmail')?.value?.trim()||'',
+      usernameForProduct: document.getElementById('pdUsername')?.value?.trim()||'',
+      snForProduct: document.getElementById('pdSN')?.value?.trim()||'',
+      imeiForProduct: document.getElementById('pdIMEI')?.value?.trim()||''
+    };
+    if(PRODUCT_SELECTED.requiresEmail && !details.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Email'; return; }
+    if(PRODUCT_SELECTED.requiresUsername && !details.usernameForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Username'; return; }
+    if(PRODUCT_SELECTED.requiresSN && !details.snForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก SN/Serial'; return; }
+    if(PRODUCT_SELECTED.requiresIMEI && !details.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก IMEI'; return; }
+    addToCart(PRODUCT_SELECTED, details);
+    closeProductModal();
+  });
   /* Removed immediate buy flow per request
   document.getElementById('pdBuyNow').addEventListener('click', async ()=>{
     const msg = document.getElementById('pdMsg'); msg.textContent=''; msg.className='text-sm';
@@ -1199,22 +1297,23 @@ headerRight.appendChild(contactBtn);
       return tb - ta;
     });
     list.innerHTML = '';
-    docs.forEach(o=>{
-      const d = document.createElement('div');
-      d.className='border rounded p-3 flex gap-3 items-start';
-      const when = o.createdAt?.toDate ? o.createdAt.toDate() : null;
-      const dateStr = when? when.toLocaleString('th-TH'): '';
-      d.innerHTML = `
-        ${o.product?.image? `<img src="${o.product.image}" class="w-12 h-12 rounded object-cover border" />` : ''}
-        <div class="flex-1">
-          <div class="font-semibold">${o.product?.name||'-'} <span class="text-slate-500">• ${currencyTH(o.product?.price||0)} เครดิต</span></div>
-          <div class="text-slate-600">สถานะ: <span class="font-medium">${o.status}</span>${o.emailForProduct? ` • อีเมลสินค้า: ${o.emailForProduct}`:''}</div>
-          <div class="text-slate-500 text-xs">${dateStr}</div>
-        </div>`;
-      list.appendChild(d);
+    docs.forEach(p=>{
+      const item=document.createElement("div");
+      item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
+      const prodName = p.product?.name || p.pack || p.name || '';
+      const prodImage = p.product?.image || p.image || '';
+      const prodPrice = p.product?.price ?? p.price ?? 0;
+      const prodRequiresEmail = !!(p.product?.requiresEmail || p.requiresEmail);
+      item.innerHTML=`
+        ${prodImage ? `<img src="${prodImage}" alt="${prodName}" class="w-40 object-cover rounded-md border" style="aspect-ratio: 800/550;" />` : ''}
+        <div class="font-semibold text-indigo-700">${prodName}</div>
+        <div class="text-2xl font-extrabold mt-1">฿${currencyTH(prodPrice)}</div>
+        ${prodRequiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
+        <div class="mt-2 text-sm text-slate-500">สถานะ: ${p.status || '-'}</div>
+      `;
+      list.appendChild(item);
     });
   }
-
   function listenOrdersForUser(){
     if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
     if(!CURRENT_USER) return;
@@ -1236,6 +1335,10 @@ headerRight.appendChild(contactBtn);
   document.getElementById('closeCart').addEventListener('click', ()=>{ cartModal.classList.remove('active'); });
   document.getElementById('closeProduct').addEventListener('click', closeProductModal);
   productModal.addEventListener('click',(e)=>{ if(e.target===productModal) closeProductModal(); });
+
+  // Inline detail panel buttons
+  document.getElementById('detailAddCart')?.addEventListener('click', addToCartFromDetail);
+  document.getElementById('detailCancel')?.addEventListener('click', hideProductDetail);
 
   document.getElementById('addCreditBtn').addEventListener('click', async ()=>{
     const email = document.getElementById('creditEmail').value.trim();
