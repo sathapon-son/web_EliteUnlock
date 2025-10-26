@@ -326,5 +326,973 @@
     setInterval(loadData, 5*60*1000);
   });
   </script>
+  <script type="module">
+  // ----- CSV + Store + Firebase (Auth/Firestore) -----
+  // CSV_URL is the public CSV link used for product data (and image URLs)
+  const CSV_URL = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
+
+  // Fill the Firebase config below with your project values.
+  // apiKey is provided; please add the rest from Firebase console (Web App config).
+  const firebaseConfig = {
+    apiKey: "AIzaSyAvZLhir8UvnBsb0NuK5r6y73TfoclBC-4",
+    authDomain: "eliteunlock-c194e.firebaseapp.com",
+    projectId: "eliteunlock-c194e",
+    storageBucket: "eliteunlock-c194e.firebasestorage.app",
+    messagingSenderId: "12192434961",
+    appId: "1:12192434961:web:ad7cff07c16e81e34fdab0",
+    measurementId: "G-FFR5YG8S8J"
+  };
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc,
+    query, where, getDocs, onSnapshot, serverTimestamp, increment,
+    runTransaction
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+  import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  // Optional: Analytics (non-blocking)
+  try { isSupported().then(ok=>{ if(ok) getAnalytics(app); }); } catch {}
+
+  // Configure admin emails (edit to your admin accounts) or use isAdmin in user doc
+  const ADMIN_EMAILS = [
+    // "owner@example.com"
+  ];
+
+  // ----- Elements -----
+  const groupsEl   = document.getElementById("groups");
+  const statusEl   = document.getElementById("status");
+  const emptyEl    = document.getElementById("emptyState");
+  const searchEl   = document.getElementById("searchInput");
+  const contactBtn = document.getElementById("contactBtn");
+  const modal      = document.getElementById("contactModal");
+  const closeBtn   = document.getElementById("closeModal");
+
+// Auth UI bits (ย้ายไปอยู่ฝั่งขวารวมกับปุ่ม "ติดต่อ / สั่งซื้อ")
+const header = document.querySelector('header');
+header.classList.add('flex-wrap', 'gap-3'); // ให้พับบรรทัดได้ ป้องกันปุ่มล้น
+
+const headerRight = document.createElement('div');
+// จัดให้ปุ่ม auth + ปุ่มติดต่ออยู่ขวาเสมอ และเว้นช่องว่างสวยงาม
+headerRight.className = 'flex items-center gap-3 ml-auto';
+
+// วาง headerRight ไว้ก่อนปุ่มติดต่อ แล้วดึงปุ่มติดต่อเข้าไปอยู่ในกล่องเดียวกัน
+header.insertBefore(headerRight, contactBtn);
+headerRight.appendChild(contactBtn);
+
+  headerRight.innerHTML = `
+    <div class="flex items-center gap-3">
+      <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
+      <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
+      <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
+      <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
+      <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow hidden">ออกจากระบบ</button>
+    </div>
+  `;
+
+  // Register Modal
+  const regModal = document.createElement('div');
+  regModal.className = 'modal'; regModal.id = 'regModal'; regModal.setAttribute('aria-hidden','true');
+  regModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeReg" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">สมัครสมาชิก</h3>
+      <div class="space-y-3">
+        <input id="authEmailR" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
+        <input id="authPassR" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
+        <input id="authPass2R" type="password" placeholder="ยืนยันรหัสผ่าน" class="w-full border rounded p-2" />
+        <button id="doRegister" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">สมัครสมาชิก</button>
+        <div id="authMsgR" class="text-sm text-red-600"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(regModal);
+
+  // Login Modal
+  const loginModal = document.createElement('div');
+  loginModal.className = 'modal'; loginModal.id = 'loginModal'; loginModal.setAttribute('aria-hidden','true');
+  loginModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeLogin" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ลงชื่อเข้าใช้</h3>
+      <div class="space-y-3">
+        <input id="authEmailL" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
+        <input id="authPassL" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
+        <button id="doLogin" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">ลงชื่อเข้าใช้</button>
+        <div id="authMsgL" class="text-sm text-red-600"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(loginModal);
+
+  // Order Modal
+  const orderModal = document.createElement('div');
+  orderModal.className = 'modal'; orderModal.id = 'orderModal'; orderModal.setAttribute('aria-hidden','true');
+  orderModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeOrder" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ยืนยันการสั่งซื้อ</h3>
+      <div id="orderSummary" class="text-sm text-slate-700 mb-3"></div>
+      <div id="orderEmailBlock" class="space-y-2 hidden">
+        <label class="text-sm">กรอกอีเมลสำหรับสินค้านี้</label>
+        <input id="orderEmailInput" type="email" placeholder="อีเมลสำหรับใช้งานสินค้า" class="w-full border rounded p-2" />
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button id="confirmOrder" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md">ยืนยันสั่งซื้อ</button>
+        <button id="cancelOrder" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ยกเลิก</button>
+      </div>
+      <div id="orderMsg" class="mt-2 text-sm text-red-600"></div>
+    </div>`;
+  document.body.appendChild(orderModal);
+
+  // Order History Modal (for users)
+  const historyModal = document.createElement('div');
+  historyModal.className = 'modal'; historyModal.id = 'historyModal'; historyModal.setAttribute('aria-hidden','true');
+  historyModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full p-6 relative">
+      <button id="closeHistory" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ประวัติการสั่งซื้อ</h3>
+      <div id="historyList" class="space-y-3 max-h-[60vh] overflow-auto text-sm"></div>
+    </div>`;
+  document.body.appendChild(historyModal);
+
+  // Cart Modal
+  const cartModal = document.createElement('div');
+  cartModal.className = 'modal'; cartModal.id = 'cartModal'; cartModal.setAttribute('aria-hidden','true');
+  cartModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full p-6 relative">
+      <button id="closeCart" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ตะกร้าสินค้า</h3>
+      <div id="cartList" class="space-y-3 max-h-[60vh] overflow-auto text-sm"></div>
+      <div class="flex items-center justify-between mt-4">
+        <div class="text-lg font-semibold">รวมทั้งหมด: <span id="cartTotal">0</span> เครดิต</div>
+        <div class="flex gap-2">
+          <button id="clearCart" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md">ล้างตะกร้า</button>
+          <button id="checkoutCart" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md">ยืนยันสั่งซื้อ</button>
+        </div>
+      </div>
+      <div id="cartMsg" class="mt-2 text-sm"></div>
+    </div>`;
+  document.body.appendChild(cartModal);
+
+  // Product Detail Modal (Buy Now)
+  const productModal = document.createElement('div');
+  productModal.className = 'modal'; productModal.id = 'productModal'; productModal.setAttribute('aria-hidden','true');
+  productModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-3xl w-full p-6 relative">
+      <button id="closeProduct" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-3">
+          <img id="pdImage" src="" alt="" class="w-full h-56 object-cover rounded border bg-slate-50" />
+          <div class="text-sm text-slate-500" id="pdProgram"></div>
+        </div>
+        <div class="space-y-3">
+          <h3 class="text-2xl font-bold" id="pdName"></h3>
+          <div class="text-2xl font-extrabold text-indigo-700">฿<span id="pdPrice">0</span></div>
+          <div id="pdFields" class="space-y-2"></div>
+          <div>
+            <button id="pdAddCart" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มในตะกร้า</button>
+          </div>
+          <div id="pdMsg" class="text-sm"></div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(productModal);
+
+  // Admin Panel
+  const adminSection = document.createElement('section');
+  adminSection.className = 'mb-6 hidden';
+  adminSection.id = 'adminSection';
+  adminSection.innerHTML = `
+    <div class="rounded-2xl p-6 bg-white shadow">
+      <h3 class="text-xl font-bold mb-4">สำหรับผู้ดูแลระบบ</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="space-y-2">
+          <div class="font-semibold">เพิ่มเครดิตให้ลูกค้า</div>
+          <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
+          <input id="creditAmount" type="number" placeholder="จำนวนเครดิต (+เพิ่ม/-ลด)" class="w-full border rounded p-2" />
+          <button id="addCreditBtn" class="bg-emerald-600 text-white px-4 py-2 rounded-md w-full">อัปเดตเครดิต</button>
+          <div id="creditMsg" class="text-sm"></div>
+        </div>
+        <div class="space-y-2">
+          <div class="font-semibold">เพิ่มสินค้าเข้าระบบ (Firestore)</div>
+          <input id="pProgram" type="text" placeholder="หมวด/โปรแกรม" class="w-full border rounded p-2" />
+          <input id="pName" type="text" placeholder="ชื่อแพ็กเกจ/สินค้า" class="w-full border rounded p-2" />
+          <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="w-full border rounded p-2" />
+          <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ (เช่นจาก CSV_URL)" class="w-full border rounded p-2" />
+          <label class="inline-flex items-center gap-2 text-sm"><input id="pReqEmail" type="checkbox" /> ต้องกรอกอีเมลตอนสั่งซื้อ</label>
+          <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md w-full">เพิ่มสินค้า</button>
+          <div id="productMsg" class="text-sm"></div>
+        </div>
+        <div class="space-y-2">
+          <div class="font-semibold">คำสั่งซื้อที่รอดำเนินการ</div>
+          <div id="ordersList" class="space-y-2 max-h-72 overflow-auto text-sm"></div>
+        </div>
+      </div>
+    </div>`;
+  document.querySelector('main').prepend(adminSection);
+
+  // ----- Helpers -----
+  const HEADERS = {
+    program:["program","tool","โปรแกรม","เครื่องมือ"],
+    pack:["package","term","duration","plan","แพ็กเกจ","แพคเกจ","ระยะเวลา"],
+    price:["price","cost","ราคา"],
+    image:["image","img","รูป","รูปภาพ","imageurl"],
+    requiresemail:["requiresemail","requires_email","email_required","ต้องใส่อีเมล","กรอกอีเมล"],
+    requiresusername:["requiresusername","username_required","ต้องใส่username","ต้องใส่ผู้ใช้","user_required"],
+    requiressn:["requiressn","sn_required","serial_required","ต้องใส่sn","ต้องใส่serial"],
+    requireimei:["requireimei","imei_required","ต้องใส่imei"]
+  };
+  const norm = s => (s??"").toString().trim();
+  const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
+
+  function parseCSV(text){
+    const rows=[]; let r=[], c="", q=false;
+    for(let i=0;i<text.length;i++){
+      const ch=text[i], n=text[i+1];
+      if(q){
+        if(ch=='"'&&n=='"'){ c+='"'; i++; }
+        else if(ch=='"'){ q=false; }
+        else c+=ch;
+      }else{
+        if(ch=='"') q=true;
+        else if(ch==','){ r.push(c); c=""; }
+        else if(ch=='\n'){ r.push(c); rows.push(r); r=[]; c=""; }
+        else if(ch=='\r'){ }
+        else c+=ch;
+      }
+    }
+    if(c.length>0 || r.length>0){ r.push(c); rows.push(r); }
+    return rows;
+  }
+
+  function mapHeaders(cols){
+    const map={};
+    cols.forEach((c,i)=>{
+      const key=nk(c);
+      for(const std in HEADERS){
+        if(HEADERS[std].some(h=>nk(h)===key)) map[std]=i;
+      }
+    });
+    if(map.program==null||map.pack==null||map.price==null){
+      throw new Error("CSV ต้องมีคอลัมน์: program/โปรแกรม, package/แพ็กเกจ, price/ราคา");
+    }
+    return map;
+  }
+
+  const currencyTH = v => {
+    const n=Number(String(v).replace(/[^\d.]/g,""));
+    return isNaN(n)?norm(v):n.toLocaleString("th-TH");
+  };
+
+  function toNumber(v){ const n=Number(String(v).replace(/[^\d.]/g,"")); return isNaN(n)?0:n; }
+
+  function groupByProgram(items){
+    const g={};
+    for(const it of items){
+      const k=norm(it.program)||"อื่น ๆ";
+      if(!g[k]) g[k]=[];
+      g[k].push(it);
+    }
+    return g;
+  }
+
+  function rowsToItems(rows){
+    if(!rows.length) throw new Error("ไม่พบข้อมูล CSV");
+    const headers=rows[0];
+    const map=mapHeaders(headers);
+    return rows.slice(1)
+      .filter(r=>r.length && r.some(c=>norm(c)!==""))
+      .map((r,idx)=>({
+        id: `csv_${idx}`,
+        source: 'csv',
+        program: r[map.program]??"",
+        pack: r[map.pack]??"",
+        price: toNumber(r[map.price]??0),
+        image: map.image!=null? norm(r[map.image]): "",
+        requiresEmail: map.requiresemail!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresemail])) : false,
+        requiresUsername: map.requiresusername!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresusername])) : false,
+        requiresSN: map.requiressn!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiressn])) : false,
+        requiresIMEI: map.requireimei!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requireimei])) : false
+      }))
+      .filter(x=>norm(x.program)&&norm(x.pack)&&x.price>0);
+  }
+
+  // ----- State -----
+  let CURRENT_USER = null; // auth user
+  let CURRENT_USER_DOC = null; // user profile with credits
+  let IS_ADMIN = false;
+  let CSV_DATA_GROUPED = {};
+  let FS_PRODUCTS = []; // firestore products
+  let PENDING_ORDER = null; // order in modal
+  let USER_ORDERS_UNSUB = null; // unsubscribe for user's order stream
+  let CART = []; // [{id, program, pack(name), price, image, requiresEmail, emailForProduct?}]
+
+  function cartKey(){ return CURRENT_USER? `cart_${CURRENT_USER.uid}`: 'cart_guest'; }
+  function loadCart(){
+    try{ CART = JSON.parse(localStorage.getItem(cartKey())||'[]'); }catch{ CART = []; }
+  }
+  function saveCart(){ localStorage.setItem(cartKey(), JSON.stringify(CART)); updateCartCount(); }
+  function updateCartCount(){
+    const btn = document.getElementById('cartBtn');
+    const count = CART.length;
+    if(btn){ btn.textContent = `ตะกร้า (${count})`; }
+  }
+
+  function render(groups, filter=""){
+    const q=nk(filter);
+    groupsEl.innerHTML="";
+    let total=0;
+
+    Object.entries(groups).forEach(([program,items])=>{
+      const keep=items.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
+      if(!keep.length) return;
+      total+=keep.length;
+
+      const card=document.createElement("div");
+      card.className="card-hover bg-white rounded-2xl p-6 shadow";
+      card.innerHTML=`
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h4 class="text-xl font-semibold">${program}</h4>
+            <p class="text-sm text-slate-500">เลือกสินค้าและสั่งซื้อด้วยเครดิต</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
+      const body=card.querySelector("[data-body]");
+
+      keep.forEach(p=>{
+        const item=document.createElement("div");
+        item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
+        item.innerHTML=`
+          ${p.image? `<img src="${p.image}" alt="${p.pack}" class="w-24 h-24 object-cover rounded-md border" />` : ''}
+          <div class="font-semibold">${p.pack}</div>
+          <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
+          ${p.requiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
+          <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">สั่งซื้อ</button>
+        `;
+        item.querySelector('button').textContent = 'เพิ่มในตะกร้า';
+        const priceEl = item.querySelector('.text-2xl.font-extrabold.mt-1');
+        if(priceEl) priceEl.textContent = '฿'+currencyTH(p.price);
+        item.querySelector('button').addEventListener('click',()=> addToCart(p));
+        body.appendChild(item);
+      });
+
+      groupsEl.appendChild(card);
+    });
+
+    emptyEl.classList.toggle("hidden", total>0);
+  }
+
+  function mergeProducts(){
+    // Convert Firestore products to same shape and merge with CSV
+    const fsItems = FS_PRODUCTS.map((p,idx)=>({
+      id: p.id || `fs_${idx}`,
+      source: 'fs',
+      program: p.program||'อื่น ๆ',
+      pack: p.name||p.pack||'สินค้า',
+      price: Number(p.price)||0,
+      image: p.image||p.imageUrl||'',
+      requiresEmail: !!p.requiresEmail,
+      requiresUsername: !!p.requiresUsername,
+      requiresSN: !!p.requiresSN,
+      requiresIMEI: !!p.requiresIMEI
+    })).filter(x=>x.price>0);
+
+    const grouped = {};
+    const push = it => { const k=norm(it.program)||'อื่น ๆ'; if(!grouped[k]) grouped[k]=[]; grouped[k].push(it); };
+    Object.values(CSV_DATA_GROUPED).flat().forEach(push);
+    fsItems.forEach(push);
+    return grouped;
+  }
+
+  async function loadCSV(){
+    statusEl.textContent="กำลังโหลดสินค้า...";
+    const res=await fetch(CSV_URL,{cache:"no-store"});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text=await res.text();
+    const rows=parseCSV(text);
+    const items=rowsToItems(rows);
+    CSV_DATA_GROUPED = groupByProgram(items);
+  }
+
+  async function loadFirestoreProducts(){
+    // Optional: live updates
+    const colRef = collection(db,'products');
+    onSnapshot(colRef,(snap)=>{
+      FS_PRODUCTS = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const merged = mergeProducts();
+      render(merged, searchEl?.value||"");
+    });
+  }
+
+  function updateHeaderAuth(){
+    const bal = CURRENT_USER_DOC?.credits || 0;
+    // Rebuild header actions every time to avoid stale elements
+    if(CURRENT_USER){
+      headerRight.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div id="userInfo" class="text-sm text-slate-700">${CURRENT_USER.email||''}</div>
+          <div id="balanceInfo" class="text-sm font-semibold text-indigo-700">เครดิต: ${currencyTH(bal)}</div>
+          <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
+          <button id="historyBtn" class="bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ประวัติการสั่งซื้อ</button>
+          <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ออกจากระบบ</button>
+        </div>`;
+      const historyBtn = document.getElementById('historyBtn');
+      const cartBtn    = document.getElementById('cartBtn');
+      const logoutBtn  = document.getElementById('logoutBtn');
+      historyBtn.addEventListener('click', openHistoryModal);
+      cartBtn.addEventListener('click', openCartModal);
+      updateCartCount();
+      logoutBtn.addEventListener('click', async ()=>{
+        try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); }
+      });
+    } else {
+      headerRight.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
+          <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
+          <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
+          <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
+        </div>`;
+      const registerBtn = document.getElementById('registerBtn');
+      const loginBtn    = document.getElementById('loginBtn');
+      registerBtn.addEventListener('click', openRegModal);
+      loginBtn.addEventListener('click', openLoginModal);
+    }
+    adminSection.classList.toggle('hidden', !IS_ADMIN);
+  }
+
+  async function ensureUserProfile(u){
+    const ref = doc(db,'users',u.uid);
+    const snap = await getDoc(ref);
+    if(!snap.exists()){
+      const rawEmail = (u.email||'');
+      await setDoc(ref,{
+        email: rawEmail,
+        emailLower: rawEmail.toLowerCase(),
+        credits: 0,
+        createdAt: serverTimestamp()
+      });
+      return (await getDoc(ref)).data();
+    }
+    return snap.data();
+  }
+
+  async function bootstrapFirestoreAfterSignup(u){
+    try{
+      const cfgRef = doc(db,'config','app');
+      const cfg = await getDoc(cfgRef);
+      if(!cfg.exists()){
+        await setDoc(cfgRef,{
+          initializedAt: serverTimestamp(),
+          initializedBy: (u.email||'').toLowerCase()
+        });
+        // Optional: seed an example product so the DB is ready
+        try{
+          await addDoc(collection(db,'products'),{
+            program: 'ตัวอย่าง',
+            name: 'สินค้าแรก',
+            price: 1,
+            image: '',
+            requiresEmail: false,
+            createdAt: serverTimestamp()
+          });
+        }catch{}
+      }
+    }catch(e){ console.warn('bootstrap error', e?.message||e); }
+  }
+
+  function openRegModal(){ regModal.classList.add('active'); }
+  function closeRegModal(){ regModal.classList.remove('active'); }
+  function openLoginModal(){ loginModal.classList.add('active'); }
+  function closeLoginModal(){ loginModal.classList.remove('active'); }
+
+  function openOrderModal(product){
+    if(!CURRENT_USER){ openAuthModal(); return; }
+    PENDING_ORDER = product;
+    const bal = CURRENT_USER_DOC?.credits || 0;
+    const can = bal >= Number(product.price||0);
+    document.getElementById('orderSummary').innerHTML = `
+      <div>สินค้า: <strong>${product.pack}</strong></div>
+      <div>ราคา: <strong>${currencyTH(product.price)}</strong> เครดิต</div>
+      <div>เครดิตคงเหลือ: <strong>${currencyTH(bal)}</strong></div>
+      <div class="${can? 'text-emerald-600':'text-red-600'}">${can? 'สามารถสั่งซื้อได้':'เครดิตไม่เพียงพอ'}</div>`;
+    document.getElementById('orderEmailBlock').classList.toggle('hidden', !product.requiresEmail);
+    document.getElementById('orderEmailInput').value = '';
+    document.getElementById('orderMsg').textContent='';
+    orderModal.classList.add('active');
+  }
+  function closeOrder(){ orderModal.classList.remove('active'); PENDING_ORDER=null; }
+  function openHistoryModal(){
+    if(!CURRENT_USER){ openLoginModal(); return; }
+    const list = document.getElementById('historyList');
+    if(list) list.innerHTML = '<div class="text-slate-500">กำลังโหลด...</div>';
+    historyModal.classList.add('active');
+    // Fetch once in case snapshot hasn't arrived yet
+    try {
+      const qref = query(collection(db,'orders'), where('userId','==', CURRENT_USER.uid));
+      getDocs(qref).then(snap=>{
+        const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
+        renderUserHistory(rows);
+      });
+    } catch {}
+  }
+  function closeHistoryModal(){ historyModal.classList.remove('active'); }
+
+  async function placeOrder(){
+    if(!PENDING_ORDER||!CURRENT_USER) return;
+    const uref = doc(db,'users',CURRENT_USER.uid);
+    const usnap = await getDoc(uref);
+    const profile = usnap.data();
+    const bal = profile?.credits||0;
+    const price = Number(PENDING_ORDER.price||0);
+    const emailForProduct = document.getElementById('orderEmailInput').value.trim();
+    if(PENDING_ORDER.requiresEmail && !emailForProduct){
+      document.getElementById('orderMsg').textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้';
+      return;
+    }
+    if(bal < price){
+      document.getElementById('orderMsg').textContent = 'เครดิตไม่เพียงพอ';
+      return;
+    }
+    await addDoc(collection(db,'orders'),{
+      userId: CURRENT_USER.uid,
+      userEmail: (CURRENT_USER.email||'').toLowerCase(),
+      status: 'pending',
+      product: {
+        id: PENDING_ORDER.id,
+        name: PENDING_ORDER.pack,
+        program: PENDING_ORDER.program,
+        price: price,
+        image: PENDING_ORDER.image||'',
+        requiresEmail: !!PENDING_ORDER.requiresEmail,
+        source: PENDING_ORDER.source||'csv'
+      },
+      emailForProduct: emailForProduct||'',
+      createdAt: serverTimestamp()
+    });
+    document.getElementById('orderMsg').classList.remove('text-red-600');
+    document.getElementById('orderMsg').classList.add('text-emerald-700');
+    document.getElementById('orderMsg').textContent = 'ส่งคำสั่งซื้อแล้ว กำลังรอผู้ดูแลยืนยัน';
+    setTimeout(closeOrder, 1000);
+  }
+
+  function listenOrdersForAdmin(){
+    const listEl = document.getElementById('ordersList');
+    if(!IS_ADMIN){ listEl.innerHTML=''; return; }
+    const qref = query(collection(db,'orders'), where('status','==','pending'));
+    onSnapshot(qref,(snap)=>{
+      listEl.innerHTML='';
+      snap.docs.forEach(d=>{
+        const data=d.data();
+        const row=document.createElement('div');
+        row.className='border rounded p-2 flex flex-col gap-1';
+        row.innerHTML = `
+          <div><strong>${data.product?.name||'-'}</strong> • ${currencyTH(data.product?.price||0)} เครดิต</div>
+          <div>โดย: ${data.userEmail||data.userId}</div>
+          ${data.emailForProduct? `<div>อีเมลสินค้า: ${data.emailForProduct}</div>`:''}
+          <div class="flex gap-2">
+            <button class="accept bg-emerald-600 text-white text-xs px-3 py-1 rounded">ยอมรับ</button>
+            <button class="reject bg-red-600 text-white text-xs px-3 py-1 rounded">ปฏิเสธ</button>
+          </div>`;
+        row.querySelector('.accept').addEventListener('click',()=> adminAcceptOrder(d.id, data));
+        row.querySelector('.reject').addEventListener('click',()=> adminRejectOrder(d.id));
+        listEl.appendChild(row);
+      });
+    });
+  }
+
+  async function adminAcceptOrder(orderId, data){
+    // Transaction: deduct credits and set order accepted
+    const uid = data.userId;
+    const price = Number(data.product?.price||0);
+    const uref = doc(db,'users',uid);
+    const oref = doc(db,'orders',orderId);
+    await runTransaction(db, async (tx)=>{
+      const us = await tx.get(uref);
+      const bal = (us.data()?.credits)||0;
+      if(bal < price) throw new Error('เครดิตลูกค้าไม่พอหัก');
+      tx.update(uref,{ credits: bal - price });
+      tx.update(oref,{ status:'accepted', acceptedAt: serverTimestamp() });
+    });
+  }
+
+  async function adminRejectOrder(orderId){
+    const oref = doc(db,'orders',orderId);
+    await updateDoc(oref,{ status:'rejected', rejectedAt: serverTimestamp() });
+  }
+
+  async function addCreditsByEmail(email, amount){
+    const qref = query(collection(db,'users'), where('emailLower','==', (email||'').toLowerCase()));
+    const snap = await getDocs(qref);
+    if(snap.empty) throw new Error('ไม่พบผู้ใช้ตามอีเมล');
+    const d = snap.docs[0];
+    await updateDoc(doc(db,'users',d.id),{ credits: increment(Number(amount)||0) });
+  }
+
+  async function addProductFS(p){
+    await addDoc(collection(db,'products'),{
+      program: norm(p.program),
+      name: norm(p.name),
+      price: Number(p.price)||0,
+      image: norm(p.image||''),
+      requiresEmail: !!p.requiresEmail,
+      createdAt: serverTimestamp()
+    });
+  }
+
+  // ----- Cart functions -----
+  function addToCart(p){
+    if(!CURRENT_USER){ openLoginModal(); return; }
+    const item = {
+      id: p.id,
+      source: p.source||'csv',
+      program: p.program,
+      name: p.pack||p.name,
+      price: Number(p.price)||0,
+      image: p.image||'',
+      requiresEmail: !!p.requiresEmail,
+      emailForProduct: ''
+    };
+    CART.push(item);
+    saveCart();
+    openCartModal();
+  }
+
+  function openCartModal(){
+    if(!CURRENT_USER){ openLoginModal(); return; }
+    renderCart();
+    cartModal.classList.add('active');
+  }
+  function closeCartModal(){ cartModal.classList.remove('active'); }
+
+  let PRODUCT_SELECTED = null;
+  function openProductModal(p){
+    if(!CURRENT_USER){ openLoginModal(); return; }
+    PRODUCT_SELECTED = p;
+    document.getElementById('pdImage').src = p.image||'';
+    document.getElementById('pdImage').classList.toggle('hidden', !p.image);
+    document.getElementById('pdProgram').textContent = p.program||'';
+    document.getElementById('pdName').textContent = p.pack||p.name||'';
+    document.getElementById('pdPrice').textContent = currencyTH(p.price||0);
+    const fields = document.getElementById('pdFields');
+    fields.innerHTML='';
+    const addField = (id,label,type='text')=>{
+      const wrap=document.createElement('div');
+      wrap.innerHTML = `<label class="text-sm">${label}</label><input id="${id}" type="${type}" class="w-full border rounded p-2 text-sm" />`;
+      fields.appendChild(wrap);
+    };
+    if(p.requiresEmail) addField('pdEmail','Email');
+    if(p.requiresUsername) addField('pdUsername','Username');
+    if(p.requiresSN) addField('pdSN','SN / Serial Number');
+    if(p.requiresIMEI) addField('pdIMEI','IMEI');
+    document.getElementById('pdMsg').textContent='';
+    productModal.classList.add('active');
+  }
+  function closeProductModal(){ productModal.classList.remove('active'); PRODUCT_SELECTED=null; }
+
+  function renderCart(){
+    const list = document.getElementById('cartList');
+    const totalEl = document.getElementById('cartTotal');
+    const msg = document.getElementById('cartMsg');
+    msg.textContent=''; msg.className='mt-2 text-sm';
+    if(!CART.length){ list.innerHTML = '<div class="text-slate-500">ตะกร้าว่าง</div>'; totalEl.textContent='0'; updateCartCount(); return; }
+    list.innerHTML='';
+    let sum=0;
+    CART.forEach((it,idx)=>{
+      sum += Number(it.price)||0;
+      const row=document.createElement('div');
+      row.className='border rounded p-3 flex gap-3 items-start';
+      row.innerHTML = `
+        ${it.image? `<img src="${it.image}" class="w-12 h-12 rounded object-cover border" />`:''}
+        <div class="flex-1">
+          <div class="font-semibold">${it.name} <span class="text-slate-500">• ${currencyTH(it.price)} เครดิต</span></div>
+          ${it.requiresEmail? `<div class="mt-2"><input data-email-index="${idx}" type="email" value="${it.emailForProduct||''}" placeholder="อีเมลสำหรับสินค้านี้" class="w-full border rounded p-2 text-sm" /></div>`:''}
+        </div>
+        <button data-remove-index="${idx}" class="text-red-600 text-sm">ลบ</button>`;
+      list.appendChild(row);
+    });
+    totalEl.textContent = currencyTH(sum);
+    // bind events
+    list.querySelectorAll('[data-remove-index]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-remove-index'));
+        CART.splice(i,1); saveCart(); renderCart();
+      });
+    });
+    list.querySelectorAll('[data-email-index]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-email-index'));
+        CART[i].emailForProduct = e.currentTarget.value;
+        saveCart();
+      });
+    });
+  }
+
+  document.getElementById('clearCart')?.addEventListener('click', ()=>{ CART = []; saveCart(); renderCart(); });
+  document.getElementById('checkoutCart')?.addEventListener('click', async ()=>{
+    if(!CURRENT_USER) { openLoginModal(); return; }
+    const msg = document.getElementById('cartMsg'); msg.textContent=''; msg.className='mt-2 text-sm';
+    // Validate required emails
+    for(const it of CART){
+      if(it.requiresEmail && !it.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอกอีเมลสำหรับสินค้าบางรายการ'; return; }
+    }
+    // Check credits vs total
+    const total = CART.reduce((a,b)=>a+(Number(b.price)||0),0);
+    try{
+      const uref = doc(db,'users',CURRENT_USER.uid);
+      const usnap = await getDoc(uref);
+      const bal = (usnap.data()?.credits)||0;
+      if(bal < total){ msg.classList.add('text-red-600'); msg.textContent = `เครดิตไม่พอ ต้องการ ${currencyTH(total)} แต่มี ${currencyTH(bal)}`; return; }
+    }catch(e){ msg.classList.add('text-red-600'); msg.textContent = e.message; return; }
+
+    // Create one order per item (pending)
+    try{
+      const batch = CART.slice();
+      for(const it of batch){
+        await addDoc(collection(db,'orders'),{
+          userId: CURRENT_USER.uid,
+          userEmail: (CURRENT_USER.email||'').toLowerCase(),
+          status: 'pending',
+          product: {
+            id: it.id,
+            name: it.name,
+            program: it.program,
+            price: Number(it.price)||0,
+            image: it.image||'',
+            requiresEmail: !!it.requiresEmail,
+            source: it.source||'csv'
+          },
+          emailForProduct: it.emailForProduct||'',
+          createdAt: serverTimestamp()
+        });
+      }
+      CART = []; saveCart(); renderCart();
+      msg.classList.add('text-emerald-700'); msg.textContent='ส่งคำสั่งซื้อแล้ว กำลังรอผู้ดูแลยืนยัน';
+      setTimeout(closeCartModal, 1200);
+    }catch(e){ msg.classList.add('text-red-600'); msg.textContent=e.message; }
+  });
+
+  // Buy now (immediate charge) from product modal
+  document.getElementById('pdAddCart').addEventListener('click', ()=>{ if(PRODUCT_SELECTED){ addToCart(PRODUCT_SELECTED); closeProductModal(); } });
+  /* Removed immediate buy flow per request
+  document.getElementById('pdBuyNow').addEventListener('click', async ()=>{
+    const msg = document.getElementById('pdMsg'); msg.textContent=''; msg.className='text-sm';
+    if(!CURRENT_USER || !PRODUCT_SELECTED){ return; }
+    const price = Number(PRODUCT_SELECTED.price)||0;
+    const details = {
+      email: document.getElementById('pdEmail')?.value?.trim()||'',
+      username: document.getElementById('pdUsername')?.value?.trim()||'',
+      sn: document.getElementById('pdSN')?.value?.trim()||'',
+      imei: document.getElementById('pdIMEI')?.value?.trim()||''
+    };
+    if(PRODUCT_SELECTED.requiresEmail && !details.email){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Email'; return; }
+    if(PRODUCT_SELECTED.requiresUsername && !details.username){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Username'; return; }
+    if(PRODUCT_SELECTED.requiresSN && !details.sn){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก SN/Serial'; return; }
+    if(PRODUCT_SELECTED.requiresIMEI && !details.imei){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก IMEI'; return; }
+
+    try{
+      const uref = doc(db,'users',CURRENT_USER.uid);
+      const ocol = collection(db,'orders');
+      await runTransaction(db, async (tx)=>{
+        const us = await tx.get(uref);
+        const bal = (us.data()?.credits)||0;
+        if(bal < price) throw new Error(`เครดิตไม่พอ ต้องการ ${price} แต่มี ${bal}`);
+        tx.update(uref,{ credits: bal - price });
+        const oref = doc(ocol);
+        tx.set(oref,{
+          userId: CURRENT_USER.uid,
+          userEmail: (CURRENT_USER.email||'').toLowerCase(),
+          status: 'paid',
+          product: {
+            id: PRODUCT_SELECTED.id,
+            name: PRODUCT_SELECTED.pack||PRODUCT_SELECTED.name,
+            program: PRODUCT_SELECTED.program,
+            price: price,
+            image: PRODUCT_SELECTED.image||'',
+            requiresEmail: !!PRODUCT_SELECTED.requiresEmail,
+            requiresUsername: !!PRODUCT_SELECTED.requiresUsername,
+            requiresSN: !!PRODUCT_SELECTED.requiresSN,
+            requiresIMEI: !!PRODUCT_SELECTED.requiresIMEI,
+            source: PRODUCT_SELECTED.source||'csv'
+          },
+          emailForProduct: details.email,
+          usernameForProduct: details.username,
+          snForProduct: details.sn,
+          imeiForProduct: details.imei,
+          createdAt: serverTimestamp(),
+          paidAt: serverTimestamp()
+        });
+      });
+      msg.classList.remove('text-red-600'); msg.classList.add('text-emerald-700');
+      msg.textContent='ชำระเครดิตเรียบร้อย ออเดอร์ถูกสร้างแล้ว';
+      setTimeout(closeProductModal, 900);
+    }catch(e){ msg.classList.add('text-red-600'); msg.textContent = e.message; }
+  });
+  */
+
+  // ----- Events -----
+  searchEl.addEventListener("input", ()=>render(mergeProducts(), searchEl.value));
+  contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
+  closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
+  modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
+
+  document.getElementById('registerBtn').addEventListener('click', openRegModal);
+  document.getElementById('loginBtn').addEventListener('click', openLoginModal);
+  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+    try{ await signOut(auth); }
+    finally{
+      // อัปเดตปุ่มทันทีหลังออกจากระบบ
+      CURRENT_USER = null; CURRENT_USER_DOC = null; IS_ADMIN = false;
+      updateHeaderAuth();
+    }
+  });
+  document.getElementById('closeReg').addEventListener('click', closeRegModal);
+  regModal.addEventListener('click',(e)=>{ if(e.target===regModal) closeRegModal(); });
+  document.getElementById('doRegister').addEventListener('click', async ()=>{
+    const email = document.getElementById('authEmailR').value.trim();
+    const pass = document.getElementById('authPassR').value;
+    const pass2 = document.getElementById('authPass2R').value;
+    const msg = document.getElementById('authMsgR'); msg.textContent=''; msg.className='text-sm';
+    if(!email){ msg.textContent='กรุณากรอกอีเมล'; return; }
+    if(!pass){ msg.textContent='กรุณากรอกรหัสผ่าน'; return; }
+    if(pass !== pass2){ msg.textContent='รหัสผ่านไม่ตรงกัน'; return; }
+    try{
+      const cred = await createUserWithEmailAndPassword(auth,email,pass);
+      // Create user profile in background; ignore failures here (rules may block)
+      try { CURRENT_USER_DOC = await ensureUserProfile(cred.user); await bootstrapFirestoreAfterSignup(cred.user); updateHeaderAuth(); } catch(_) {}
+      // Show success then leave registration
+      msg.textContent = 'สมัครสมาชิกสำเร็จ';
+      msg.classList.add('text-emerald-700');
+      setTimeout(()=>{ closeRegModal(); }, 900);
+    }catch(e){ msg.textContent = e.message; }
+  });
+  document.getElementById('closeLogin').addEventListener('click', closeLoginModal);
+  loginModal.addEventListener('click',(e)=>{ if(e.target===loginModal) closeLoginModal(); });
+  document.getElementById('doLogin').addEventListener('click', async ()=>{
+    const email = document.getElementById('authEmailL').value.trim();
+    const pass = document.getElementById('authPassL').value;
+    const msg = document.getElementById('authMsgL'); msg.textContent='';
+    try{
+      const cred = await signInWithEmailAndPassword(auth,email,pass);
+      // Close modal immediately on successful login
+      closeLoginModal();
+      // Ensure profile exists in background; ignore failures
+      try { CURRENT_USER_DOC = await ensureUserProfile(cred.user); updateHeaderAuth(); } catch(_) {}
+    }catch(e){ msg.textContent = e.message; }
+  });
+
+  function renderUserHistory(docs){
+    const list = document.getElementById('historyList');
+    if(!list) return;
+    if(!docs.length){ list.innerHTML = '<div class="text-slate-500">ยังไม่มีคำสั่งซื้อ</div>'; return; }
+    // sort by createdAt desc client-side
+    docs.sort((a,b)=>{
+      const ta = a.createdAt?.toMillis?.() || 0;
+      const tb = b.createdAt?.toMillis?.() || 0;
+      return tb - ta;
+    });
+    list.innerHTML = '';
+    docs.forEach(o=>{
+      const d = document.createElement('div');
+      d.className='border rounded p-3 flex gap-3 items-start';
+      const when = o.createdAt?.toDate ? o.createdAt.toDate() : null;
+      const dateStr = when? when.toLocaleString('th-TH'): '';
+      d.innerHTML = `
+        ${o.product?.image? `<img src="${o.product.image}" class="w-12 h-12 rounded object-cover border" />` : ''}
+        <div class="flex-1">
+          <div class="font-semibold">${o.product?.name||'-'} <span class="text-slate-500">• ${currencyTH(o.product?.price||0)} เครดิต</span></div>
+          <div class="text-slate-600">สถานะ: <span class="font-medium">${o.status}</span>${o.emailForProduct? ` • อีเมลสินค้า: ${o.emailForProduct}`:''}</div>
+          <div class="text-slate-500 text-xs">${dateStr}</div>
+        </div>`;
+      list.appendChild(d);
+    });
+  }
+
+  function listenOrdersForUser(){
+    if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
+    if(!CURRENT_USER) return;
+    const qref = query(collection(db,'orders'), where('userId','==', CURRENT_USER.uid));
+    USER_ORDERS_UNSUB = onSnapshot(qref,(snap)=>{
+      const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      renderUserHistory(rows);
+    },(err)=>{
+      const list = document.getElementById('historyList');
+      if(list) list.innerHTML = `<div class="text-red-600">เกิดข้อผิดพลาด: ${err.message}</div>`;
+    });
+  }
+  document.getElementById('closeOrder').addEventListener('click', closeOrder);
+  document.getElementById('cancelOrder').addEventListener('click', closeOrder);
+  orderModal.addEventListener('click',(e)=>{ if(e.target===orderModal) closeOrder(); });
+  document.getElementById('confirmOrder').addEventListener('click', placeOrder);
+  document.getElementById('closeHistory').addEventListener('click', closeHistoryModal);
+  historyModal.addEventListener('click',(e)=>{ if(e.target===historyModal) closeHistoryModal(); });
+  document.getElementById('closeCart').addEventListener('click', ()=>{ cartModal.classList.remove('active'); });
+  document.getElementById('closeProduct').addEventListener('click', closeProductModal);
+  productModal.addEventListener('click',(e)=>{ if(e.target===productModal) closeProductModal(); });
+
+  document.getElementById('addCreditBtn').addEventListener('click', async ()=>{
+    const email = document.getElementById('creditEmail').value.trim();
+    const amt = Number(document.getElementById('creditAmount').value||0);
+    const el = document.getElementById('creditMsg'); el.textContent=''; el.className='text-sm';
+    try{ await addCreditsByEmail(email, amt); el.classList.add('text-emerald-700'); el.textContent = 'อัปเดตเครดิตแล้ว'; }
+    catch(e){ el.classList.add('text-red-600'); el.textContent = e.message; }
+  });
+  document.getElementById('addProductBtn').addEventListener('click', async ()=>{
+    const data = {
+      program: document.getElementById('pProgram').value,
+      name: document.getElementById('pName').value,
+      price: document.getElementById('pPrice').value,
+      image: document.getElementById('pImage').value,
+      requiresEmail: document.getElementById('pReqEmail').checked
+    };
+    const el = document.getElementById('productMsg'); el.textContent=''; el.className='text-sm';
+    try{ await addProductFS(data); el.classList.add('text-emerald-700'); el.textContent = 'เพิ่มสินค้าแล้ว'; }
+    catch(e){ el.classList.add('text-red-600'); el.textContent = e.message; }
+  });
+
+  // ----- Auth state -----
+  onAuthStateChanged(auth, async (user)=>{
+    CURRENT_USER = user||null;
+    if(user){
+      try {
+        CURRENT_USER_DOC = await ensureUserProfile(user);
+      } catch (e) {
+        // Fall back to a minimal client state if rules temporarily block profile creation
+        CURRENT_USER_DOC = { email: (user.email||'').toLowerCase(), credits: 0, isAdmin: false };
+      }
+      IS_ADMIN = !!CURRENT_USER_DOC?.isAdmin || ADMIN_EMAILS.includes((user.email||'').toLowerCase());
+      listenOrdersForUser();
+      loadCart(); updateCartCount();
+    }else{
+      CURRENT_USER_DOC = null; IS_ADMIN = false;
+      if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
+      CART = []; updateCartCount();
+    }
+    updateHeaderAuth();
+    if(IS_ADMIN) listenOrdersForAdmin();
+  });
+
+  // ----- Init -----
+  (async ()=>{
+    try{
+      await loadCSV();
+      await loadFirestoreProducts();
+      const merged = mergeProducts();
+      render(merged, searchEl?.value||"");
+      statusEl.textContent = "อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
+      setInterval(async ()=>{ try{ await loadCSV(); render(mergeProducts(), searchEl?.value||""); }catch{} }, 5*60*1000);
+    }catch(e){
+      statusEl.innerHTML = `<span class="text-red-600">เกิดข้อผิดพลาด:</span> ${e.message}`;
+      console.error(e);
+    }
+  })();
+  </script>
 </body>
 </html>
