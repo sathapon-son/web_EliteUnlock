@@ -490,9 +490,6 @@ headerRight.appendChild(contactBtn);
       <button id="closeHistory" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
       <div class="flex items-center justify-between">
         <h3 class="text-xl font-bold mb-4">ประวัติการสั่งซื้อ</h3>
-        <div class="flex items-center gap-3">
-          <button id="topupBtn" class="bg-emerald-600 text-white text-sm px-3 py-2 rounded-md">เติมเครดิต</button>
-        </div>
       </div>
       
 
@@ -899,13 +896,16 @@ groupsEl.appendChild(card);
         <div class="flex items-center gap-3">
           <div id="userInfo" class="text-sm text-slate-700">${CURRENT_USER.email||''}</div>
           <div id="balanceInfo" class="text-sm font-semibold text-indigo-700">เครดิต: ${currencyTH(bal)}</div>
+          <button id="topupBtn" class="bg-emerald-600 text-white text-sm px-3 py-2 rounded-md">เติมเครดิต</button>
           <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
           <button id="historyBtn" class="bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ประวัติการสั่งซื้อ</button>
           <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ออกจากระบบ</button>
         </div>`;
+      const topupBtn   = document.getElementById('topupBtn');
       const historyBtn = document.getElementById('historyBtn');
       const cartBtn    = document.getElementById('cartBtn');
       const logoutBtn  = document.getElementById('logoutBtn');
+      if(topupBtn){ topupBtn.addEventListener('click', ()=>{ if(!CURRENT_USER){ openLoginModal(); return; } const tmodal = document.getElementById('topupModal'); if(tmodal) tmodal.classList.add('active'); }); }
       historyBtn.addEventListener('click', openHistoryModal);
       cartBtn.addEventListener('click', openCartModal);
       updateCartCount();
@@ -1000,15 +1000,7 @@ groupsEl.appendChild(card);
       getDocs(qref).then(snap=>{
         const rows = snap.docs.map(d=>({id:d.id, ...d.data()}));
         renderUserHistory(rows);
-        // setup topup UI handlers
-        const topupBtn = document.getElementById('topupBtn');
-        if(topupBtn){
-          topupBtn.addEventListener('click', ()=>{
-            if(!CURRENT_USER){ openLoginModal(); return; }
-            // open separate top-up modal
-            const tmodal = document.getElementById('topupModal'); if(tmodal) tmodal.classList.add('active');
-          });
-        }
+        // (removed top-up button from history modal; top-up handled via separate UI)
       });
     } catch {}
   }
