@@ -614,11 +614,16 @@ headerRight.appendChild(contactBtn);
         </div>
         <div class="space-y-2">
           <div class="font-semibold">คำสั่งซื้อที่รอดำเนินการ</div>
+          <label class="flex items-center gap-2 text-sm"><input id="adminShowPaid" type="checkbox" /> <span>แสดงคำสั่งซื้อที่ชำระแล้ว (paid)</span></label>
           <div id="ordersList" class="space-y-2 max-h-72 overflow-auto text-sm"></div>
         </div>
       </div>
     </div>`;
   document.querySelector('main').prepend(adminSection);
+
+  // bind admin filter control (re-run listener when toggled)
+  const adminShowPaidEl = document.getElementById('adminShowPaid');
+  if(adminShowPaidEl) adminShowPaidEl.addEventListener('change', ()=> { listenOrdersForAdmin(); });
 
   // ----- Helpers -----
   const HEADERS = {
@@ -714,14 +719,37 @@ headerRight.appendChild(contactBtn);
   let FS_PRODUCTS = []; // firestore products
   let PENDING_ORDER = null; // order in modal
   let USER_ORDERS_UNSUB = null; // unsubscribe for user's order stream
+  let ADMIN_ORDERS_UNSUB = null; // unsubscribe for admin orders stream
   let CART = []; // [{id, program, pack(name), price, image, requiresEmail, emailForProduct?}]
+  // Action to resume after login (e.g. confirm cart)
+  let AFTER_LOGIN_ACTION = null;
   // Selection state for main-page selection (does NOT add to cart yet)
   let SELECTED_IDS = new Set();
   let CURRENT_DETAIL_PRODUCT = null; // product shown in inline detail panel
 
   function cartKey(){ return CURRENT_USER? `cart_${CURRENT_USER.uid}`: 'cart_guest'; }
   function loadCart(){
-    try{ CART = JSON.parse(localStorage.getItem(cartKey())||'[]'); }catch{ CART = []; }
+    try{
+      if(CURRENT_USER){
+        // merge guest cart into user cart when logging in
+        const guest = JSON.parse(localStorage.getItem('cart_guest')||'[]');
+        const userKey = `cart_${CURRENT_USER.uid}`;
+        const userCart = JSON.parse(localStorage.getItem(userKey)||'[]');
+        // merge preserving order: userCart first, then guest (guest items were added before login)
+        const merged = Array.isArray(userCart) ? userCart.slice() : [];
+        if(Array.isArray(guest) && guest.length){
+          merged.push(...guest);
+        }
+        CART = merged;
+        localStorage.setItem(userKey, JSON.stringify(merged));
+        // remove guest key to avoid duplicate merges next login
+        localStorage.removeItem('cart_guest');
+      } else {
+        CART = JSON.parse(localStorage.getItem('cart_guest')||'[]');
+      }
+    }catch{
+      CART = [];
+    }
   }
   function saveCart(){ localStorage.setItem(cartKey(), JSON.stringify(CART)); updateCartCount(); }
   function updateCartCount(){
@@ -912,18 +940,23 @@ groupsEl.appendChild(card);
       logoutBtn.addEventListener('click', async ()=>{
         try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); }
       });
-    } else {
+    }else{
+      // show cart to guests as well so they can inspect what they added
       headerRight.innerHTML = `
         <div class="flex items-center gap-3">
           <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
           <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
+          <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
           <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
           <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
         </div>`;
       const registerBtn = document.getElementById('registerBtn');
       const loginBtn    = document.getElementById('loginBtn');
+      const cartBtn     = document.getElementById('cartBtn');
       registerBtn.addEventListener('click', openRegModal);
       loginBtn.addEventListener('click', openLoginModal);
+      cartBtn.addEventListener('click', openCartModal);
+      updateCartCount();
     }
     adminSection.classList.toggle('hidden', !IS_ADMIN);
   }
@@ -974,7 +1007,13 @@ groupsEl.appendChild(card);
   function closeLoginModal(){ loginModal.classList.remove('active'); }
 
   function openOrderModal(product){
-    if(!CURRENT_USER){ openAuthModal(); return; }
+    if(!CURRENT_USER){
+      // save pending single-product order so after login user can continue purchase
+      PENDING_ORDER = product;
+      AFTER_LOGIN_ACTION = { action: 'singleOrder' };
+      openLoginModal();
+      return;
+    }
     PENDING_ORDER = product;
     const bal = CURRENT_USER_DOC?.credits || 0;
     const can = bal >= Number(product.price||0);
@@ -1047,46 +1086,127 @@ groupsEl.appendChild(card);
   function listenOrdersForAdmin(){
     const listEl = document.getElementById('ordersList');
     if(!IS_ADMIN){ listEl.innerHTML=''; return; }
-    const qref = query(collection(db,'orders'), where('status','==','pending'));
-    onSnapshot(qref,(snap)=>{
-      listEl.innerHTML='';
+    // unsubscribe previous admin listener if present
+    try{ if(typeof ADMIN_ORDERS_UNSUB === 'function'){ ADMIN_ORDERS_UNSUB(); ADMIN_ORDERS_UNSUB = null; } }catch{}
+    // Determine statuses to query based on admin checkbox (include paid only if checked)
+    const showPaid = !!document.getElementById('adminShowPaid')?.checked;
+    const statuses = showPaid ? ['pending','accepted','rejected','paid'] : ['pending','accepted','rejected'];
+    const qref = query(collection(db,'orders'), where('status','in', statuses));
+    ADMIN_ORDERS_UNSUB = onSnapshot(qref, (snap)=>{
+      listEl.innerHTML = '';
+      if(!snap.docs.length){
+        listEl.innerHTML = '<div class="text-slate-500 p-2">ไม่มีคำสั่งซื้อที่กำลังดำเนินการ / สำเร็จ / ไม่สำเร็จ</div>';
+        return;
+      }
       snap.docs.forEach(d=>{
-        const data=d.data();
-        const row=document.createElement('div');
-        row.className='border rounded p-2 flex flex-col gap-1';
+        const data = d.data();
+        const status = (data.status||'').toString();
+        let statusLabel = status;
+        let statusClass = 'bg-slate-100 text-slate-700';
+        if(status === 'pending'){ statusLabel = 'กำลังดำเนินการ'; statusClass = 'bg-amber-200 text-amber-800'; }
+        else if(status === 'accepted'){ statusLabel = 'สำเร็จ'; statusClass = 'bg-emerald-200 text-emerald-800'; }
+        else if(status === 'rejected'){ statusLabel = 'ไม่สำเร็จ'; statusClass = 'bg-red-200 text-red-800'; }
+
+        const prodName = data.product?.name || data.pack || data.name || '-';
+        const prodPrice = Number(data.product?.price || data.price || 0);
+        const ts = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('th-TH') : (data.createdAt? String(data.createdAt): '');
+        const reply = data.reply || data.orderReply || data.adminMessage || data.resultMessage || data.message || data.note || '';
+
+        const row = document.createElement('div');
+        row.className = 'border rounded p-3 flex flex-col gap-2';
         row.innerHTML = `
-          <div><strong>${data.product?.name||'-'}</strong> • ${currencyTH(data.product?.price||0)} เครดิต</div>
-          <div>โดย: ${data.userEmail||data.userId}</div>
-          ${data.emailForProduct? `<div>อีเมลสินค้า: ${data.emailForProduct}</div>`:''}
-          <div class="flex gap-2">
-            <button class="accept bg-emerald-600 text-white text-xs px-3 py-1 rounded">ยอมรับ</button>
-            <button class="reject bg-red-600 text-white text-xs px-3 py-1 rounded">ปฏิเสธ</button>
-          </div>`;
-        row.querySelector('.accept').addEventListener('click',()=> adminAcceptOrder(d.id, data));
-        row.querySelector('.reject').addEventListener('click',()=> adminRejectOrder(d.id));
+          <div class="flex items-center justify-between">
+            <div class="text-sm"><strong>${escapeHtml(prodName)}</strong> • ${currencyTH(prodPrice)} เครดิต</div>
+            <div><span class="px-2 py-1 rounded ${statusClass} text-xs">${escapeHtml(statusLabel)}</span></div>
+          </div>
+          <div class="text-sm text-slate-700">โดย: ${escapeHtml(data.userEmail||data.userId)}</div>
+          ${data.emailForProduct? `<div class="text-sm">อีเมลสินค้า: ${escapeHtml(data.emailForProduct)}</div>` : ''}
+          <div class="text-xs text-slate-500">${escapeHtml(ts)}</div>
+          <div class="text-sm"><strong>Order Reply:</strong> ${escapeHtml(reply)}</div>`;
+
+            // For all rows show a small control to change status + edit Order Reply
+            const ctrl = document.createElement('div'); ctrl.className='flex flex-col gap-2';
+            const select = document.createElement('select'); select.className='text-sm border rounded p-1';
+            const opts = [ ['pending','กำลังดำเนินการ'], ['accepted','สำเร็จ'], ['rejected','ไม่สำเร็จ'] ];
+            opts.forEach(([v,label])=>{
+              const o = document.createElement('option'); o.value = v; o.textContent = label; if(v===status) o.selected = true; select.appendChild(o);
+            });
+            // allow leaving as paid if shown
+            if(status === 'paid' || document.getElementById('adminShowPaid')?.checked){
+              const o = document.createElement('option'); o.value='paid'; o.textContent='paid'; if(status==='paid') o.selected = true; select.appendChild(o);
+            }
+            const replyBox = document.createElement('textarea'); replyBox.className='w-full border rounded p-2 text-sm'; replyBox.rows = 2; replyBox.placeholder = 'Order Reply'; replyBox.value = reply || '';
+            const saveBtn = document.createElement('button'); saveBtn.className='bg-indigo-600 text-white text-sm px-3 py-1 rounded'; saveBtn.textContent='บันทึกสถานะ';
+            const msgEl = document.createElement('div'); msgEl.className='text-sm';
+            saveBtn.addEventListener('click', async ()=>{
+              saveBtn.disabled = true; msgEl.textContent = 'กำลังบันทึก...';
+              try{
+                const newStatus = select.value;
+                // If changing to accepted, perform transaction to deduct credits
+                if(newStatus === 'accepted' && status !== 'accepted'){
+                  await adminAcceptOrder(d.id, data, replyBox.value.trim());
+                } else if(newStatus === 'rejected' && status !== 'rejected'){
+                  await adminRejectOrder(d.id, replyBox.value.trim());
+                } else {
+                  // simple update (including reply)
+                  const oref = doc(db,'orders', d.id);
+                  await updateDoc(oref, { status: newStatus, reply: replyBox.value.trim(), updatedAt: serverTimestamp() });
+                }
+                msgEl.className = 'text-emerald-700 text-sm'; msgEl.textContent = 'บันทึกแล้ว';
+              }catch(e){ console.error(e); msgEl.className='text-red-600 text-sm'; msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
+              finally{ saveBtn.disabled = false; setTimeout(()=>{ msgEl.textContent=''; }, 2000); }
+            });
+            ctrl.appendChild(select); ctrl.appendChild(replyBox); ctrl.appendChild(saveBtn); ctrl.appendChild(msgEl);
+            row.appendChild(ctrl);
+
         listEl.appendChild(row);
       });
+    }, async (err)=>{
+      console.error('orders listener error', err);
+      listEl.innerHTML = `<div class="text-red-600 p-2">เกิดข้อผิดพลาดในการอ่านคำสั่งซื้อ: ${err.message}</div>`;
+      try{
+        const snap = await getDocs(qref);
+        if(snap.empty){ listEl.innerHTML += '<div class="text-slate-500 p-2">การอ่านแบบครั้งเดียวไม่พบคำสั่งซื้อสถานะที่ต้องการ</div>'; }
+        else { listEl.innerHTML += `<div class="text-emerald-700 p-2">การอ่านแบบครั้งเดียวเจอ ${snap.size} เอกสาร</div>`; }
+      }catch(e){ console.error('fallback getDocs error', e); listEl.innerHTML += `<div class="text-red-600 p-2">fallback read ล้มเหลว: ${e.message}</div>`; }
     });
   }
 
-  async function adminAcceptOrder(orderId, data){
-    // Transaction: deduct credits and set order accepted
-    const uid = data.userId;
-    const price = Number(data.product?.price||0);
-    const uref = doc(db,'users',uid);
+  async function adminAcceptOrder(orderId, data, reply){
+    // Accept order: do NOT deduct credits here (credits already deducted at order creation).
+    // Just update order status and optional reply/time.
     const oref = doc(db,'orders',orderId);
-    await runTransaction(db, async (tx)=>{
-      const us = await tx.get(uref);
-      const bal = (us.data()?.credits)||0;
-      if(bal < price) throw new Error('เครดิตลูกค้าไม่พอหัก');
-      tx.update(uref,{ credits: bal - price });
-      tx.update(oref,{ status:'accepted', acceptedAt: serverTimestamp() });
-    });
+    const payload = { status: 'accepted', acceptedAt: serverTimestamp() };
+    if(reply) payload.reply = reply;
+    await updateDoc(oref, payload);
   }
 
-  async function adminRejectOrder(orderId){
+  async function adminRejectOrder(orderId, reply){
     const oref = doc(db,'orders',orderId);
-    await updateDoc(oref,{ status:'rejected', rejectedAt: serverTimestamp() });
+    // Refund credits to user and mark order refunded atomically to avoid double refunds
+    await runTransaction(db, async (tx) => {
+      const osnap = await tx.get(oref);
+      if(!osnap.exists()) throw new Error('ไม่พบคำสั่งซื้อ');
+      const odata = osnap.data();
+      if(odata.refunded) {
+        // already refunded, just update status/reply if needed
+        const payload = { status: 'rejected', rejectedAt: serverTimestamp() };
+        if(reply) payload.reply = reply;
+        tx.update(oref, payload);
+        return;
+      }
+      const uid = odata.userId;
+      const price = Number(odata.product?.price || 0);
+      const uref = doc(db,'users', uid);
+      const usnap = await tx.get(uref);
+      if(!usnap.exists()) throw new Error('ไม่พบข้อมูลผู้ใช้ที่จะคืนเครดิต');
+      const currentCredits = Number(usnap.data()?.credits || 0);
+      // update user credits and order doc
+      tx.update(uref, { credits: currentCredits + price });
+      const payload = { status: 'rejected', rejectedAt: serverTimestamp(), refunded: true, refundedAt: serverTimestamp() };
+      if(reply) payload.reply = reply;
+      tx.update(oref, payload);
+    });
   }
 
   async function addCreditsByEmail(email, amount){
@@ -1110,7 +1230,6 @@ groupsEl.appendChild(card);
 
   // ----- Cart functions -----
   function addToCart(p, details={}){
-    if(!CURRENT_USER){ openLoginModal(); return; }
     const item = {
       id: p.id,
       source: p.source||'csv',
@@ -1133,7 +1252,7 @@ groupsEl.appendChild(card);
   }
 
   function openCartModal(){
-    if(!CURRENT_USER){ openLoginModal(); return; }
+    // allow guests to open and inspect cart; require login only at confirmation
     renderCart();
     cartModal.classList.add('active');
   }
@@ -1141,7 +1260,7 @@ groupsEl.appendChild(card);
 
   let PRODUCT_SELECTED = null;
   function openProductModal(p){
-    if(!CURRENT_USER){ openLoginModal(); return; }
+    // allow viewing product modal even when not logged in
     PRODUCT_SELECTED = p;
     document.getElementById('pdImage').src = p.image||'';
     document.getElementById('pdImage').classList.toggle('hidden', !p.image);
@@ -1229,7 +1348,12 @@ groupsEl.appendChild(card);
   // ปุ่มยืนยันการสั่งซื้อจากตะกร้า: ตรวจสอบการล็อกอิน, ฟิลด์ที่ต้องกรอก, เครดิต แล้วสร้างคำสั่งซื้อ
   async function confirmCartOrders(){
     const msg = document.getElementById('cartMsg'); msg.textContent=''; msg.className='mt-2 text-sm';
-    if(!CURRENT_USER){ openLoginModal(); return; }
+    if(!CURRENT_USER){
+      // require login; after login return user to the cart so they can explicitly confirm
+      AFTER_LOGIN_ACTION = { action: 'openCart' };
+      openLoginModal();
+      return;
+    }
     if(!CART.length){ msg.classList.add('text-slate-500'); msg.textContent = 'ตะกร้าว่าง'; return; }
     // validate required fields for each item
     for(let i=0;i<CART.length;i++){
@@ -1254,7 +1378,7 @@ groupsEl.appendChild(card);
           tx.set(oref, {
             userId: CURRENT_USER.uid,
             userEmail: (CURRENT_USER.email||'').toLowerCase(),
-            status: 'paid',
+            status: 'pending',
             product: {
               id: it.id,
               name: it.name,
@@ -1271,8 +1395,7 @@ groupsEl.appendChild(card);
             usernameForProduct: it.usernameForProduct||'',
             snForProduct: it.snForProduct||'',
             imeiForProduct: it.imeiForProduct||'',
-            createdAt: serverTimestamp(),
-            paidAt: serverTimestamp()
+            createdAt: serverTimestamp()
           });
         }
       });
@@ -1332,7 +1455,7 @@ groupsEl.appendChild(card);
         tx.set(oref,{
           userId: CURRENT_USER.uid,
           userEmail: (CURRENT_USER.email||'').toLowerCase(),
-          status: 'paid',
+          status: 'pending',
           product: {
             id: PRODUCT_SELECTED.id,
             name: PRODUCT_SELECTED.pack||PRODUCT_SELECTED.name,
@@ -1349,8 +1472,7 @@ groupsEl.appendChild(card);
           usernameForProduct: details.username,
           snForProduct: details.sn,
           imeiForProduct: details.imei,
-          createdAt: serverTimestamp(),
-          paidAt: serverTimestamp()
+          createdAt: serverTimestamp()
         });
       });
       msg.classList.remove('text-red-600'); msg.classList.add('text-emerald-700');
@@ -1436,14 +1558,22 @@ groupsEl.appendChild(card);
     docs.forEach(p=>{
       const prodName = p.product?.name || p.pack || p.name || '';
       const prodPrice = p.product?.price ?? p.price ?? 0;
-      const status = p.status || '-';
+      const statusRaw = (p.status||'').toString();
       const ts = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString('th-TH') : (p.createdAt? String(p.createdAt): '');
       const reply = p.reply || p.orderReply || p.adminMessage || p.resultMessage || p.message || p.note || '';
+      // map status to Thai label and color
+      let statusLabel = statusRaw;
+      let statusClass = 'bg-slate-100 text-slate-700';
+      if(statusRaw === 'pending') { statusLabel = 'กำลังดำเนินการ'; statusClass = 'bg-amber-200 text-amber-800'; }
+      else if(statusRaw === 'accepted') { statusLabel = 'สำเร็จ'; statusClass = 'bg-emerald-200 text-emerald-800'; }
+      else if(statusRaw === 'rejected') { statusLabel = 'ไม่สำเร็จ'; statusClass = 'bg-red-200 text-red-800'; }
+      else if(statusRaw === 'paid') { statusLabel = 'ชำระแล้ว'; statusClass = 'bg-sky-100 text-sky-800'; }
+
       const tr = document.createElement('tr');
       tr.className = 'border-b';
       tr.innerHTML = `
         <td class="p-2 align-top">${escapeHtml(prodName)}</td>
-        <td class="p-2 align-top">${escapeHtml(status)}</td>
+        <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
         <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
         <td class="p-2 align-top">${escapeHtml(ts)}</td>
         <td class="p-2 align-top">${escapeHtml(reply)}</td>
@@ -1509,14 +1639,28 @@ groupsEl.appendChild(card);
       }
       IS_ADMIN = !!CURRENT_USER_DOC?.isAdmin || ADMIN_EMAILS.includes((user.email||'').toLowerCase());
       listenOrdersForUser();
-      loadCart(); updateCartCount();
     }else{
       CURRENT_USER_DOC = null; IS_ADMIN = false;
       if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
-      CART = []; updateCartCount();
+      if(ADMIN_ORDERS_UNSUB){ ADMIN_ORDERS_UNSUB(); ADMIN_ORDERS_UNSUB = null; }
     }
+    // load cart for current context (merge guest -> user when applicable)
+    try{ loadCart(); } catch(e) { CART = []; }
+    updateCartCount();
     updateHeaderAuth();
     if(IS_ADMIN) listenOrdersForAdmin();
+    // If there was an action waiting for login, resume it now (but do not auto-confirm cart)
+    if(CURRENT_USER && AFTER_LOGIN_ACTION){
+      const act = AFTER_LOGIN_ACTION; AFTER_LOGIN_ACTION = null;
+      try{
+        if(act.action === 'openCart'){
+          // open cart so user can explicitly confirm
+          setTimeout(()=>{ openCartModal(); }, 200);
+        } else if(act.action === 'singleOrder'){
+          setTimeout(()=>{ openOrderModal(PENDING_ORDER); }, 200);
+        }
+      }catch(e){ console.error('resume after login failed', e); }
+    }
   });
 
   // ----- Init -----
@@ -1527,6 +1671,8 @@ groupsEl.appendChild(card);
       const merged = mergeProducts();
       render(merged, searchEl?.value||"");
       statusEl.textContent = "อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
+  // load cart on init (guest or merged if already logged in)
+  try{ loadCart(); updateCartCount(); }catch{}
       setInterval(async ()=>{ try{ await loadCSV(); render(mergeProducts(), searchEl?.value||""); }catch{} }, 5*60*1000);
     }catch(e){
       statusEl.innerHTML = `<span class="text-red-600">เกิดข้อผิดพลาด:</span> ${e.message}`;
