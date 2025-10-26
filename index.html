@@ -75,11 +75,7 @@
             <div class="text-slate-500" id="detailProgram"></div>
             <h3 id="detailName" class="text-2xl font-bold"></h3>
             <div class="text-2xl font-extrabold text-indigo-700">฿<span id="detailPrice">0</span></div>
-            <div id="detailRequiresEmail" class="text-sm text-amber-600"></div>
-            <div id="detailFields" class="space-y-2 hidden">
-              <label class="text-sm">อีเมลสำหรับสินค้านี้</label>
-              <input id="detailEmail" type="email" placeholder="example@domain.com" class="w-full border rounded p-2" />
-            </div>
+            <div id="detailFields" class="space-y-2"></div>
             <div class="flex gap-2">
               <button id="detailAddCart" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มในตะกร้า</button>
               <button id="detailCancel" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ยกเลิก</button>
@@ -305,7 +301,6 @@ keep.forEach(p=>{
     ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
     <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
     <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
-    ${p.requiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
     <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
   `;
   const open = ()=> openProductModal(p);
@@ -706,7 +701,6 @@ keep.forEach(p=>{
     ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
     <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
     <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
-    ${p.requiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
     <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
   `;
   const open = ()=> openProductModal(p);
@@ -753,10 +747,18 @@ groupsEl.appendChild(card);
     document.getElementById('detailProgram').textContent = p.program||'';
     document.getElementById('detailName').textContent = p.pack||p.name||'';
     document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
-    document.getElementById('detailRequiresEmail').textContent = p.requiresEmail? 'สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ':'';
     const fields = document.getElementById('detailFields');
-    fields.classList.toggle('hidden', !p.requiresEmail);
-    document.getElementById('detailEmail').value = '';
+    // build dynamic inputs depending on required fields (email, username, SN, IMEI)
+    fields.innerHTML = '';
+    const addField = (id,label,type='text')=>{
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `<label class="text-sm">${label}</label><input id="${id}" type="${type}" class="w-full border rounded p-2 text-sm" />`;
+      fields.appendChild(wrap);
+    };
+    if(p.requiresEmail) addField('detailEmail','Email','email');
+    if(p.requiresUsername) addField('detailUsername','Username','text');
+    if(p.requiresSN) addField('detailSN','SN / Serial Number','text');
+    if(p.requiresIMEI) addField('detailIMEI','IMEI','text');
     document.getElementById('detailMsg').textContent = '';
     panel.classList.remove('hidden');
     // scroll into view
@@ -786,10 +788,19 @@ groupsEl.appendChild(card);
     const p = CURRENT_DETAIL_PRODUCT;
     const msgEl = document.getElementById('detailMsg'); msgEl.textContent=''; msgEl.className='text-sm text-red-600';
     if(!p){ msgEl.textContent = 'ไม่พบสินค้า'; return; }
-    const email = document.getElementById('detailEmail')?.value?.trim()||'';
-    if(p.requiresEmail && !email){ msgEl.textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้'; return; }
+    // collect dynamic details
+    const details = {
+      emailForProduct: document.getElementById('detailEmail')?.value?.trim()||'',
+      usernameForProduct: document.getElementById('detailUsername')?.value?.trim()||'',
+      snForProduct: document.getElementById('detailSN')?.value?.trim()||'',
+      imeiForProduct: document.getElementById('detailIMEI')?.value?.trim()||''
+    };
+    if(p.requiresEmail && !details.emailForProduct){ msgEl.textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้'; return; }
+    if(p.requiresUsername && !details.usernameForProduct){ msgEl.textContent = 'กรุณากรอก Username สำหรับสินค้านี้'; return; }
+    if(p.requiresSN && !details.snForProduct){ msgEl.textContent = 'กรุณากรอก SN/Serial สำหรับสินค้านี้'; return; }
+    if(p.requiresIMEI && !details.imeiForProduct){ msgEl.textContent = 'กรุณากรอก IMEI สำหรับสินค้านี้'; return; }
     // Add to cart (will open login modal if user not logged in)
-    addToCart(p, { emailForProduct: email });
+    addToCart(p, details);
     msgEl.classList.remove('text-red-600'); msgEl.classList.add('text-emerald-700');
     msgEl.textContent = 'เพิ่มลงตะกร้าแล้ว';
     // clear selection for that product
@@ -1308,7 +1319,6 @@ groupsEl.appendChild(card);
         ${prodImage ? `<img src="${prodImage}" alt="${prodName}" class="w-40 object-cover rounded-md border" style="aspect-ratio: 800/550;" />` : ''}
         <div class="font-semibold text-indigo-700">${prodName}</div>
         <div class="text-2xl font-extrabold mt-1">฿${currencyTH(prodPrice)}</div>
-        ${prodRequiresEmail? `<div class="text-xs text-amber-600">สินค้านี้ต้องกรอกอีเมลตอนสั่งซื้อ</div>`: ''}
         <div class="mt-2 text-sm text-slate-500">สถานะ: ${p.status || '-'}</div>
       `;
       list.appendChild(item);
