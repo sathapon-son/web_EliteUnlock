@@ -218,7 +218,8 @@
     const HEADERS = {
       program:["โปรแกรม","program","tool","ชื่อโปรแกรม"],
       pack:["แพ็กเกจ","package","term","ระยะเวลา","duration","plan"],
-      price:["ราคา","price","cost","บาท"]
+      price:["ราคา","price","cost","บาท"],
+      requirespassword:["requirespassword","requires_password","password_required","requirespassword","รหัสผ่านต้องใช้","ต้องใส่รหัส","ต้องใส่password"]
     };
     const norm = s => (s??"").toString().trim();
     const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
@@ -322,7 +323,12 @@ groupsEl.appendChild(card);
       const map=mapHeaders(headers);
       return rows.slice(1)
         .filter(r=>r.length && r.some(c=>norm(c)!==""))
-        .map(r=>({ program:r[map.program]??"", pack:r[map.pack]??"", price:r[map.price]??"" }))
+        .map(r=>({ 
+          program:r[map.program]??"", 
+          pack:r[map.pack]??"", 
+          price:r[map.price]??"",
+          requiresPassword: map.requirespassword!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requirespassword])) : false
+        }))
         .filter(x=>norm(x.program)&&norm(x.pack)&&norm(x.price));
     }
 
@@ -474,6 +480,10 @@ headerRight.appendChild(contactBtn);
         <label class="text-sm">กรอกอีเมลสำหรับสินค้านี้</label>
         <input id="orderEmailInput" type="email" placeholder="อีเมลสำหรับใช้งานสินค้า" class="w-full border rounded p-2" />
       </div>
+      <div id="orderPasswordBlock" class="space-y-2 hidden">
+        <label class="text-sm">รหัสผ่านสำหรับสินค้านี้</label>
+        <input id="orderPasswordInput" type="password" placeholder="รหัสผ่านสำหรับสินค้านี้" class="w-full border rounded p-2" />
+      </div>
       <div class="flex gap-2 mt-4">
         <button id="confirmOrder" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md">ยืนยันสั่งซื้อ</button>
         <button id="cancelOrder" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ยกเลิก</button>
@@ -609,6 +619,7 @@ headerRight.appendChild(contactBtn);
           <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="w-full border rounded p-2" />
           <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ (เช่นจาก CSV_URL)" class="w-full border rounded p-2" />
           <label class="inline-flex items-center gap-2 text-sm"><input id="pReqEmail" type="checkbox" /> ต้องกรอกอีเมลตอนสั่งซื้อ</label>
+          <label class="inline-flex items-center gap-2 text-sm"><input id="pReqPassword" type="checkbox" /> ต้องกรอกรหัสผ่านตอนสั่งซื้อ</label>
           <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md w-full">เพิ่มสินค้า</button>
           <div id="productMsg" class="text-sm"></div>
         </div>
@@ -630,6 +641,7 @@ headerRight.appendChild(contactBtn);
     program:["program","tool","โปรแกรม","เครื่องมือ"],
     pack:["package","term","duration","plan","แพ็กเกจ","แพคเกจ","ระยะเวลา"],
     price:["price","cost","ราคา"],
+    requirespassword:["requirespassword","requires_password","password_required","ต้องใส่รหัส","ต้องใส่password","รหัสผ่านต้องใช้"],
     image:["image","img","รูป","รูปภาพ","imageurl"],
     requiresemail:["requiresemail","requires_email","email_required","ต้องใส่อีเมล","กรอกอีเมล"],
     requiresusername:["requiresusername","username_required","ต้องใส่username","ต้องใส่ผู้ใช้","user_required"],
@@ -707,6 +719,7 @@ headerRight.appendChild(contactBtn);
         requiresUsername: map.requiresusername!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresusername])) : false,
         requiresSN: map.requiressn!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiressn])) : false,
         requiresIMEI: map.requireimei!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requireimei])) : false
+        ,requiresPassword: map.requirespassword!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requirespassword])) : false
       }))
       .filter(x=>norm(x.program)&&norm(x.pack)&&x.price>0);
   }
@@ -814,7 +827,8 @@ groupsEl.appendChild(card);
       requiresEmail: !!p.requiresEmail,
       requiresUsername: !!p.requiresUsername,
       requiresSN: !!p.requiresSN,
-      requiresIMEI: !!p.requiresIMEI
+      requiresIMEI: !!p.requiresIMEI,
+      requiresPassword: !!p.requiresPassword
     })).filter(x=>x.price>0);
 
     const grouped = {};
@@ -845,6 +859,7 @@ groupsEl.appendChild(card);
     if(p.requiresUsername) addField('detailUsername','Username','text');
     if(p.requiresSN) addField('detailSN','SN / Serial Number','text');
     if(p.requiresIMEI) addField('detailIMEI','IMEI','text');
+  if(p.requiresPassword) addField('detailPassword','รหัสผ่าน','password');
     document.getElementById('detailMsg').textContent = '';
     panel.classList.remove('hidden');
     // scroll into view
@@ -879,12 +894,14 @@ groupsEl.appendChild(card);
       emailForProduct: document.getElementById('detailEmail')?.value?.trim()||'',
       usernameForProduct: document.getElementById('detailUsername')?.value?.trim()||'',
       snForProduct: document.getElementById('detailSN')?.value?.trim()||'',
-      imeiForProduct: document.getElementById('detailIMEI')?.value?.trim()||''
+      imeiForProduct: document.getElementById('detailIMEI')?.value?.trim()||'',
+      passwordForProduct: document.getElementById('detailPassword')?.value?.trim()||''
     };
     if(p.requiresEmail && !details.emailForProduct){ msgEl.textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้'; return; }
     if(p.requiresUsername && !details.usernameForProduct){ msgEl.textContent = 'กรุณากรอก Username สำหรับสินค้านี้'; return; }
     if(p.requiresSN && !details.snForProduct){ msgEl.textContent = 'กรุณากรอก SN/Serial สำหรับสินค้านี้'; return; }
     if(p.requiresIMEI && !details.imeiForProduct){ msgEl.textContent = 'กรุณากรอก IMEI สำหรับสินค้านี้'; return; }
+  if(p.requiresPassword && !details.passwordForProduct){ msgEl.textContent = 'กรุณากรอก รหัสผ่านสำหรับสินค้านี้'; return; }
     // Add to cart (will open login modal if user not logged in)
     addToCart(p, details);
     msgEl.classList.remove('text-red-600'); msgEl.classList.add('text-emerald-700');
@@ -1024,6 +1041,8 @@ groupsEl.appendChild(card);
       <div class="${can? 'text-emerald-600':'text-red-600'}">${can? 'สามารถสั่งซื้อได้':'เครดิตไม่เพียงพอ'}</div>`;
     document.getElementById('orderEmailBlock').classList.toggle('hidden', !product.requiresEmail);
     document.getElementById('orderEmailInput').value = '';
+    document.getElementById('orderPasswordBlock').classList.toggle('hidden', !product.requiresPassword);
+    document.getElementById('orderPasswordInput').value = '';
     document.getElementById('orderMsg').textContent='';
     orderModal.classList.add('active');
   }
@@ -1053,8 +1072,13 @@ groupsEl.appendChild(card);
     const bal = profile?.credits||0;
     const price = Number(PENDING_ORDER.price||0);
     const emailForProduct = document.getElementById('orderEmailInput').value.trim();
+    const passwordForProduct = document.getElementById('orderPasswordInput')?.value?.trim()||'';
     if(PENDING_ORDER.requiresEmail && !emailForProduct){
       document.getElementById('orderMsg').textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้';
+      return;
+    }
+    if(PENDING_ORDER.requiresPassword && !passwordForProduct){
+      document.getElementById('orderMsg').textContent = 'กรุณากรอกรหัสผ่านสำหรับสินค้านี้';
       return;
     }
     if(bal < price){
@@ -1075,6 +1099,7 @@ groupsEl.appendChild(card);
         source: PENDING_ORDER.source||'csv'
       },
       emailForProduct: emailForProduct||'',
+      passwordForProduct: passwordForProduct||'',
       createdAt: serverTimestamp()
     });
     document.getElementById('orderMsg').classList.remove('text-red-600');
@@ -1224,6 +1249,7 @@ groupsEl.appendChild(card);
       price: Number(p.price)||0,
       image: norm(p.image||''),
       requiresEmail: !!p.requiresEmail,
+      requiresPassword: !!p.requiresPassword,
       createdAt: serverTimestamp()
     });
   }
@@ -1244,7 +1270,8 @@ groupsEl.appendChild(card);
       emailForProduct: details.emailForProduct||'',
       usernameForProduct: details.usernameForProduct||'',
       snForProduct: details.snForProduct||'',
-      imeiForProduct: details.imeiForProduct||''
+      imeiForProduct: details.imeiForProduct||'',
+      passwordForProduct: details.passwordForProduct||''
     };
     CART.push(item);
     saveCart();
@@ -1278,6 +1305,7 @@ groupsEl.appendChild(card);
     if(p.requiresUsername) addField('pdUsername','Username');
     if(p.requiresSN) addField('pdSN','SN / Serial Number');
     if(p.requiresIMEI) addField('pdIMEI','IMEI');
+    if(p.requiresPassword) addField('pdPassword','รหัสผ่าน','password');
     document.getElementById('pdMsg').textContent='';
     productModal.classList.add('active');
   }
@@ -1303,6 +1331,7 @@ groupsEl.appendChild(card);
           ${it.requiresUsername? `<div class="mt-2"><input data-username-index="${idx}" type="text" value="${it.usernameForProduct||''}" placeholder="Username" class="w-full border rounded p-2 text-sm" /></div>`:''}
           ${it.requiresSN? `<div class="mt-2"><input data-sn-index="${idx}" type="text" value="${it.snForProduct||''}" placeholder="SN / Serial" class="w-full border rounded p-2 text-sm" /></div>`:''}
           ${it.requiresIMEI? `<div class="mt-2"><input data-imei-index="${idx}" type="text" value="${it.imeiForProduct||''}" placeholder="IMEI" class="w-full border rounded p-2 text-sm" /></div>`:''}
+          ${it.requiresPassword? `<div class="mt-2"><input data-password-index="${idx}" type="password" value="${it.passwordForProduct||''}" placeholder="รหัสผ่านสำหรับสินค้านี้" class="w-full border rounded p-2 text-sm" /></div>`:''}
         </div>
         <button data-remove-index="${idx}" class="text-red-600 text-sm">ลบ</button>`;
       list.appendChild(row);
@@ -1343,6 +1372,13 @@ groupsEl.appendChild(card);
         saveCart();
       });
     });
+    list.querySelectorAll('[data-password-index]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-password-index'));
+        CART[i].passwordForProduct = e.currentTarget.value;
+        saveCart();
+      });
+    });
   }
 
   // ปุ่มยืนยันการสั่งซื้อจากตะกร้า: ตรวจสอบการล็อกอิน, ฟิลด์ที่ต้องกรอก, เครดิต แล้วสร้างคำสั่งซื้อ
@@ -1362,6 +1398,7 @@ groupsEl.appendChild(card);
       if(it.requiresUsername && !it.usernameForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก Username สำหรับ: ${it.name}`; return; }
       if(it.requiresSN && !it.snForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก SN/Serial สำหรับ: ${it.name}`; return; }
       if(it.requiresIMEI && !it.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก IMEI สำหรับ: ${it.name}`; return; }
+      if(it.requiresPassword && !it.passwordForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก รหัสผ่านสำหรับ: ${it.name}`; return; }
     }
     const total = CART.reduce((s,it)=> s + Number(it.price||0), 0);
     try{
@@ -1395,6 +1432,7 @@ groupsEl.appendChild(card);
             usernameForProduct: it.usernameForProduct||'',
             snForProduct: it.snForProduct||'',
             imeiForProduct: it.imeiForProduct||'',
+            passwordForProduct: it.passwordForProduct||'',
             createdAt: serverTimestamp()
           });
         }
@@ -1418,12 +1456,14 @@ groupsEl.appendChild(card);
       emailForProduct: document.getElementById('pdEmail')?.value?.trim()||'',
       usernameForProduct: document.getElementById('pdUsername')?.value?.trim()||'',
       snForProduct: document.getElementById('pdSN')?.value?.trim()||'',
-      imeiForProduct: document.getElementById('pdIMEI')?.value?.trim()||''
+      imeiForProduct: document.getElementById('pdIMEI')?.value?.trim()||'',
+      passwordForProduct: document.getElementById('pdPassword')?.value?.trim()||''
     };
     if(PRODUCT_SELECTED.requiresEmail && !details.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Email'; return; }
     if(PRODUCT_SELECTED.requiresUsername && !details.usernameForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Username'; return; }
     if(PRODUCT_SELECTED.requiresSN && !details.snForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก SN/Serial'; return; }
     if(PRODUCT_SELECTED.requiresIMEI && !details.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก IMEI'; return; }
+    if(PRODUCT_SELECTED.requiresPassword && !details.passwordForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก รหัสผ่าน'; return; }
     addToCart(PRODUCT_SELECTED, details);
     closeProductModal();
   });
@@ -1620,7 +1660,8 @@ groupsEl.appendChild(card);
       name: document.getElementById('pName').value,
       price: document.getElementById('pPrice').value,
       image: document.getElementById('pImage').value,
-      requiresEmail: document.getElementById('pReqEmail').checked
+      requiresEmail: document.getElementById('pReqEmail').checked,
+      requiresPassword: document.getElementById('pReqPassword')?.checked || false
     };
     const el = document.getElementById('productMsg'); el.textContent=''; el.className='text-sm';
     try{ await addProductFS(data); el.classList.add('text-emerald-700'); el.textContent = 'เพิ่มสินค้าแล้ว'; }
