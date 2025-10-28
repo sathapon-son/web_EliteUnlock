@@ -200,173 +200,20 @@
     © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · FB: S.Sonsupap · LINE: @825lhqmj
   </footer>
 
-  <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // ----- Config -----
-    const CSV_URL = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
-
-    // ----- Elements -----
-    const groupsEl   = document.getElementById("groups");
-    const statusEl   = document.getElementById("status");
-    const emptyEl    = document.getElementById("emptyState");
-    const searchEl   = document.getElementById("searchInput");
-    const contactBtn = document.getElementById("contactBtn");
-    const modal      = document.getElementById("contactModal");
-    const closeBtn   = document.getElementById("closeModal");
-
-    // ----- Helpers -----
-    const HEADERS = {
-      program:["โปรแกรม","program","tool","ชื่อโปรแกรม"],
-      pack:["แพ็กเกจ","package","term","ระยะเวลา","duration","plan"],
-      price:["ราคา","price","cost","บาท"],
-      requirespassword:["requirespassword","requires_password","password_required","requirespassword","รหัสผ่านต้องใช้","ต้องใส่รหัส","ต้องใส่password"]
-    };
-    const norm = s => (s??"").toString().trim();
-    const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
-
-    function parseCSV(text){
-      const rows=[]; let r=[], c="", q=false;
-      for(let i=0;i<text.length;i++){
-        const ch=text[i], n=text[i+1];
-        if(q){
-          if(ch=='"'&&n=='"'){ c+='"'; i++; }
-          else if(ch=='"'){ q=false; }
-          else c+=ch;
-        }else{
-          if(ch=='"') q=true;
-          else if(ch==','){ r.push(c); c=""; }
-          else if(ch=='\n'){ r.push(c); rows.push(r); r=[]; c=""; }
-          else if(ch=='\r'){ }
-          else c+=ch;
-        }
-      }
-      if(c.length>0 || r.length>0){ r.push(c); rows.push(r); }
-      return rows;
-    }
-
-    function mapHeaders(cols){
-      const map={};
-      cols.forEach((c,i)=>{
-        const key=nk(c);
-        for(const std in HEADERS){
-          if(HEADERS[std].some(h=>nk(h)===key)) map[std]=i;
-        }
-      });
-      if(map.program==null||map.pack==null||map.price==null){
-        throw new Error("หัวคอลัมน์อย่างน้อยต้องมี: โปรแกรม, แพ็กเกจ, ราคา");
-      }
-      return map;
-    }
-
-    const currencyTH = v => {
-      const n=Number(String(v).replace(/[^\d.]/g,""));
-      return isNaN(n)?norm(v):n.toLocaleString("th-TH");
-    };
-
-    function groupByProgram(items){
-      const g={};
-      for(const it of items){
-        const k=norm(it.program)||"อื่น ๆ";
-        if(!g[k]) g[k]=[];
-        g[k].push(it);
-      }
-      return g;
-    }
-
-    function render(groups, filter=""){
-      const q=nk(filter);
-      groupsEl.innerHTML="";
-      let total=0;
-
-      Object.entries(groups).forEach(([program,plans])=>{
-        const keep=plans.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
-        if(!keep.length) return;
-        total+=keep.length;
-
-        const card=document.createElement("div");
-        card.className="card-hover bg-white rounded-2xl p-6 shadow";
-        card.innerHTML=`
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h4 class="text-xl font-semibold">${program}</h4>
-              <p class="text-sm text-slate-500">เลือกแพ็กเกจที่เหมาะกับงานของคุณ</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
-        const body=card.querySelector("[data-body]");
-
-keep.forEach(p=>{
-  const item=document.createElement("div");
-  item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
-  item.innerHTML=`
-    ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
-    <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
-    <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
-    <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
-  `;
-  const open = ()=> openProductModal(p);
-  item.querySelector('button').addEventListener('click', open);
-  const clickable = item.querySelectorAll('[data-open]');
-  clickable.forEach(el=> el.addEventListener('click', open));
-  body.appendChild(item);
-});
-
-groupsEl.appendChild(card);
-      });
-
-      emptyEl.classList.toggle("hidden", total>0);
-    }
-
-    function rowsToItems(rows){
-      if(!rows.length) throw new Error("CSV ว่าง");
-      const headers=rows[0];
-      const map=mapHeaders(headers);
-      return rows.slice(1)
-        .filter(r=>r.length && r.some(c=>norm(c)!==""))
-        .map(r=>({ 
-          program:r[map.program]??"", 
-          pack:r[map.pack]??"", 
-          price:r[map.price]??"",
-          requiresPassword: map.requirespassword!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requirespassword])) : false
-        }))
-        .filter(x=>norm(x.program)&&norm(x.pack)&&norm(x.price));
-    }
-
-    async function loadData(){
-      statusEl.textContent="กำลังโหลดข้อมูล...";
-      try{
-        const res=await fetch(CSV_URL,{cache:"no-store"});
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text=await res.text();
-        const rows=parseCSV(text);
-        const items=rowsToItems(rows);
-        window.__DATA = groupByProgram(items);
-        render(window.__DATA, searchEl?.value||"");
-        statusEl.textContent="อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
-      }catch(e){
-        statusEl.innerHTML=`<span class="text-red-600">โหลดไม่สำเร็จ:</span> ${e.message}`;
-        console.error(e);
-      }
-    }
-
-    // Events
-    searchEl.addEventListener("input", ()=>render(window.__DATA||{}, searchEl.value));
-    contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
-    closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
-    modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
-
-    // Init
-    loadData();
-    setInterval(loadData, 5*60*1000);
-  });
-  </script>
+  
   <script type="module">
-  // ----- CSV + Store + Firebase (Auth/Firestore) -----
-  // CSV_URL is the public CSV link used for product data (and image URLs)
-  const CSV_URL = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
+  // ----- Global Variables -----
+  let CURRENT_USER = null;
+  let CURRENT_USER_DOC = null;
+  let IS_ADMIN = false;
+  let FS_PRODUCTS = [];
+  let PENDING_ORDER = null;
+  let USER_ORDERS_UNSUB = null;
+  let ADMIN_ORDERS_UNSUB = null;
+  let PRODUCTS_UNSUB = null;
+  let CART = [];
 
-  // Fill the Firebase config below with your project values.
-  // apiKey is provided; please add the rest from Firebase console (Web App config).
+  // ----- Firebase Configuration -----
   const firebaseConfig = {
     apiKey: "AIzaSyAvZLhir8UvnBsb0NuK5r6y73TfoclBC-4",
     authDomain: "eliteunlock-c194e.firebaseapp.com",
@@ -389,7 +236,7 @@ groupsEl.appendChild(card);
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc,
     query, where, getDocs, onSnapshot, serverTimestamp, increment,
-    runTransaction
+    runTransaction, deleteDoc
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
   import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
 
@@ -541,12 +388,8 @@ headerRight.appendChild(contactBtn);
         </div>
         <div class="flex flex-col md:flex-row items-center justify-center gap-6">
           <div class="text-center">
-            <img src="https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/refs/heads/main/LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded mx-auto" />
+            <img src="LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded mx-auto" />
             <div class="text-sm text-slate-700 mt-2">ติดต่อผ่าน LINE</div>
-          </div>
-          <div class="text-center">
-            <img src="https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/refs/heads/main/Pay_QR.JPG" alt="Pay QR" class="w-40 h-40 border rounded mx-auto" />
-            <div class="text-sm text-slate-700 mt-2">เพื่อสแกนจ่าย</div>
           </div>
         </div>
         <div class="rounded-lg p-3 bg-amber-50 border max-w-[90%]">โปรดติดต่อเพื่อยืนยันการชำระเงินผ่าน LINE เท่านั้น:<br/><strong>LINE ID: @825lhqmj</strong><br/>หากต้องการความสะดวก ให้ส่งภาพสลิปผ่านแชท LINE</div>
@@ -597,93 +440,162 @@ headerRight.appendChild(contactBtn);
     </div>`;
   document.body.appendChild(productModal);
 
-  // Admin Panel
-  const adminSection = document.createElement('section');
-  adminSection.className = 'mb-6 hidden';
-  adminSection.id = 'adminSection';
-  adminSection.innerHTML = `
-    <div class="rounded-2xl p-6 bg-white shadow">
-      <h3 class="text-xl font-bold mb-4">สำหรับผู้ดูแลระบบ</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="space-y-2">
-          <div class="font-semibold">เพิ่มเครดิตให้ลูกค้า</div>
-          <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
-          <input id="creditAmount" type="number" placeholder="จำนวนเครดิต (+เพิ่ม/-ลด)" class="w-full border rounded p-2" />
-          <button id="addCreditBtn" class="bg-emerald-600 text-white px-4 py-2 rounded-md w-full">อัปเดตเครดิต</button>
-          <div id="creditMsg" class="text-sm"></div>
+  // Admin UI was moved out of the main page and into modals/header buttons per request.
+
+  // Admin Orders Modal (for pending orders) - opens as popup for easier management
+  const adminOrdersModal = document.createElement('div');
+  adminOrdersModal.className = 'modal'; adminOrdersModal.id = 'adminOrdersModal'; adminOrdersModal.setAttribute('aria-hidden','true');
+  adminOrdersModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative">
+      <button id="closeAdminOrders" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <div class="flex items-center justify-between">
+        <h3 class="text-xl font-bold mb-4">คำสั่งซื้อ (Admin)</h3>
+      </div>
+      <div class="mb-4">
+        <div class="text-sm text-slate-600 mb-2">ตัวกรองสถานะ: เลือกสถานะที่ต้องการแสดง (ค่าจะถูกบันทึกไว้)</div>
+        <div class="flex items-center gap-3 text-sm">
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adminFilterPending" /> <span>กำลังดำเนินการ</span></label>
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adminFilterAccepted" /> <span>สำเร็จ</span></label>
+          <label class="inline-flex items-center gap-2"><input type="checkbox" id="adminFilterRejected" /> <span>ไม่สำเร็จ</span></label>
+          <button id="adminFilterApply" class="ml-4 bg-indigo-600 text-white text-sm px-3 py-1 rounded-md">ปรับใช้</button>
+          <button id="adminFilterReset" class="ml-2 bg-slate-100 text-slate-700 text-sm px-3 py-1 rounded-md">รีเซ็ต</button>
         </div>
-        <div class="space-y-2">
-          <div class="font-semibold">เพิ่มสินค้าเข้าระบบ (Firestore)</div>
-          <input id="pProgram" type="text" placeholder="หมวด/โปรแกรม" class="w-full border rounded p-2" />
-          <input id="pName" type="text" placeholder="ชื่อแพ็กเกจ/สินค้า" class="w-full border rounded p-2" />
-          <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="w-full border rounded p-2" />
-          <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ (เช่นจาก CSV_URL)" class="w-full border rounded p-2" />
-          <label class="inline-flex items-center gap-2 text-sm"><input id="pReqEmail" type="checkbox" /> ต้องกรอกอีเมลตอนสั่งซื้อ</label>
-          <label class="inline-flex items-center gap-2 text-sm"><input id="pReqPassword" type="checkbox" /> ต้องกรอกรหัสผ่านตอนสั่งซื้อ</label>
-          <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md w-full">เพิ่มสินค้า</button>
-          <div id="productMsg" class="text-sm"></div>
+      </div>
+      <div class="overflow-auto">
+        <div id="adminOrdersList" class="text-sm"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(adminOrdersModal);
+  // close handler
+  document.getElementById('closeAdminOrders')?.addEventListener('click', ()=>{ document.getElementById('adminOrdersModal')?.classList.remove('active'); });
+  adminOrdersModal.addEventListener('click', (e)=>{ if(e.target===adminOrdersModal) adminOrdersModal.classList.remove('active'); });
+
+  // Admin Credit Modal (open from header)
+  const adminCreditModal = document.createElement('div');
+  adminCreditModal.className = 'modal'; adminCreditModal.id = 'adminCreditModal'; adminCreditModal.setAttribute('aria-hidden','true');
+  adminCreditModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeAdminCredit" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">เพิ่มเครดิตให้ลูกค้า</h3>
+      <div class="space-y-3 text-sm">
+        <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
+        <input id="creditAmount" type="number" placeholder="จำนวนเครดิต (+เพิ่ม/-ลด)" class="w-full border rounded p-2" />
+        <button id="addCreditBtn" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">อัปเดตเครดิต</button>
+        <div id="creditMsg" class="text-sm"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(adminCreditModal);
+  document.getElementById('closeAdminCredit')?.addEventListener('click', ()=>{ document.getElementById('adminCreditModal')?.classList.remove('active'); });
+  adminCreditModal.addEventListener('click',(e)=>{ if(e.target===adminCreditModal) adminCreditModal.classList.remove('active'); });
+
+  // Admin Product Modal (open from header) - enhanced with product management
+  const adminProductModal = document.createElement('div');
+  adminProductModal.className = 'modal'; adminProductModal.id = 'adminProductModal'; adminProductModal.setAttribute('aria-hidden','true');
+  adminProductModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative">
+      <button id="closeAdminProduct" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4">จัดการสินค้า</h3>
+
+      <div class="mb-6 space-y-3 text-sm">
+        <h4 class="font-semibold">เพิ่มสินค้าใหม่</h4>
+        <div class="flex flex-wrap gap-3">
+          <input id="pProgram" type="text" placeholder="หมวด/โปรแกรม" class="border rounded p-2" />
+          <input id="pName" type="text" placeholder="ชื่อแพ็กเกจ/สินค้า" class="border rounded p-2" />
+          <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="border rounded p-2" />
+          <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ" class="border rounded p-2" />
+          <div class="flex items-center gap-3">
+            <label class="inline-flex items-center gap-2"><input id="pReqEmail" type="checkbox" /> ต้องใส่อีเมล</label>
+            <label class="inline-flex items-center gap-2"><input id="pReqPassword" type="checkbox" /> ต้องใส่รหัสผ่าน</label>
+            <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> ต้องใส่ Username</label>
+            <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> ต้องใส่ SN</label>
+            <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> ต้องใส่ IMEI</label>
+            <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มสินค้า</button>
+          </div>
         </div>
-        <div class="space-y-2">
-          <div class="font-semibold">คำสั่งซื้อที่รอดำเนินการ</div>
-          <label class="flex items-center gap-2 text-sm"><input id="adminShowPaid" type="checkbox" /> <span>แสดงคำสั่งซื้อที่ชำระแล้ว (paid)</span></label>
-          <div id="ordersList" class="space-y-2 max-h-72 overflow-auto text-sm"></div>
+        <div id="productMsg" class="text-sm"></div>
+      </div>
+
+      <div id="productsArea" class="rounded-lg bg-white border p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-semibold">รายการสินค้าในฐานข้อมูล</h4>
+          <div class="flex items-center gap-3">
+            <div class="text-sm text-slate-500">คลิก Save เพื่อบันทึกแถว หรือเลือกหลายแถวแล้วใช้ Bulk Save</div>
+            <button id="btnRefreshProducts" class="bg-slate-100 text-slate-700 text-sm px-3 py-1 rounded-md">รีเฟรช</button>
+          </div>
+        </div>
+
+        <div class="overflow-auto">
+          <table id="productsTable" class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="text-left border-b">
+                <th class="p-2">เลือก</th>
+                <th class="p-2">โปรแกรม</th>
+                <th class="p-2">แพ็กเกจ / ชื่อ</th>
+                <th class="p-2">ราคา</th>
+                <th class="p-2">image</th>
+                <th class="p-2">email?</th>
+                <th class="p-2">password?</th>
+                <th class="p-2">username?</th>
+                <th class="p-2">sn?</th>
+                <th class="p-2">imei?</th>
+                <th class="p-2">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="productsTbody" class="text-slate-700"></tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 flex gap-3">
+          <button id="btnBulkSave" class="bg-emerald-600 text-white px-3 py-2 rounded">Save selected</button>
+          <button id="btnDeleteSelected" class="bg-red-600 text-white px-3 py-2 rounded">Delete selected</button>
+          <div id="bulkMsg" class="text-sm text-slate-600 ml-3"></div>
         </div>
       </div>
     </div>`;
-  document.querySelector('main').prepend(adminSection);
+  document.body.appendChild(adminProductModal);
+  document.getElementById('closeAdminProduct')?.addEventListener('click', ()=>{ document.getElementById('adminProductModal')?.classList.remove('active'); });
+  adminProductModal.addEventListener('click',(e)=>{ if(e.target===adminProductModal) adminProductModal.classList.remove('active'); });
+
+  // Helper: persist/restore admin orders filter (exclude 'paid')
+  const ADMIN_FILTER_KEY = 'adminOrdersFilter';
+  function getSavedAdminFilter(){
+    try{ const v = localStorage.getItem(ADMIN_FILTER_KEY); if(!v) return null; const arr = JSON.parse(v); return Array.isArray(arr)?arr: null; }catch{return null;}
+  }
+  function saveAdminFilter(arr){ try{ localStorage.setItem(ADMIN_FILTER_KEY, JSON.stringify(arr||[])); }catch{}
+  }
+  function readFilterUI(){
+    const pending = !!document.getElementById('adminFilterPending')?.checked;
+    const accepted = !!document.getElementById('adminFilterAccepted')?.checked;
+    const rejected = !!document.getElementById('adminFilterRejected')?.checked;
+    const out = [];
+    if(pending) out.push('pending');
+    if(accepted) out.push('accepted');
+    if(rejected) out.push('rejected');
+    return out;
+  }
+  function applyFilterToUI(arr){
+    if(!Array.isArray(arr)) arr = ['pending','accepted','rejected'];
+    document.getElementById('adminFilterPending').checked = arr.includes('pending');
+    document.getElementById('adminFilterAccepted').checked = arr.includes('accepted');
+    document.getElementById('adminFilterRejected').checked = arr.includes('rejected');
+  }
+  // wire apply/reset buttons
+  document.getElementById('adminFilterApply')?.addEventListener('click', ()=>{
+    const arr = readFilterUI(); saveAdminFilter(arr); listenOrdersForAdmin();
+  });
+  document.getElementById('adminFilterReset')?.addEventListener('click', ()=>{
+    const defaults = ['pending','accepted','rejected']; applyFilterToUI(defaults); saveAdminFilter(defaults); listenOrdersForAdmin();
+  });
+  // when modal opens we'll populate UI from saved filter (see header click handler)
 
   // bind admin filter control (re-run listener when toggled)
   const adminShowPaidEl = document.getElementById('adminShowPaid');
   if(adminShowPaidEl) adminShowPaidEl.addEventListener('change', ()=> { listenOrdersForAdmin(); });
 
   // ----- Helpers -----
-  const HEADERS = {
-    program:["program","tool","โปรแกรม","เครื่องมือ"],
-    pack:["package","term","duration","plan","แพ็กเกจ","แพคเกจ","ระยะเวลา"],
-    price:["price","cost","ราคา"],
-    requirespassword:["requirespassword","requires_password","password_required","ต้องใส่รหัส","ต้องใส่password","รหัสผ่านต้องใช้"],
-    image:["image","img","รูป","รูปภาพ","imageurl"],
-    requiresemail:["requiresemail","requires_email","email_required","ต้องใส่อีเมล","กรอกอีเมล"],
-    requiresusername:["requiresusername","username_required","ต้องใส่username","ต้องใส่ผู้ใช้","user_required"],
-    requiressn:["requiressn","sn_required","serial_required","ต้องใส่sn","ต้องใส่serial"],
-    requireimei:["requireimei","imei_required","ต้องใส่imei"]
-  };
+  // No longer need CSV-related headers
   const norm = s => (s??"").toString().trim();
   const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
-
-  function parseCSV(text){
-    const rows=[]; let r=[], c="", q=false;
-    for(let i=0;i<text.length;i++){
-      const ch=text[i], n=text[i+1];
-      if(q){
-        if(ch=='"'&&n=='"'){ c+='"'; i++; }
-        else if(ch=='"'){ q=false; }
-        else c+=ch;
-      }else{
-        if(ch=='"') q=true;
-        else if(ch==','){ r.push(c); c=""; }
-        else if(ch=='\n'){ r.push(c); rows.push(r); r=[]; c=""; }
-        else if(ch=='\r'){ }
-        else c+=ch;
-      }
-    }
-    if(c.length>0 || r.length>0){ r.push(c); rows.push(r); }
-    return rows;
-  }
-
-  function mapHeaders(cols){
-    const map={};
-    cols.forEach((c,i)=>{
-      const key=nk(c);
-      for(const std in HEADERS){
-        if(HEADERS[std].some(h=>nk(h)===key)) map[std]=i;
-      }
-    });
-    if(map.program==null||map.pack==null||map.price==null){
-      throw new Error("CSV ต้องมีคอลัมน์: program/โปรแกรม, package/แพ็กเกจ, price/ราคา");
-    }
-    return map;
-  }
 
   const currencyTH = v => {
     const n=Number(String(v).replace(/[^\d.]/g,""));
@@ -700,6 +612,24 @@ headerRight.appendChild(contactBtn);
       g[k].push(it);
     }
     return g;
+  }
+
+  // Parse duration from a package name into months (number). Returns Infinity when unknown.
+  function parseDurationMonths(s){
+    if(!s) return Infinity;
+    const txt = (s||"").toString().toLowerCase();
+    // match patterns like '3 เดือน', '12 เดือน', '2 ปี'
+    const reMonth = /([0-9]+(?:\.[0-9]+)?)\s*(เดือน|month|m)/i;
+    const reYear = /([0-9]+(?:\.[0-9]+)?)\s*(ปี|year|y)/i;
+    const m = txt.match(reMonth);
+    if(m && m[1]) return Number(m[1]);
+    const y = txt.match(reYear);
+    if(y && y[1]) return Number(y[1]) * 12;
+    // try to find standalone numbers (e.g., '3M', '12M')
+    const reNum = /([0-9]+)\s*(?:m|mo|mons)?\b/i;
+    const n = txt.match(reNum);
+    if(n && n[1]) return Number(n[1]);
+    return Infinity;
   }
 
   function rowsToItems(rows){
@@ -725,20 +655,31 @@ headerRight.appendChild(contactBtn);
   }
 
   // ----- State -----
-  let CURRENT_USER = null; // auth user
-  let CURRENT_USER_DOC = null; // user profile with credits
-  let IS_ADMIN = false;
-  let CSV_DATA_GROUPED = {};
-  let FS_PRODUCTS = []; // firestore products
-  let PENDING_ORDER = null; // order in modal
-  let USER_ORDERS_UNSUB = null; // unsubscribe for user's order stream
-  let ADMIN_ORDERS_UNSUB = null; // unsubscribe for admin orders stream
-  let CART = []; // [{id, program, pack(name), price, image, requiresEmail, emailForProduct?}]
+  const state = {
+    currentUser: null, // auth user
+    currentUserDoc: null, // user profile with credits
+    isAdmin: false,
+    products: [], // firestore products
+    pendingOrder: null, // order in modal
+    userOrdersUnsub: null, // unsubscribe for user's order stream
+    adminOrdersUnsub: null, // unsubscribe for admin orders stream
+    productsUnsub: null, // unsubscribe for products real-time updates
+    cart: [], // [{id, program, pack(name), price, image, requiresEmail, emailForProduct?}],
+    admin: {
+      selectedProducts: new Set(),
+      editedProducts: new Map(),
+      productRefs: new Map()
+    }
+  };
   // Action to resume after login (e.g. confirm cart)
   let AFTER_LOGIN_ACTION = null;
   // Selection state for main-page selection (does NOT add to cart yet)
   let SELECTED_IDS = new Set();
   let CURRENT_DETAIL_PRODUCT = null; // product shown in inline detail panel
+  // Admin product table state
+  let selectedProducts = new Set();
+  let editedProducts = new Map();
+  let productRefs = new Map();
 
   function cartKey(){ return CURRENT_USER? `cart_${CURRENT_USER.uid}`: 'cart_guest'; }
   function loadCart(){
@@ -777,8 +718,18 @@ headerRight.appendChild(contactBtn);
     let total=0;
 
     Object.entries(groups).forEach(([program,items])=>{
-      const keep=items.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
+      let keep = items.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
       if(!keep.length) return;
+      // Sort packages within the same program by duration (months) when detectable.
+      keep.sort((a,b)=>{
+        const da = parseDurationMonths(a.pack);
+        const db = parseDurationMonths(b.pack);
+        if(isFinite(da) && isFinite(db) && da !== db) return da - db;
+        // if durations equal or unknown, sort by price ascending then name
+        const pa = Number(a.price)||0; const pb = Number(b.price)||0;
+        if(pa !== pb) return pa - pb;
+        return (a.pack||'').localeCompare(b.pack||'', 'th');
+      });
       total+=keep.length;
 
       const card=document.createElement("div");
@@ -815,27 +766,20 @@ groupsEl.appendChild(card);
     emptyEl.classList.toggle("hidden", total>0);
   }
 
-  function mergeProducts(){
-    // Convert Firestore products to same shape and merge with CSV
-    const fsItems = FS_PRODUCTS.map((p,idx)=>({
-      id: p.id || `fs_${idx}`,
-      source: 'fs',
+  function formatProducts(items) {
+    // Convert products to normalized shape
+    return items.map(p => ({
+      id: p.id,
       program: p.program||'อื่น ๆ',
       pack: p.name||p.pack||'สินค้า',
       price: Number(p.price)||0,
-      image: p.image||p.imageUrl||'',
+      image: p.image||'',
       requiresEmail: !!p.requiresEmail,
       requiresUsername: !!p.requiresUsername,
       requiresSN: !!p.requiresSN,
       requiresIMEI: !!p.requiresIMEI,
       requiresPassword: !!p.requiresPassword
-    })).filter(x=>x.price>0);
-
-    const grouped = {};
-    const push = it => { const k=norm(it.program)||'อื่น ๆ'; if(!grouped[k]) grouped[k]=[]; grouped[k].push(it); };
-    Object.values(CSV_DATA_GROUPED).flat().forEach(push);
-    fsItems.forEach(push);
-    return grouped;
+    })).filter(x => x.price > 0);
   }
 
   // Show inline product detail panel on main page (does not add to cart by itself)
@@ -913,23 +857,22 @@ groupsEl.appendChild(card);
     setTimeout(()=>{ hideProductDetail(); }, 800);
   }
 
-  async function loadCSV(){
-    statusEl.textContent="กำลังโหลดสินค้า...";
-    const res=await fetch(CSV_URL,{cache:"no-store"});
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text=await res.text();
-    const rows=parseCSV(text);
-    const items=rowsToItems(rows);
-    CSV_DATA_GROUPED = groupByProgram(items);
-  }
-
-  async function loadFirestoreProducts(){
-    // Optional: live updates
-    const colRef = collection(db,'products');
-    onSnapshot(colRef,(snap)=>{
-      FS_PRODUCTS = snap.docs.map(d=>({id:d.id,...d.data()}));
-      const merged = mergeProducts();
-      render(merged, searchEl?.value||"");
+  async function setupFirestoreProducts() {
+    const colRef = collection(db, 'products');
+    return onSnapshot(colRef, (snap) => {
+      FS_PRODUCTS = snap.docs.map(d => ({
+        id: d.id,
+        program: d.data().program || 'อื่น ๆ',
+        pack: d.data().name || d.data().pack || 'สินค้า',
+        price: Number(d.data().price) || 0,
+        image: d.data().image || '',
+        requiresEmail: !!d.data().requiresEmail,
+        requiresUsername: !!d.data().requiresUsername,
+        requiresSN: !!d.data().requiresSN,
+        requiresIMEI: !!d.data().requiresIMEI,
+        requiresPassword: !!d.data().requiresPassword
+      })).filter(x => x.price > 0);
+      render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
     });
   }
 
@@ -939,20 +882,34 @@ groupsEl.appendChild(card);
     if(CURRENT_USER){
       headerRight.innerHTML = `
         <div class="flex items-center gap-3">
-          <div id="userInfo" class="text-sm text-slate-700">${CURRENT_USER.email||''}</div>
-          <div id="balanceInfo" class="text-sm font-semibold text-indigo-700">เครดิต: ${currencyTH(bal)}</div>
-          <button id="topupBtn" class="bg-emerald-600 text-white text-sm px-3 py-2 rounded-md">เติมเครดิต</button>
-          <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
-          <button id="historyBtn" class="bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ประวัติการสั่งซื้อ</button>
-          <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ออกจากระบบ</button>
-        </div>`;
+            <div id="userInfo" class="text-sm text-slate-700">${CURRENT_USER.email||''}</div>
+            <div id="balanceInfo" class="text-sm font-semibold text-indigo-700">เครดิต: ${currencyTH(bal)}</div>
+            <button id="topupBtn" class="bg-emerald-600 text-white text-sm px-3 py-2 rounded-md">เติมเครดิต</button>
+            <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
+            <button id="historyBtn" class="bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ประวัติการสั่งซื้อ</button>
+            <button id="adminOrdersBtn" class="bg-amber-100 text-amber-800 text-sm px-3 py-2 rounded-md shadow">คำสั่งซื้อ (Admin)</button>
+            <button id="openAdminCreditBtn" class="bg-emerald-500 text-white text-sm px-3 py-2 rounded-md shadow">เติมเครดิตลูกค้า</button>
+            <button id="openAdminProductBtn" class="bg-indigo-600 text-white text-sm px-3 py-2 rounded-md shadow">เพิ่มสินค้า</button>
+            <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ออกจากระบบ</button>
+          </div>`;
       const topupBtn   = document.getElementById('topupBtn');
       const historyBtn = document.getElementById('historyBtn');
       const cartBtn    = document.getElementById('cartBtn');
       const logoutBtn  = document.getElementById('logoutBtn');
-      if(topupBtn){ topupBtn.addEventListener('click', ()=>{ if(!CURRENT_USER){ openLoginModal(); return; } const tmodal = document.getElementById('topupModal'); if(tmodal) tmodal.classList.add('active'); }); }
-      historyBtn.addEventListener('click', openHistoryModal);
-      cartBtn.addEventListener('click', openCartModal);
+      const adminOrdersBtn = document.getElementById('adminOrdersBtn');
+      const openAdminCreditBtn = document.getElementById('openAdminCreditBtn');
+      const openAdminProductBtn = document.getElementById('openAdminProductBtn');
+    if(topupBtn){ topupBtn.addEventListener('click', ()=>{ if(!CURRENT_USER){ openLoginModal(); return; } const tmodal = document.getElementById('topupModal'); if(tmodal) tmodal.classList.add('active'); }); }
+    historyBtn.addEventListener('click', openHistoryModal);
+    cartBtn.addEventListener('click', openCartModal);
+    if(adminOrdersBtn){ adminOrdersBtn.addEventListener('click', ()=>{ 
+      // open admin orders modal with previously saved filter (or defaults)
+      try{ const saved = getSavedAdminFilter(); if(saved) applyFilterToUI(saved); else applyFilterToUI(['pending','accepted','rejected']); }catch{}
+      document.getElementById('adminOrdersModal')?.classList.add('active'); 
+      listenOrdersForAdmin(); 
+    }); }
+    if(openAdminCreditBtn){ openAdminCreditBtn.addEventListener('click', ()=>{ document.getElementById('adminCreditModal')?.classList.add('active'); }); }
+    if(openAdminProductBtn){ openAdminProductBtn.addEventListener('click', ()=>{ document.getElementById('adminProductModal')?.classList.add('active'); }); }
       updateCartCount();
       logoutBtn.addEventListener('click', async ()=>{
         try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); }
@@ -975,7 +932,7 @@ groupsEl.appendChild(card);
       cartBtn.addEventListener('click', openCartModal);
       updateCartCount();
     }
-    adminSection.classList.toggle('hidden', !IS_ADMIN);
+  // adminSection was removed from the main page — no inline admin panel to toggle
   }
 
   async function ensureUserProfile(u){
@@ -1096,7 +1053,7 @@ groupsEl.appendChild(card);
         price: price,
         image: PENDING_ORDER.image||'',
         requiresEmail: !!PENDING_ORDER.requiresEmail,
-        source: PENDING_ORDER.source||'csv'
+        source: PENDING_ORDER.source||'firestore'
       },
       emailForProduct: emailForProduct||'',
       passwordForProduct: passwordForProduct||'',
@@ -1109,13 +1066,19 @@ groupsEl.appendChild(card);
   }
 
   function listenOrdersForAdmin(){
-    const listEl = document.getElementById('ordersList');
+    const listEl = document.getElementById('adminOrdersList') || document.getElementById('ordersList');
     if(!IS_ADMIN){ listEl.innerHTML=''; return; }
     // unsubscribe previous admin listener if present
     try{ if(typeof ADMIN_ORDERS_UNSUB === 'function'){ ADMIN_ORDERS_UNSUB(); ADMIN_ORDERS_UNSUB = null; } }catch{}
     // Determine statuses to query based on admin checkbox (include paid only if checked)
-    const showPaid = !!document.getElementById('adminShowPaid')?.checked;
-    const statuses = showPaid ? ['pending','accepted','rejected','paid'] : ['pending','accepted','rejected'];
+    // read statuses from saved filter (modal) or fallback to previous adminShowPaid checkbox
+    let saved = getSavedAdminFilter();
+    let statuses = null;
+    if(saved && Array.isArray(saved) && saved.length>0){ statuses = saved; }
+    else {
+      const showPaid = !!document.getElementById('adminShowPaid')?.checked;
+      statuses = showPaid ? ['pending','accepted','rejected','paid'] : ['pending','accepted','rejected'];
+    }
     const qref = query(collection(db,'orders'), where('status','in', statuses));
     ADMIN_ORDERS_UNSUB = onSnapshot(qref, (snap)=>{
       listEl.innerHTML = '';
@@ -1123,6 +1086,24 @@ groupsEl.appendChild(card);
         listEl.innerHTML = '<div class="text-slate-500 p-2">ไม่มีคำสั่งซื้อที่กำลังดำเนินการ / สำเร็จ / ไม่สำเร็จ</div>';
         return;
       }
+      // build table header
+      const table = document.createElement('table');
+      table.className = 'w-full text-sm border-collapse';
+      table.innerHTML = `
+        <thead>
+          <tr class="text-left border-b">
+            <th class="p-2">สินค้า</th>
+            <th class="p-2">ราคา</th>
+            <th class="p-2">ลูกค้า</th>
+            <th class="p-2">สถานะ</th>
+            <th class="p-2">วันที่</th>
+            <th class="p-2">Order Reply</th>
+            <th class="p-2">จัดการ</th>
+          </tr>
+        </thead>`;
+      const tbody = document.createElement('tbody');
+      tbody.className = 'text-slate-700';
+
       snap.docs.forEach(d=>{
         const data = d.data();
         const status = (data.status||'').toString();
@@ -1131,69 +1112,71 @@ groupsEl.appendChild(card);
         if(status === 'pending'){ statusLabel = 'กำลังดำเนินการ'; statusClass = 'bg-amber-200 text-amber-800'; }
         else if(status === 'accepted'){ statusLabel = 'สำเร็จ'; statusClass = 'bg-emerald-200 text-emerald-800'; }
         else if(status === 'rejected'){ statusLabel = 'ไม่สำเร็จ'; statusClass = 'bg-red-200 text-red-800'; }
+        else if(status === 'paid'){ statusLabel = 'ชำระแล้ว'; statusClass = 'bg-sky-100 text-sky-800'; }
 
         const prodName = data.product?.name || data.pack || data.name || '-';
         const prodPrice = Number(data.product?.price || data.price || 0);
         const ts = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('th-TH') : (data.createdAt? String(data.createdAt): '');
         const reply = data.reply || data.orderReply || data.adminMessage || data.resultMessage || data.message || data.note || '';
 
-        const row = document.createElement('div');
-        row.className = 'border rounded p-3 flex flex-col gap-2';
-        row.innerHTML = `
-          <div class="flex items-center justify-between">
-            <div class="text-sm"><strong>${escapeHtml(prodName)}</strong> • ${currencyTH(prodPrice)} เครดิต</div>
-            <div><span class="px-2 py-1 rounded ${statusClass} text-xs">${escapeHtml(statusLabel)}</span></div>
-          </div>
-          <div class="text-sm text-slate-700">โดย: ${escapeHtml(data.userEmail||data.userId)}</div>
-          ${data.emailForProduct? `<div class="text-sm">อีเมลสินค้า: ${escapeHtml(data.emailForProduct)}</div>` : ''}
-          <div class="text-xs text-slate-500">${escapeHtml(ts)}</div>
-          <div class="text-sm"><strong>Order Reply:</strong> ${escapeHtml(reply)}</div>`;
+        const tr = document.createElement('tr');
+        tr.className = 'border-b';
+        tr.innerHTML = `
+          <td class="p-2 align-top">${escapeHtml(prodName)}</td>
+          <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
+          <td class="p-2 align-top">${escapeHtml(data.userEmail||data.userId)}</td>
+          <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
+          <td class="p-2 align-top">${escapeHtml(ts)}</td>
+          <td class="p-2 align-top"><div class="text-sm">${escapeHtml(reply)}</div></td>
+          <td class="p-2 align-top">
+            <div class="flex flex-col gap-2">
+              <textarea data-reply-id="${d.id}" class="w-full border rounded p-1 text-sm" rows="2" placeholder="Order Reply">${escapeHtml(reply)}</textarea>
+              <div class="flex gap-2">
+                <button data-accept-id="${d.id}" class="bg-emerald-600 text-white text-xs px-2 py-1 rounded">Accept</button>
+                <button data-reject-id="${d.id}" class="bg-red-500 text-white text-xs px-2 py-1 rounded">Reject</button>
+              </div>
+              <div data-msg-id="${d.id}" class="text-sm"></div>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      listEl.appendChild(table);
 
-            // For all rows show a small control to change status + edit Order Reply
-            const ctrl = document.createElement('div'); ctrl.className='flex flex-col gap-2';
-            const select = document.createElement('select'); select.className='text-sm border rounded p-1';
-            const opts = [ ['pending','กำลังดำเนินการ'], ['accepted','สำเร็จ'], ['rejected','ไม่สำเร็จ'] ];
-            opts.forEach(([v,label])=>{
-              const o = document.createElement('option'); o.value = v; o.textContent = label; if(v===status) o.selected = true; select.appendChild(o);
-            });
-            // allow leaving as paid if shown
-            if(status === 'paid' || document.getElementById('adminShowPaid')?.checked){
-              const o = document.createElement('option'); o.value='paid'; o.textContent='paid'; if(status==='paid') o.selected = true; select.appendChild(o);
-            }
-            const replyBox = document.createElement('textarea'); replyBox.className='w-full border rounded p-2 text-sm'; replyBox.rows = 2; replyBox.placeholder = 'Order Reply'; replyBox.value = reply || '';
-            const saveBtn = document.createElement('button'); saveBtn.className='bg-indigo-600 text-white text-sm px-3 py-1 rounded'; saveBtn.textContent='บันทึกสถานะ';
-            const msgEl = document.createElement('div'); msgEl.className='text-sm';
-            saveBtn.addEventListener('click', async ()=>{
-              saveBtn.disabled = true; msgEl.textContent = 'กำลังบันทึก...';
-              try{
-                const newStatus = select.value;
-                // If changing to accepted, perform transaction to deduct credits
-                if(newStatus === 'accepted' && status !== 'accepted'){
-                  await adminAcceptOrder(d.id, data, replyBox.value.trim());
-                } else if(newStatus === 'rejected' && status !== 'rejected'){
-                  await adminRejectOrder(d.id, replyBox.value.trim());
-                } else {
-                  // simple update (including reply)
-                  const oref = doc(db,'orders', d.id);
-                  await updateDoc(oref, { status: newStatus, reply: replyBox.value.trim(), updatedAt: serverTimestamp() });
-                }
-                msgEl.className = 'text-emerald-700 text-sm'; msgEl.textContent = 'บันทึกแล้ว';
-              }catch(e){ console.error(e); msgEl.className='text-red-600 text-sm'; msgEl.textContent = e.message || 'บันทึกไม่สำเร็จ'; }
-              finally{ saveBtn.disabled = false; setTimeout(()=>{ msgEl.textContent=''; }, 2000); }
-            });
-            ctrl.appendChild(select); ctrl.appendChild(replyBox); ctrl.appendChild(saveBtn); ctrl.appendChild(msgEl);
-            row.appendChild(ctrl);
+      // attach listeners
+      listEl.querySelectorAll('[data-accept-id]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-accept-id');
+          const replyBox = listEl.querySelector(`[data-reply-id="${id}"]`);
+          const msgEl = listEl.querySelector(`[data-msg-id="${id}"]`);
+          msgEl.textContent = 'กำลังบันทึก...'; btn.disabled = true;
+          try{
+            const docSnap = await getDoc(doc(db,'orders',id));
+            const data = docSnap.data();
+            await adminAcceptOrder(id, data, replyBox.value.trim());
+            msgEl.className = 'text-emerald-700'; msgEl.textContent = 'บันทึกแล้ว';
+          }catch(err){ console.error(err); msgEl.className='text-red-600'; msgEl.textContent = err.message||'ล้มเหลว'; }
+          finally{ btn.disabled=false; setTimeout(()=> msgEl.textContent='',2000); }
+        });
+      });
 
-        listEl.appendChild(row);
+      listEl.querySelectorAll('[data-reject-id]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-reject-id');
+          const replyBox = listEl.querySelector(`[data-reply-id="${id}"]`);
+          const msgEl = listEl.querySelector(`[data-msg-id="${id}"]`);
+          msgEl.textContent = 'กำลังบันทึก...'; btn.disabled = true;
+          try{
+            await adminRejectOrder(id, replyBox.value.trim());
+            msgEl.className = 'text-emerald-700'; msgEl.textContent = 'บันทึกแล้ว';
+          }catch(err){ console.error(err); msgEl.className='text-red-600'; msgEl.textContent = err.message||'ล้มเหลว'; }
+          finally{ btn.disabled=false; setTimeout(()=> msgEl.textContent='',2000); }
+        });
       });
     }, async (err)=>{
       console.error('orders listener error', err);
       listEl.innerHTML = `<div class="text-red-600 p-2">เกิดข้อผิดพลาดในการอ่านคำสั่งซื้อ: ${err.message}</div>`;
-      try{
-        const snap = await getDocs(qref);
-        if(snap.empty){ listEl.innerHTML += '<div class="text-slate-500 p-2">การอ่านแบบครั้งเดียวไม่พบคำสั่งซื้อสถานะที่ต้องการ</div>'; }
-        else { listEl.innerHTML += `<div class="text-emerald-700 p-2">การอ่านแบบครั้งเดียวเจอ ${snap.size} เอกสาร</div>`; }
-      }catch(e){ console.error('fallback getDocs error', e); listEl.innerHTML += `<div class="text-red-600 p-2">fallback read ล้มเหลว: ${e.message}</div>`; }
     });
   }
 
@@ -1250,6 +1233,9 @@ groupsEl.appendChild(card);
       image: norm(p.image||''),
       requiresEmail: !!p.requiresEmail,
       requiresPassword: !!p.requiresPassword,
+      requiresUsername: !!p.requiresUsername,
+      requiresSN: !!p.requiresSN,
+      requiresIMEI: !!p.requiresIMEI,
       createdAt: serverTimestamp()
     });
   }
@@ -1258,7 +1244,7 @@ groupsEl.appendChild(card);
   function addToCart(p, details={}){
     const item = {
       id: p.id,
-      source: p.source||'csv',
+      source: p.source||'firestore',
       program: p.program,
       name: p.pack||p.name,
       price: Number(p.price)||0,
@@ -1426,7 +1412,7 @@ groupsEl.appendChild(card);
               requiresUsername: !!it.requiresUsername,
               requiresSN: !!it.requiresSN,
               requiresIMEI: !!it.requiresIMEI,
-              source: it.source||'csv'
+              source: it.source||'firestore'
             },
             emailForProduct: it.emailForProduct||'',
             usernameForProduct: it.usernameForProduct||'',
@@ -1467,63 +1453,9 @@ groupsEl.appendChild(card);
     addToCart(PRODUCT_SELECTED, details);
     closeProductModal();
   });
-  /* Removed immediate buy flow per request
-  document.getElementById('pdBuyNow').addEventListener('click', async ()=>{
-    const msg = document.getElementById('pdMsg'); msg.textContent=''; msg.className='text-sm';
-    if(!CURRENT_USER || !PRODUCT_SELECTED){ return; }
-    const price = Number(PRODUCT_SELECTED.price)||0;
-    const details = {
-      email: document.getElementById('pdEmail')?.value?.trim()||'',
-      username: document.getElementById('pdUsername')?.value?.trim()||'',
-      sn: document.getElementById('pdSN')?.value?.trim()||'',
-      imei: document.getElementById('pdIMEI')?.value?.trim()||''
-    };
-    if(PRODUCT_SELECTED.requiresEmail && !details.email){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Email'; return; }
-    if(PRODUCT_SELECTED.requiresUsername && !details.username){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Username'; return; }
-    if(PRODUCT_SELECTED.requiresSN && !details.sn){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก SN/Serial'; return; }
-    if(PRODUCT_SELECTED.requiresIMEI && !details.imei){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก IMEI'; return; }
-
-    try{
-      const uref = doc(db,'users',CURRENT_USER.uid);
-      const ocol = collection(db,'orders');
-      await runTransaction(db, async (tx)=>{
-        const us = await tx.get(uref);
-        const bal = (us.data()?.credits)||0;
-        if(bal < price) throw new Error(`เครดิตไม่พอ ต้องการ ${price} แต่มี ${bal}`);
-        tx.update(uref,{ credits: bal - price });
-        const oref = doc(ocol);
-        tx.set(oref,{
-          userId: CURRENT_USER.uid,
-          userEmail: (CURRENT_USER.email||'').toLowerCase(),
-          status: 'pending',
-          product: {
-            id: PRODUCT_SELECTED.id,
-            name: PRODUCT_SELECTED.pack||PRODUCT_SELECTED.name,
-            program: PRODUCT_SELECTED.program,
-            price: price,
-            image: PRODUCT_SELECTED.image||'',
-            requiresEmail: !!PRODUCT_SELECTED.requiresEmail,
-            requiresUsername: !!PRODUCT_SELECTED.requiresUsername,
-            requiresSN: !!PRODUCT_SELECTED.requiresSN,
-            requiresIMEI: !!PRODUCT_SELECTED.requiresIMEI,
-            source: PRODUCT_SELECTED.source||'csv'
-          },
-          emailForProduct: details.email,
-          usernameForProduct: details.username,
-          snForProduct: details.sn,
-          imeiForProduct: details.imei,
-          createdAt: serverTimestamp()
-        });
-      });
-      msg.classList.remove('text-red-600'); msg.classList.add('text-emerald-700');
-      msg.textContent='ชำระเครดิตเรียบร้อย ออเดอร์ถูกสร้างแล้ว';
-      setTimeout(closeProductModal, 900);
-    }catch(e){ msg.classList.add('text-red-600'); msg.textContent = e.message; }
-  });
-  */
 
   // ----- Events -----
-  searchEl.addEventListener("input", ()=>render(mergeProducts(), searchEl.value));
+  searchEl.addEventListener("input", ()=>render(groupByProgram(FS_PRODUCTS), searchEl.value));
   contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
   closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
   modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
@@ -1661,12 +1593,210 @@ groupsEl.appendChild(card);
       price: document.getElementById('pPrice').value,
       image: document.getElementById('pImage').value,
       requiresEmail: document.getElementById('pReqEmail').checked,
-      requiresPassword: document.getElementById('pReqPassword')?.checked || false
+      requiresPassword: document.getElementById('pReqPassword')?.checked || false,
+      requiresUsername: document.getElementById('pReqUsername')?.checked || false,
+      requiresSN: document.getElementById('pReqSN')?.checked || false,
+      requiresIMEI: document.getElementById('pReqIMEI')?.checked || false
     };
     const el = document.getElementById('productMsg'); el.textContent=''; el.className='text-sm';
-    try{ await addProductFS(data); el.classList.add('text-emerald-700'); el.textContent = 'เพิ่มสินค้าแล้ว'; }
-    catch(e){ el.classList.add('text-red-600'); el.textContent = e.message; }
+    try{
+      await addProductFS(data);
+      el.classList.add('text-emerald-700'); el.textContent = 'เพิ่มสินค้าแล้ว';
+      // reset inputs on success
+      try{
+        document.getElementById('pProgram').value = '';
+        document.getElementById('pName').value = '';
+        document.getElementById('pPrice').value = '';
+        document.getElementById('pImage').value = '';
+        document.getElementById('pReqEmail').checked = false;
+        document.getElementById('pReqPassword').checked = false;
+        document.getElementById('pReqUsername').checked = false;
+        document.getElementById('pReqSN').checked = false;
+        document.getElementById('pReqIMEI').checked = false;
+      }catch{}
+    }catch(e){ el.classList.add('text-red-600'); el.textContent = e.message; }
   });
+
+  // ----- Admin Functions -----
+  function checkIsAdmin() {
+    if (!IS_ADMIN) {
+      console.warn('Access denied: Admin only');
+      return false;
+    }
+    return true;
+  }
+
+  // Admin product table state
+  let adminSelectedProducts = new Set();
+  let adminEditedProducts = new Map();
+  let adminProductRefs = new Map();
+  let adminLastSnapshot = null;
+
+  const showMessage = (id, msg, type = 'info') => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = msg;
+    el.className = 'text-sm mt-2 ' + (type === 'error' ? 'text-red-500' : type === 'success' ? 'text-emerald-500' : 'text-slate-600');
+  };
+
+  // Clean up any existing product listeners
+  function cleanupProductListeners() {
+    if(PRODUCTS_UNSUB) { 
+      try { PRODUCTS_UNSUB(); } catch(e) { console.error('Error cleaning up products listener:', e); }
+      PRODUCTS_UNSUB = null;
+    }
+    adminSelectedProducts.clear();
+    adminEditedProducts.clear();
+    adminProductRefs.clear();
+  }
+
+  // Set up product table with real-time updates
+  async function setupProductTable() {
+    if(!checkIsAdmin()) return;
+    const tbody = document.getElementById('productsTbody');
+    if(!tbody) return;
+    
+    // Clean up any existing listeners first
+    cleanupProductListeners();
+    tbody.innerHTML = '';
+
+    const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
+      tbody.innerHTML = '';
+      snapshot.forEach(doc => {
+        const p = doc.data();
+        adminProductRefs.set(doc.id, doc.ref);
+        const tr = document.createElement('tr');
+        tr.className = 'border-b';
+        tr.id = 'tr-' + doc.id;
+        tr.innerHTML = `
+          <td class="p-2"><input type="checkbox" class="product-select" data-id="${doc.id}"></td>
+          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${p.program}" data-field="program"></td>
+          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${p.name}" data-field="name"></td>
+          <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${p.price}" data-field="price"></td>
+          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${p.image}" data-field="image"></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresEmail" ${p.requiresEmail ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresPassword" ${p.requiresPassword ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresUsername" ${p.requiresUsername ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresSN" ${p.requiresSN ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresIMEI" ${p.requiresIMEI ? 'checked' : ''}></td>
+          <td class="p-2">
+            <button class="bg-emerald-600 text-white px-2 py-1 rounded text-xs save-row" data-id="${doc.id}">Save</button>
+            <button class="bg-red-600 text-white px-2 py-1 rounded text-xs delete-row" data-id="${doc.id}">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Track changes in inputs
+        const inputs = tr.querySelectorAll('input:not(.product-select)');
+        inputs.forEach(input => {
+          input.addEventListener('change', () => {
+            if (!adminEditedProducts.has(doc.id)) adminEditedProducts.set(doc.id, new Set());
+            adminEditedProducts.get(doc.id).add(input.dataset.field);
+            tr.classList.add('bg-amber-50');
+          });
+        });
+      });
+
+      // Wire up Save/Delete buttons
+      document.querySelectorAll('.save-row').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const tr = document.getElementById('tr-' + id);
+          if (!adminEditedProducts.has(id)) return;
+          
+          const updates = {};
+          adminEditedProducts.get(id).forEach(field => {
+            const input = tr.querySelector(`input[data-field="${field}"]`);
+            if (field === 'price') updates[field] = parseInt(input.value) || 0;
+            else if (field.startsWith('requires')) updates[field] = input.checked;
+            else updates[field] = input.value.trim();
+          });
+
+          try {
+            await updateDoc(adminProductRefs.get(id), updates);
+            adminEditedProducts.delete(id);
+            tr.classList.remove('bg-amber-50');
+            showMessage('bulkMsg', 'บันทึกการเปลี่ยนแปลงเรียบร้อย', 'success');
+          } catch (e) {
+            showMessage('bulkMsg', 'Error: ' + e.message, 'error');
+          }
+        });
+      });
+
+      document.querySelectorAll('.delete-row').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('ยืนยันการลบสินค้านี้?')) return;
+          const id = btn.dataset.id;
+          try {
+            await deleteDoc(adminProductRefs.get(id));
+            document.getElementById('tr-' + id)?.remove();
+            adminEditedProducts.delete(id);
+            adminSelectedProducts.delete(id);
+            showMessage('bulkMsg', 'ลบรายการเรียบร้อย', 'success');
+          } catch (e) {
+            showMessage('bulkMsg', 'Error: ' + e.message, 'error');
+          }
+        });
+      });
+
+      document.querySelectorAll('.product-select').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) adminSelectedProducts.add(cb.dataset.id);
+          else adminSelectedProducts.delete(cb.dataset.id);
+        });
+      });
+    });
+
+    return unsubscribe;
+  }
+
+  // Wire up admin product management
+  const wireProductManagement = () => {
+    const openAdminProductBtn = document.getElementById('openAdminProductBtn');
+    const modal = document.getElementById('adminProductModal');
+
+    if (openAdminProductBtn) {
+      openAdminProductBtn.addEventListener('click', async () => {
+        if (!checkIsAdmin()) return;
+        if (modal) {
+          modal.classList.add('active');
+          try {
+            // store unsubscribe so cleanupProductListeners can stop it later
+            PRODUCTS_UNSUB = await setupProductTable();
+          } catch (error) {
+            showMessage('bulkMsg', 'Error loading products: ' + error.message, 'error');
+          }
+        }
+      });
+    }
+
+    // Clean up listeners when modal closes
+    document.getElementById('closeAdminProduct')?.addEventListener('click', () => {
+      modal?.classList.remove('active');
+      cleanupProductListeners();
+    });
+
+    modal?.addEventListener('click', (e) => {
+      if(e.target === modal) {
+        modal.classList.remove('active');
+        cleanupProductListeners();
+      }
+    });
+
+    // bulk save/delete UI removed - single-row Save/Delete remain in each row
+
+    // Refresh products button (manual)
+    document.getElementById('btnRefreshProducts')?.addEventListener('click', async () => {
+      if(!checkIsAdmin()) return;
+      showMessage('bulkMsg', 'กำลังรีเฟรชรายการ...');
+      try{
+        // clean up previous listener and re-attach
+        cleanupProductListeners();
+        PRODUCTS_UNSUB = await setupProductTable();
+        showMessage('bulkMsg', 'รีเฟรชเรียบร้อย', 'success');
+      }catch(e){ showMessage('bulkMsg', 'Error: '+(e.message||e), 'error'); }
+    });
+  };
 
   // ----- Auth state -----
   onAuthStateChanged(auth, async (user)=>{
@@ -1680,6 +1810,8 @@ groupsEl.appendChild(card);
       }
       IS_ADMIN = !!CURRENT_USER_DOC?.isAdmin || ADMIN_EMAILS.includes((user.email||'').toLowerCase());
       listenOrdersForUser();
+      // Wire up product management after login 
+      wireProductManagement();
     }else{
       CURRENT_USER_DOC = null; IS_ADMIN = false;
       if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
@@ -1705,17 +1837,22 @@ groupsEl.appendChild(card);
   });
 
   // ----- Init -----
-  (async ()=>{
-    try{
-      await loadCSV();
-      await loadFirestoreProducts();
-      const merged = mergeProducts();
-      render(merged, searchEl?.value||"");
-      statusEl.textContent = "อัปเดตล่าสุด: "+new Date().toLocaleString("th-TH");
-  // load cart on init (guest or merged if already logged in)
-  try{ loadCart(); updateCartCount(); }catch{}
-      setInterval(async ()=>{ try{ await loadCSV(); render(mergeProducts(), searchEl?.value||""); }catch{} }, 5*60*1000);
-    }catch(e){
+  (async () => {
+    try {
+      // Set up Firestore listener
+      PRODUCTS_UNSUB = await setupFirestoreProducts();
+      
+      // Initialize cart
+      try { 
+        loadCart(); 
+        updateCartCount(); 
+      } catch(err) {
+        console.error('Cart init error:', err);
+      }
+      
+      // Update status
+      statusEl.textContent = "อัปเดตล่าสุด: " + new Date().toLocaleString("th-TH");
+    } catch(e) {
       statusEl.innerHTML = `<span class="text-red-600">เกิดข้อผิดพลาด:</span> ${e.message}`;
       console.error(e);
     }

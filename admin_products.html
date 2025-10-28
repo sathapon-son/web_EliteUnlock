@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin: Product Management — Elite Unlock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal.active{display:flex}
+    body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-6">
+  <main class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">Admin — Product management / CSV → Firestore</h1>
+      <div id="authArea" class="flex items-center gap-3"></div>
+    </div>
+
+    <div class="rounded-lg bg-white shadow p-4 mb-6">
+      <p class="text-sm text-slate-600">หน้าด้านล่างช่วยนำเข้าข้อมูลจาก CSV (`data.csv`) เข้า Firestore `products` collection และจัดการสินค้า (แก้ราคา/ชื่อ/ภาพ และค่าบังคับฟิลด์ต่าง ๆ). หลังการย้ายข้อมูลแล้ว สามารถคลิก "Mark migrated" เพื่อให้เป็นสัญญาณว่าต่อจากนี้จะไม่ใช้ CSV อีกแล้ว (ต้องมีสิทธิ์เขียนใน Firestore)</p>
+      <div class="mt-4 flex gap-3">
+        <button id="btnLoadProducts" class="bg-slate-100 text-slate-700 px-3 py-2 rounded">โหลดสินค้าจาก Firestore</button>
+        <button id="btnImportCSV" class="bg-indigo-600 text-white px-3 py-2 rounded">ดึง CSV → Firestore (Sync)</button>
+        <button id="btnMarkMigrated" class="bg-amber-600 text-white px-3 py-2 rounded">Mark migrated (disable CSV)</button>
+        <button id="btnRefresh" class="bg-sky-600 text-white px-3 py-2 rounded">รีเฟรชตาราง</button>
+      </div>
+      <div id="opMsg" class="text-sm mt-3 text-slate-600"></div>
+    </div>
+
+    <div id="productsArea" class="rounded-lg bg-white shadow p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">รายการสินค้าในฐานข้อมูล (Firestore)</h2>
+        <div class="text-sm text-slate-500">คลิก Save เพื่อบันทึกแถว หรือเลือกหลายแถวแล้วใช้ Bulk Save</div>
+      </div>
+
+      <div class="overflow-auto">
+        <table id="productsTable" class="w-full text-sm border-collapse">
+          <thead>
+            <tr class="text-left border-b">
+              <th class="p-2">เลือก</th>
+              <th class="p-2">โปรแกรม</th>
+              <th class="p-2">แพ็กเกจ / ชื่อ</th>
+              <th class="p-2">ราคา</th>
+              <th class="p-2">image</th>
+              <th class="p-2">email?</th>
+              <th class="p-2">password?</th>
+              <th class="p-2">username?</th>
+              <th class="p-2">sn?</th>
+              <th class="p-2">imei?</th>
+              <th class="p-2">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="productsTbody" class="text-slate-700"></tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 flex gap-3">
+        <button id="btnBulkSave" class="bg-emerald-600 text-white px-3 py-2 rounded">Save selected</button>
+        <button id="btnDeleteSelected" class="bg-red-600 text-white px-3 py-2 rounded">Delete selected</button>
+        <div id="bulkMsg" class="text-sm text-slate-600 ml-3"></div>
+      </div>
+    </div>
+
+    <div class="mt-6 text-xs text-slate-500">CSV headers supported: โปรแกรม, แพ็กเกจ, ราคา, image, requiresemail, requiresusername, requirespassword, requiressn, requireimei</div>
+  </main>
+
+  <div id="loginModal" class="modal" aria-hidden="true">
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeLogin" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">Admin Login</h3>
+      <div class="space-y-3">
+        <input id="authEmail" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
+        <input id="authPass" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
+        <button id="doLogin" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">เข้าสู่ระบบ</button>
+        <div id="loginMsg" class="text-sm text-red-600"></div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+// Reuse project's Firebase config and CSV parser
+const CSV_URL = "https://raw.githubusercontent.com/sathapon-son/web_EliteUnlock/main/data.csv";
+const firebaseConfig = {
+  apiKey: "AIzaSyAvZLhir8UvnBsb0NuK5r6y73TfoclBC-4",
+  authDomain: "eliteunlock-c194e.firebaseapp.com",
+  projectId: "eliteunlock-c194e",
+  storageBucket: "eliteunlock-c194e.firebasestorage.app",
+  messagingSenderId: "12192434961",
+  appId: "1:12192434961:web:ad7cff07c16e81e34fdab0",
+  measurementId: "G-FFR5YG8S8J"
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc, query, where, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Admin list (optional) - for convenience
+const ADMIN_EMAILS = [];
+
+// Copy CSV helpers (same logic as site)
+const HEADERS = {
+  program:["program","tool","โปรแกรม","เครื่องมือ"],
+  pack:["package","term","duration","plan","แพ็กเกจ","แพคเกจ","ระยะเวลา"],
+  price:["price","cost","ราคา"],
+  requirespassword:["requirespassword","requires_password","password_required","ต้องใส่รหัส","ต้องใส่password","รหัสผ่านต้องใช้"],
+  image:["image","img","รูป","รูปภาพ","imageurl"],
+  requiresemail:["requiresemail","requires_email","email_required","ต้องใส่อีเมล","กรอกอีเมล"],
+  requiresusername:["requiresusername","username_required","ต้องใส่username","ต้องใส่ผู้ใช้","user_required"],
+  requiressn:["requiressn","sn_required","serial_required","ต้องใส่sn","ต้องใส่serial"],
+  requireimei:["requireimei","imei_required","ต้องใส่imei"]
+};
+const norm = s => (s??"").toString().trim();
+const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
+
+function parseCSV(text){
+  const rows=[]; let r=[], c="", q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], n=text[i+1];
+    if(q){
+      if(ch=='"'&&n=='"'){ c+='"'; i++; }
+      else if(ch=='"'){ q=false; }
+      else c+=ch;
+    }else{
+      if(ch=='"') q=true;
+      else if(ch==','){ r.push(c); c=""; }
+      else if(ch=='\n'){ r.push(c); rows.push(r); r=[]; c=""; }
+      else if(ch=='\r'){ }
+      else c+=ch;
+    }
+  }
+  if(c.length>0 || r.length>0){ r.push(c); rows.push(r); }
+  return rows;
+}
+function mapHeaders(cols){
+  const map={};
+  cols.forEach((c,i)=>{
+    const key=nk(c);
+    for(const std in HEADERS){
+      if(HEADERS[std].some(h=>nk(h)===key)) map[std]=i;
+    }
+  });
+  if(map.program==null||map.pack==null||map.price==null){
+    throw new Error("CSV ต้องมีคอลัมน์: program/โปรแกรม, package/แพ็กเกจ, price/ราคา");
+  }
+  return map;
+}
+function toNumber(v){ const n=Number(String(v).replace(/[^\d.]/g,"")); return isNaN(n)?0:n; }
+function rowsToItems(rows){
+  if(!rows.length) throw new Error("ไม่พบข้อมูล CSV");
+  const headers=rows[0];
+  const map=mapHeaders(headers);
+  return rows.slice(1)
+    .filter(r=>r.length && r.some(c=>norm(c)!==""))
+    .map((r,idx)=>({
+      program: r[map.program]??"",
+      pack: r[map.pack]??"",
+      price: toNumber(r[map.price]??0),
+      image: map.image!=null? norm(r[map.image]): "",
+      requiresEmail: map.requiresemail!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresemail])) : false,
+      requiresUsername: map.requiresusername!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresusername])) : false,
+      requiresSN: map.requiressn!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiressn])) : false,
+      requiresIMEI: map.requireimei!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requireimei])) : false,
+      requiresPassword: map.requirespassword!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requirespassword])) : false
+    }))
+    .filter(x=>norm(x.program)&&norm(x.pack)&&x.price>0);
+}
+
+// DOM
+const btnLoadProducts = document.getElementById('btnLoadProducts');
+const btnImportCSV = document.getElementById('btnImportCSV');
+const btnMarkMigrated = document.getElementById('btnMarkMigrated');
+const btnRefresh = document.getElementById('btnRefresh');
+const opMsg = document.getElementById('opMsg');
+const productsTbody = document.getElementById('productsTbody');
+const btnBulkSave = document.getElementById('btnBulkSave');
+const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+const bulkMsg = document.getElementById('bulkMsg');
+
+let PRODUCTS = []; // local snapshot from Firestore
+let SELECTED = new Set();
+let CURRENT_USER = null;
+let IS_ADMIN = false;
+
+function setOp(msg, cls='text-slate-600'){
+  opMsg.className = `text-sm mt-3 ${cls}`;
+  opMsg.textContent = msg;
+}
+
+function setBulk(msg, cls='text-slate-600'){
+  bulkMsg.className = `text-sm ${cls}`;
+  bulkMsg.textContent = msg;
+}
+
+function normalizeKey(program, name){ return `${(program||'').toString().trim().toLowerCase()}||${(name||'').toString().trim().toLowerCase()}`; }
+
+async function loadProductsFromFirestore(){
+  setOp('กำลังโหลดสินค้าจาก Firestore...');
+  try{
+    const snap = await getDocs(collection(db,'products'));
+    PRODUCTS = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+    renderProductsTable(PRODUCTS);
+    setOp(`โหลด ${PRODUCTS.length} รายการจาก Firestore`, 'text-emerald-700');
+  }catch(e){ console.error(e); setOp('โหลดล้มเหลว: '+(e.message||e), 'text-red-600'); }
+}
+
+function renderProductsTable(items){
+  productsTbody.innerHTML = '';
+  for(const p of items){
+    const tr = document.createElement('tr');
+    tr.className = 'border-b';
+    tr.innerHTML = `
+      <td class="p-2 align-top"><input type="checkbox" data-id="${p.id}" ${SELECTED.has(p.id)?'checked':''} /></td>
+      <td class="p-2 align-top"><input data-id-prog="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.program||'')}" /></td>
+      <td class="p-2 align-top"><input data-id-name="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.name||p.pack||'')}" /></td>
+      <td class="p-2 align-top"><input data-id-price="${p.id}" type="number" class="w-full border rounded p-1 text-sm" value="${Number(p.price||0)}" /></td>
+      <td class="p-2 align-top"><input data-id-img="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.image||p.imageUrl||'')}" /></td>
+      <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqemail="${p.id}" ${p.requiresEmail? 'checked':''} /></td>
+      <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqpass="${p.id}" ${p.requiresPassword? 'checked':''} /></td>
+      <td class="p-2 align-top text-center"><input type="checkbox" data-id-requser="${p.id}" ${p.requiresUsername? 'checked':''} /></td>
+      <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqsn="${p.id}" ${p.requiresSN? 'checked':''} /></td>
+      <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqimei="${p.id}" ${p.requiresIMEI? 'checked':''} /></td>
+      <td class="p-2 align-top">
+        <div class="flex flex-col gap-2">
+          <button data-save-id="${p.id}" class="bg-emerald-600 text-white text-xs px-2 py-1 rounded">Save</button>
+          <button data-delete-id="${p.id}" class="bg-red-600 text-white text-xs px-2 py-1 rounded">Delete</button>
+          <div data-row-msg="${p.id}" class="text-xs text-slate-500"></div>
+        </div>
+      </td>
+    `;
+    productsTbody.appendChild(tr);
+  }
+  // wire events
+  productsTbody.querySelectorAll('input[type="checkbox"][data-id]').forEach(chk=>{
+    chk.addEventListener('change', (e)=>{ const id = e.currentTarget.getAttribute('data-id'); if(e.currentTarget.checked) SELECTED.add(id); else SELECTED.delete(id); });
+  });
+  productsTbody.querySelectorAll('[data-save-id]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      const id = e.currentTarget.getAttribute('data-save-id');
+      await saveRow(id);
+    });
+  });
+  productsTbody.querySelectorAll('[data-delete-id]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      const id = e.currentTarget.getAttribute('data-delete-id');
+      if(!confirm('ลบสินค้านี้จาก Firestore? การลบไม่สามารถเรียกคืนได้')) return;
+      try{ await deleteDoc(doc(db,'products',id)); setBulk('ลบเรียบร้อย','text-emerald-700'); await loadProductsFromFirestore(); }catch(err){ setBulk('ลบล้มเหลว: '+(err.message||err),'text-red-600'); }
+    });
+  });
+}
+
+function escapeHtml(str){ if(!str && str !== 0) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+async function saveRow(id){
+  const prog = document.querySelector(`[data-id-prog="${id}"]`).value.trim();
+  const name = document.querySelector(`[data-id-name="${id}"]`).value.trim();
+  const price = Number(document.querySelector(`[data-id-price="${id}"]`).value||0);
+  const image = document.querySelector(`[data-id-img="${id}"]`).value.trim();
+  const requiresEmail = !!document.querySelector(`[data-id-reqemail="${id}"]`).checked;
+  const requiresPassword = !!document.querySelector(`[data-id-reqpass="${id}"]`).checked;
+  const requiresUsername = !!document.querySelector(`[data-id-requser="${id}"]`).checked;
+  const requiresSN = !!document.querySelector(`[data-id-reqsn="${id}"]`).checked;
+  const requiresIMEI = !!document.querySelector(`[data-id-reqimei="${id}"]`).checked;
+  const msgEl = document.querySelector(`[data-row-msg="${id}"]`);
+  msgEl.textContent = 'Saving...';
+  try{
+    await updateDoc(doc(db,'products',id),{
+      program: norm(prog),
+      name: norm(name),
+      price: Number(price)||0,
+      image: norm(image||''),
+      requiresEmail: !!requiresEmail,
+      requiresPassword: !!requiresPassword,
+      requiresUsername: !!requiresUsername,
+      requiresSN: !!requiresSN,
+      requiresIMEI: !!requiresIMEI,
+      updatedAt: serverTimestamp()
+    });
+    msgEl.textContent = 'Saved'; msgEl.className = 'text-xs text-emerald-700';
+    setTimeout(()=>{ msgEl.textContent=''; }, 2000);
+  }catch(e){ console.error(e); msgEl.textContent = e.message||'Update failed'; msgEl.className='text-xs text-red-600'; }
+}
+
+btnLoadProducts.addEventListener('click', loadProductsFromFirestore);
+btnRefresh.addEventListener('click', ()=>{ renderProductsTable(PRODUCTS); setOp('Refreshed'); });
+
+btnBulkSave.addEventListener('click', async ()=>{
+  if(SELECTED.size===0){ setBulk('ไม่มีรายการที่เลือก','text-slate-600'); return; }
+  setBulk('Saving selected...');
+  const ids = Array.from(SELECTED);
+  for(const id of ids){ await saveRow(id); }
+  setBulk('Saved selected', 'text-emerald-700');
+});
+
+btnDeleteSelected.addEventListener('click', async ()=>{
+  if(SELECTED.size===0){ setBulk('ไม่มีรายการที่เลือก','text-slate-600'); return; }
+  if(!confirm(`ลบ ${SELECTED.size} รายการที่เลือกจาก Firestore?`)) return;
+  setBulk('Deleting...');
+  for(const id of Array.from(SELECTED)){
+    try{ await deleteDoc(doc(db,'products',id)); SELECTED.delete(id); }catch(e){ console.error('delete failed', e); }
+  }
+  await loadProductsFromFirestore(); setBulk('Deleted selected', 'text-emerald-700');
+});
+
+// CSV import / sync
+btnImportCSV.addEventListener('click', async ()=>{
+  if(!confirm('จะนําเข้าข้อมูลจาก CSV และ sync ไปยัง Firestore (update ถ้ามี, create ถ้าไม่มี). ดำเนินการต่อ?')) return;
+  setOp('ดึง CSV...');
+  try{
+    const res = await fetch(CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const items = rowsToItems(rows);
+    setOp(`CSV rows parsed: ${items.length}`);
+    // fetch existing products once
+    const snap = await getDocs(collection(db,'products'));
+    const existing = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+    const map = new Map();
+    existing.forEach(d => { const k = normalizeKey(d.program, d.name||d.pack); if(!map.has(k)) map.set(k, d); });
+
+    let created = 0, updated = 0;
+    for(const it of items){
+      const key = normalizeKey(it.program, it.pack);
+      if(map.has(key)){
+        // update existing doc
+        const existingDoc = map.get(key);
+        try{
+          await updateDoc(doc(db,'products',existingDoc.id),{
+            program: norm(it.program),
+            name: norm(it.pack),
+            price: Number(it.price)||0,
+            image: norm(it.image||''),
+            requiresEmail: !!it.requiresEmail,
+            requiresPassword: !!it.requiresPassword,
+            requiresUsername: !!it.requiresUsername,
+            requiresSN: !!it.requiresSN,
+            requiresIMEI: !!it.requiresIMEI,
+            source: 'csv',
+            updatedAt: serverTimestamp()
+          });
+          updated++;
+        }catch(e){ console.error('update failed', e); }
+      } else {
+        // create new product
+        try{
+          await addDoc(collection(db,'products'),{
+            program: norm(it.program),
+            name: norm(it.pack),
+            price: Number(it.price)||0,
+            image: norm(it.image||''),
+            requiresEmail: !!it.requiresEmail,
+            requiresPassword: !!it.requiresPassword,
+            requiresUsername: !!it.requiresUsername,
+            requiresSN: !!it.requiresSN,
+            requiresIMEI: !!it.requiresIMEI,
+            source: 'csv',
+            createdAt: serverTimestamp()
+          });
+          created++;
+        }catch(e){ console.error('create failed', e); }
+      }
+    }
+    setOp(`Import complete — created: ${created}, updated: ${updated}`, 'text-emerald-700');
+    await loadProductsFromFirestore();
+  }catch(e){ console.error(e); setOp('Import failed: '+(e.message||e), 'text-red-600'); }
+});
+
+// Mark migrated (set config/app.migratedFromCsv = true)
+btnMarkMigrated.addEventListener('click', async ()=>{
+  if(!confirm('ทำเครื่องหมายว่าได้ย้ายข้อมูลจาก CSV เรียบร้อยแล้ว (จะเขียนค่าไปยัง config/app ใน Firestore) ?')) return;
+  try{
+    await setDoc(doc(db,'config','app'), { migratedFromCsv: true, migratedAt: serverTimestamp() }, { merge:true });
+    setOp('Marked migrated in Firestore', 'text-emerald-700');
+  }catch(e){ setOp('Mark migrated failed: '+(e.message||e), 'text-red-600'); }
+});
+
+// Basic auth UI for admin page: require admin to view
+const authArea = document.getElementById('authArea');
+const loginModal = document.getElementById('loginModal');
+const closeLogin = document.getElementById('closeLogin');
+const doLogin = document.getElementById('doLogin');
+const authEmail = document.getElementById('authEmail');
+const authPass = document.getElementById('authPass');
+const loginMsg = document.getElementById('loginMsg');
+
+function openLogin(){ loginModal.classList.add('active'); }
+function closeLoginModal(){ loginModal.classList.remove('active'); }
+closeLogin.addEventListener('click', closeLoginModal);
+
+function renderAuthButtons(){
+  authArea.innerHTML = '';
+  if(CURRENT_USER){
+    const span = document.createElement('div'); span.className='text-sm text-slate-700'; span.textContent = CURRENT_USER.email || '';
+    const btnLogout = document.createElement('button'); btnLogout.className='bg-slate-100 px-3 py-2 rounded text-sm'; btnLogout.textContent='Logout';
+    btnLogout.addEventListener('click', async ()=>{ try{ await auth.signOut(); }catch{} });
+    authArea.appendChild(span); authArea.appendChild(btnLogout);
+    if(!IS_ADMIN) setOp('ผู้ใช้ไม่มีสิทธิ์ admin', 'text-red-600');
+  }else{
+    const btnLogin = document.createElement('button'); btnLogin.className='bg-indigo-600 text-white px-3 py-2 rounded'; btnLogin.textContent='Admin Login';
+    btnLogin.addEventListener('click', openLogin);
+    authArea.appendChild(btnLogin);
+  }
+}
+
+doLogin.addEventListener('click', async ()=>{
+  loginMsg.textContent='';
+  try{
+    await signInWithEmailAndPassword(auth, authEmail.value.trim(), authPass.value);
+    closeLoginModal();
+  }catch(e){ loginMsg.textContent = e.message || 'Login failed'; }
+});
+
+onAuthStateChanged(auth, async (user)=>{
+  CURRENT_USER = user || null; IS_ADMIN = false;
+  renderAuthButtons();
+  if(user){
+    // determine admin: check user doc's isAdmin or ADMIN_EMAILS
+    try{
+      const uref = doc(db,'users', user.uid);
+      const udoc = await getDocs(query(collection(db,'users'), where('emailLower','==', (user.email||'').toLowerCase()))).then(s=>s.docs[0]);
+      if(udoc){ const data = udoc.data(); IS_ADMIN = !!data?.isAdmin || ADMIN_EMAILS.includes((user.email||'').toLowerCase()); }
+      else IS_ADMIN = ADMIN_EMAILS.includes((user.email||'').toLowerCase());
+    }catch(e){ console.warn('admin check failed', e); }
+    if(IS_ADMIN){ setOp('Signed in as admin', 'text-emerald-700'); await loadProductsFromFirestore(); }
+    else setOp('Signed in but not an admin', 'text-red-600');
+  }
+});
+
+// init
+renderAuthButtons();
+
+</script>
+</body>
+</html>
