@@ -490,71 +490,81 @@ headerRight.appendChild(contactBtn);
 
   // Admin Product Modal (open from header) - enhanced with product management
   const adminProductModal = document.createElement('div');
-  adminProductModal.className = 'modal'; adminProductModal.id = 'adminProductModal'; adminProductModal.setAttribute('aria-hidden','true');
+  adminProductModal.className = 'modal overflow-y-auto'; adminProductModal.id = 'adminProductModal'; adminProductModal.setAttribute('aria-hidden','true');
   adminProductModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative">
+    <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full max-h-[90vh] relative flex flex-col">
       <button id="closeAdminProduct" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4">จัดการสินค้า</h3>
+      <div class="p-6 overflow-y-auto flex-1 space-y-6">
+        <h3 class="text-xl font-bold">จัดการสินค้า</h3>
 
-      <div class="mb-6 space-y-3 text-sm">
-        <h4 class="font-semibold">เพิ่มสินค้าใหม่</h4>
-        <div class="flex flex-wrap gap-3">
-          <input id="pProgram" type="text" placeholder="หมวด/โปรแกรม" class="border rounded p-2" />
-          <input id="pName" type="text" placeholder="ชื่อแพ็กเกจ/สินค้า" class="border rounded p-2" />
-          <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="border rounded p-2" />
-          <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ" class="border rounded p-2" />
-          <div class="flex items-center gap-3">
-            <label class="inline-flex items-center gap-2"><input id="pReqEmail" type="checkbox" /> ต้องใส่อีเมล</label>
-            <label class="inline-flex items-center gap-2"><input id="pReqPassword" type="checkbox" /> ต้องใส่รหัสผ่าน</label>
-            <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> ต้องใส่ Username</label>
-            <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> ต้องใส่ SN</label>
-            <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> ต้องใส่ IMEI</label>
-            <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มสินค้า</button>
+        <div class="space-y-3 text-sm">
+          <h4 class="font-semibold">เพิ่มสินค้าใหม่</h4>
+          <div class="flex flex-wrap gap-3">
+            <input id="pProgram" type="text" placeholder="โปรแกรม" class="border rounded p-2 min-w-[12rem] flex-1" />
+            <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ" class="border rounded p-2 min-w-[12rem] flex-1" />
+            <div class="grid gap-2 w-full sm:grid-cols-2">
+              <input id="pName" type="text" placeholder="แพ็กเกจ / ชื่อ (เพิ่มรายการเดียว)" class="border rounded p-2" />
+              <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="border rounded p-2" />
+            </div>
+            <textarea id="pBulkLines" rows="3" placeholder="6 เดือน, 1200
+12 เดือน, 2200" class="border rounded p-2 w-full"></textarea>
+            <p class="text-xs text-slate-500 w-full">เพิ่มหลายรายการ: กรอกแพ็กเกจกับราคา (คั่นด้วยเครื่องหมาย , หรือ |) ทีละบรรทัด</p>
+            <div class="flex flex-wrap items-center gap-3 w-full">
+              <label class="inline-flex items-center gap-2"><input id="pReqEmail" type="checkbox" /> ต้องการอีเมล</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqPassword" type="checkbox" /> ต้องการรหัสผ่าน</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> ต้องการ Username</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> ต้องการ SN</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> ต้องการ IMEI</label>
+              <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มสินค้า</button>
+            </div>
+          </div>
+          <div id="productMsg" class="text-sm"></div>
+        </div>
+
+        <div id="productsArea" class="rounded-lg bg-white border p-4">
+          <div class="flex flex-col gap-2 mb-3 md:flex-row md:items-center md:justify-between">
+            <h4 class="font-semibold">รายการสินค้าในฐานข้อมูล</h4>
+            <div class="flex flex-wrap items-center gap-3">
+              <input id="adminProductSearch" type="search" placeholder="ค้นหาสินค้า โปรแกรม/แพ็กเกจ" class="border rounded px-3 py-2 text-sm w-full sm:w-72">
+              <button id="btnRefreshProducts" class="bg-slate-100 text-slate-700 text-sm px-3 py-1 rounded-md">รีเฟรช</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <div class="max-h-[55vh] overflow-y-auto">
+              <table id="productsTable" class="w-full text-sm border-collapse">
+                <thead>
+                  <tr class="text-left border-b">
+                    <th class="p-2">เลือก</th>
+                    <th class="p-2">โปรแกรม</th>
+                    <th class="p-2">แพ็กเกจ / ชื่อ</th>
+                    <th class="p-2">ราคา</th>
+                    <th class="p-2">image</th>
+                    <th class="p-2">email?</th>
+                    <th class="p-2">password?</th>
+                    <th class="p-2">username?</th>
+                    <th class="p-2">sn?</th>
+                    <th class="p-2">imei?</th>
+                    <th class="p-2">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="productsTbody" class="text-slate-700"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-3">
+            <button id="btnBulkSave" class="bg-emerald-600 text-white px-3 py-2 rounded">Save selected</button>
+            <button id="btnDeleteSelected" class="bg-red-600 text-white px-3 py-2 rounded">Delete selected</button>
+            <div id="bulkMsg" class="text-sm text-slate-600 ml-3"></div>
           </div>
         </div>
-        <div id="productMsg" class="text-sm"></div>
       </div>
-
-      <div id="productsArea" class="rounded-lg bg-white border p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h4 class="font-semibold">รายการสินค้าในฐานข้อมูล</h4>
-          <div class="flex items-center gap-3">
-            <div class="text-sm text-slate-500">คลิก Save เพื่อบันทึกแถว หรือเลือกหลายแถวแล้วใช้ Bulk Save</div>
-            <button id="btnRefreshProducts" class="bg-slate-100 text-slate-700 text-sm px-3 py-1 rounded-md">รีเฟรช</button>
-          </div>
-        </div>
-
-        <div class="overflow-auto">
-          <table id="productsTable" class="w-full text-sm border-collapse">
-            <thead>
-              <tr class="text-left border-b">
-                <th class="p-2">เลือก</th>
-                <th class="p-2">โปรแกรม</th>
-                <th class="p-2">แพ็กเกจ / ชื่อ</th>
-                <th class="p-2">ราคา</th>
-                <th class="p-2">image</th>
-                <th class="p-2">email?</th>
-                <th class="p-2">password?</th>
-                <th class="p-2">username?</th>
-                <th class="p-2">sn?</th>
-                <th class="p-2">imei?</th>
-                <th class="p-2">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody id="productsTbody" class="text-slate-700"></tbody>
-          </table>
-        </div>
-
-        <div class="mt-4 flex gap-3">
-          <button id="btnBulkSave" class="bg-emerald-600 text-white px-3 py-2 rounded">Save selected</button>
-          <button id="btnDeleteSelected" class="bg-red-600 text-white px-3 py-2 rounded">Delete selected</button>
-          <div id="bulkMsg" class="text-sm text-slate-600 ml-3"></div>
-        </div>
-      </div>
-    </div>`;
+    </div>
+  `;
   document.body.appendChild(adminProductModal);
   document.getElementById('closeAdminProduct')?.addEventListener('click', ()=>{ document.getElementById('adminProductModal')?.classList.remove('active'); });
-  adminProductModal.addEventListener('click',(e)=>{ if(e.target===adminProductModal) adminProductModal.classList.remove('active'); });
+  document.getElementById('adminProductSearch')?.addEventListener('input', (e)=>{ applyAdminProductFilter(e.target.value); });
 
   // Helper: persist/restore admin orders filter (exclude 'paid')
   const ADMIN_FILTER_KEY = 'adminOrdersFilter';
@@ -1587,34 +1597,97 @@ groupsEl.appendChild(card);
     catch(e){ el.classList.add('text-red-600'); el.textContent = e.message; }
   });
   document.getElementById('addProductBtn').addEventListener('click', async ()=>{
-    const data = {
-      program: document.getElementById('pProgram').value,
-      name: document.getElementById('pName').value,
-      price: document.getElementById('pPrice').value,
-      image: document.getElementById('pImage').value,
-      requiresEmail: document.getElementById('pReqEmail').checked,
-      requiresPassword: document.getElementById('pReqPassword')?.checked || false,
-      requiresUsername: document.getElementById('pReqUsername')?.checked || false,
-      requiresSN: document.getElementById('pReqSN')?.checked || false,
-      requiresIMEI: document.getElementById('pReqIMEI')?.checked || false
-    };
-    const el = document.getElementById('productMsg'); el.textContent=''; el.className='text-sm';
-    try{
-      await addProductFS(data);
-      el.classList.add('text-emerald-700'); el.textContent = 'เพิ่มสินค้าแล้ว';
-      // reset inputs on success
-      try{
-        document.getElementById('pProgram').value = '';
-        document.getElementById('pName').value = '';
-        document.getElementById('pPrice').value = '';
-        document.getElementById('pImage').value = '';
-        document.getElementById('pReqEmail').checked = false;
-        document.getElementById('pReqPassword').checked = false;
-        document.getElementById('pReqUsername').checked = false;
-        document.getElementById('pReqSN').checked = false;
-        document.getElementById('pReqIMEI').checked = false;
-      }catch{}
-    }catch(e){ el.classList.add('text-red-600'); el.textContent = e.message; }
+    const program = document.getElementById('pProgram').value.trim();
+    const image = document.getElementById('pImage').value.trim();
+    const requiresEmail = document.getElementById('pReqEmail').checked;
+    const requiresPassword = document.getElementById('pReqPassword')?.checked || false;
+    const requiresUsername = document.getElementById('pReqUsername')?.checked || false;
+    const requiresSN = document.getElementById('pReqSN')?.checked || false;
+    const requiresIMEI = document.getElementById('pReqIMEI')?.checked || false;
+    const singleName = document.getElementById('pName').value.trim();
+    const singlePrice = document.getElementById('pPrice').value.trim();
+    const bulkRaw = document.getElementById('pBulkLines')?.value || '';
+
+    const messageEl = document.getElementById('productMsg');
+    messageEl.textContent = '';
+    messageEl.className = 'text-sm';
+
+    try {
+      if (!program) throw new Error('กรุณาระบุโปรแกรม');
+
+      const entries = [];
+      const pushEntry = (name, price, lineLabel = '') => {
+        const trimmedName = (name || '').trim();
+        if (!trimmedName) throw new Error(lineLabel ? `บรรทัดที่ ${lineLabel}: กรุณาระบุชื่อแพ็กเกจ` : 'กรุณาระบุชื่อแพ็กเกจ');
+        const priceNumber = Number(String(price || '').replace(/[^\d.]/g, ''));
+        if (!priceNumber || !isFinite(priceNumber)) {
+          throw new Error(lineLabel ? `บรรทัดที่ ${lineLabel}: ราคาต้องเป็นตัวเลข` : 'กรุณาระบุราคาเป็นตัวเลข');
+        }
+        entries.push({
+          program,
+          name: trimmedName,
+          price: priceNumber,
+          image,
+          requiresEmail,
+          requiresPassword,
+          requiresUsername,
+          requiresSN,
+          requiresIMEI
+        });
+      };
+
+      if (bulkRaw.trim()) {
+        const lines = bulkRaw.split(/\r?\n/);
+        lines.forEach((line, idx) => {
+          const raw = line.trim();
+          if (!raw) return;
+          let namePart = '';
+          let pricePart = '';
+          const splitByDelimiter = raw.split(/\s*[|,]\s*/);
+          if (splitByDelimiter.length >= 2) {
+            namePart = splitByDelimiter[0];
+            pricePart = splitByDelimiter.slice(1).join(' ').trim();
+          } else {
+            const lastSpace = raw.lastIndexOf(' ');
+            if (lastSpace > 0) {
+              namePart = raw.slice(0, lastSpace).trim();
+              pricePart = raw.slice(lastSpace + 1).trim();
+            }
+          }
+          if (!namePart || !pricePart) {
+            throw new Error(`รูปแบบบรรทัดที่ ${idx + 1} ไม่ถูกต้อง (ใช้รูปแบบ "แพ็กเกจ, ราคา")`);
+          }
+          pushEntry(namePart, pricePart, idx + 1);
+        });
+      }
+
+      if (singleName || singlePrice) {
+        if (!singleName || !singlePrice) {
+          throw new Error('สำหรับการเพิ่มทีละรายการ กรุณากรอกทั้งแพ็กเกจและราคา');
+        }
+        pushEntry(singleName, singlePrice);
+      }
+
+      if (!entries.length) {
+        throw new Error('กรุณากรอกแพ็กเกจและราคาอย่างน้อย 1 รายการ');
+      }
+
+      for (const entry of entries) {
+        await addProductFS(entry);
+      }
+
+      document.getElementById('pName').value = '';
+      document.getElementById('pPrice').value = '';
+      if (document.getElementById('pBulkLines')) document.getElementById('pBulkLines').value = '';
+
+      messageEl.classList.add('text-emerald-700');
+      messageEl.textContent = entries.length > 1
+        ? `เพิ่มสินค้าใหม่ ${entries.length} รายการเรียบร้อย`
+        : 'เพิ่มสินค้าเรียบร้อย';
+    } catch (e) {
+      messageEl.classList.add('text-red-600');
+      messageEl.textContent = e.message || 'ไม่สามารถเพิ่มสินค้าได้';
+    }
   });
 
   // ----- Admin Functions -----
@@ -1650,6 +1723,18 @@ groupsEl.appendChild(card);
     adminProductRefs.clear();
   }
 
+  function applyAdminProductFilter(term = '') {
+    const normalized = nk(term);
+    const rows = document.querySelectorAll('#productsTbody tr');
+    rows.forEach(row => {
+      const program = nk(row.dataset.program || '');
+      const name = nk(row.dataset.name || '');
+      const pack = nk(row.dataset.pack || '');
+      const match = !normalized || program.includes(normalized) || name.includes(normalized) || pack.includes(normalized);
+      row.classList.toggle('hidden', !match);
+    });
+  }
+
   // Set up product table with real-time updates
   async function setupProductTable() {
     if(!checkIsAdmin()) return;
@@ -1662,23 +1747,44 @@ groupsEl.appendChild(card);
 
     const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
       tbody.innerHTML = '';
-      snapshot.forEach(doc => {
-        const p = doc.data();
+      adminProductRefs.clear();
+
+      const docs = [];
+      snapshot.forEach(doc => docs.push(doc));
+
+      docs.sort((a, b) => {
+        const dataA = a.data() || {};
+        const dataB = b.data() || {};
+        const programA = String(dataA.program || '');
+        const programB = String(dataB.program || '');
+        const programCompare = programA.localeCompare(programB, 'th', { sensitivity: 'base' });
+        if (programCompare !== 0) return programCompare;
+        const nameA = String(dataA.name || dataA.pack || '');
+        const nameB = String(dataB.name || dataB.pack || '');
+        return nameA.localeCompare(nameB, 'th', { sensitivity: 'base' });
+      });
+
+      docs.forEach(doc => {
+        const data = doc.data() || {};
         adminProductRefs.set(doc.id, doc.ref);
+        const isEdited = adminEditedProducts.has(doc.id);
         const tr = document.createElement('tr');
-        tr.className = 'border-b';
+        tr.className = 'border-b' + (isEdited ? ' bg-amber-50' : '');
         tr.id = 'tr-' + doc.id;
+        tr.dataset.program = String(data.program || '');
+        tr.dataset.name = String(data.name || data.pack || '');
+        tr.dataset.pack = String(data.pack || '');
         tr.innerHTML = `
-          <td class="p-2"><input type="checkbox" class="product-select" data-id="${doc.id}"></td>
-          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${p.program}" data-field="program"></td>
-          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${p.name}" data-field="name"></td>
-          <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${p.price}" data-field="price"></td>
-          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${p.image}" data-field="image"></td>
-          <td class="p-2"><input type="checkbox" data-field="requiresEmail" ${p.requiresEmail ? 'checked' : ''}></td>
-          <td class="p-2"><input type="checkbox" data-field="requiresPassword" ${p.requiresPassword ? 'checked' : ''}></td>
-          <td class="p-2"><input type="checkbox" data-field="requiresUsername" ${p.requiresUsername ? 'checked' : ''}></td>
-          <td class="p-2"><input type="checkbox" data-field="requiresSN" ${p.requiresSN ? 'checked' : ''}></td>
-          <td class="p-2"><input type="checkbox" data-field="requiresIMEI" ${p.requiresIMEI ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" class="product-select" data-id="${doc.id}" ${adminSelectedProducts.has(doc.id) ? 'checked' : ''}></td>
+          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.program ?? ''}" data-field="program"></td>
+          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.name ?? ''}" data-field="name"></td>
+          <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${data.price ?? ''}" data-field="price"></td>
+          <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.image ?? ''}" data-field="image"></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresEmail" ${data.requiresEmail ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresPassword" ${data.requiresPassword ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresUsername" ${data.requiresUsername ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresSN" ${data.requiresSN ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="requiresIMEI" ${data.requiresIMEI ? 'checked' : ''}></td>
           <td class="p-2">
             <button class="bg-emerald-600 text-white px-2 py-1 rounded text-xs save-row" data-id="${doc.id}">Save</button>
             <button class="bg-red-600 text-white px-2 py-1 rounded text-xs delete-row" data-id="${doc.id}">Delete</button>
@@ -1686,7 +1792,6 @@ groupsEl.appendChild(card);
         `;
         tbody.appendChild(tr);
 
-        // Track changes in inputs
         const inputs = tr.querySelectorAll('input:not(.product-select)');
         inputs.forEach(input => {
           input.addEventListener('change', () => {
@@ -1745,6 +1850,8 @@ groupsEl.appendChild(card);
           else adminSelectedProducts.delete(cb.dataset.id);
         });
       });
+      const searchEl = document.getElementById('adminProductSearch');
+      applyAdminProductFilter(searchEl ? searchEl.value : '');
     });
 
     return unsubscribe;
