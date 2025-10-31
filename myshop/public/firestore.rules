@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
+      );
+    }
+    
+    // ===== users =====
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['email','displayName','credits','createdAt','isAdmin'])
+        && request.resource.data.email is string
+        && request.resource.data.email.lower() == request.auth.token.email.lower()
+        && request.resource.data.credits is int
+        && request.resource.data.credits == 0
+        && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+      
+      allow update: if isAdmin()
+        || (
+          isOwner(uid)
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['credits'])
+          && request.resource.data.credits is int
+          && request.resource.data.credits >= 0
+        );
+      
+      allow delete: if false;
+    }
+    
+    // ===== products =====
+    match /products/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // ===== orders =====
+    match /orders/{id} {
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll(['userId','userEmail','status','product','createdAt'])
+        && request.resource.data.status == 'pending';
+      
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+    
+    // ===== userSecurity =====
+    match /userSecurity/{docId} {
+      allow get: if true;
+      
+      allow create, update: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['emailLower','ownerUid','questionKey','answerHash','updatedAt'])
+        && request.resource.data.ownerUid == request.auth.uid;
+      
+      allow delete: if false;
+    }
+    
+    // ===== config (optional) =====
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

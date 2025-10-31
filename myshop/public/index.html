@@ -41,7 +41,7 @@
         </p>
       </div>
     </div>
-    <button id="contactBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">ติดต่อ / สั่งซื้อ</button>
+    
   </header>
 
   <main class="max-w-6xl mx-auto px-6 pb-16">
@@ -76,6 +76,10 @@
             <div class="text-slate-500" id="detailProgram"></div>
             <h3 id="detailName" class="text-2xl font-bold"></h3>
             <div class="text-2xl font-extrabold text-indigo-700">฿<span id="detailPrice">0</span></div>
+            <div id="detailInstructionsWrap" class="space-y-2 text-sm text-slate-600 hidden">
+              <h4 class="font-semibold text-slate-700">รายละเอียดสินค้า</h4>
+              <div id="detailInstructions" class="space-y-1 leading-relaxed"></div>
+            </div>
             <div id="detailFields" class="space-y-2"></div>
             <div class="flex gap-2">
               <button id="detailAddCart" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มในตะกร้า</button>
@@ -89,15 +93,22 @@
 
     <!-- Search -->
     <section class="mb-4">
-      <div class="relative w-full md:w-96">
-        <input id="searchInput" type="search"
-               placeholder="ค้นหา: โปรแกรม หรือ แพ็กเกจ (เช่น Unlocktool, 6 เดือน, 1 ปี)"
-               class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
-        <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z"/>
-        </svg>
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="relative w-full md:w-96">
+          <input id="searchInput" type="search"
+                 placeholder="ค้นหา: โปรแกรม ชื่อ หรือคีย์เวิร์ด (เช่น Unlocktool, 6 เดือน, 1 ปี)"
+                 class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+          </svg>
+        </div>
+        <div class="flex items-center gap-2 self-start">
+          <span class="text-sm text-slate-500 hidden md:inline">มุมมอง:</span>
+          <button id="viewListBtn" class="px-3 py-2 rounded-md border border-slate-200 text-sm bg-white shadow-sm">รายชื่อ</button>
+          <button id="viewTableBtn" class="px-3 py-2 rounded-md border border-slate-200 text-sm bg-white shadow-sm">ตาราง</button>
+        </div>
       </div>
-      <p id="status" class="text-sm text-slate-600 mt-2">กำลังโหลดข้อมูล...</p>
+      <p id="status" class="text-sm text-slate-600 mt-2">กำลังโหลดข้อมูลสินค้า...</p>
     </section>
 
     <!-- Packages (cards grouped) -->
@@ -140,62 +151,10 @@
       </div>
     </section>
 
-    <!-- Contact (on-page) -->
-    <section id="contact" class="rounded-2xl p-6 bg-white shadow">
-      <h3 class="text-2xl font-bold mb-2">ติดต่อ / สั่งซื้อ</h3>
-      <div class="grid md:grid-cols-3 gap-6">
-        <div class="space-y-1 text-sm">
-          <div class="font-semibold">โทรศัพท์</div>
-          <div class="text-slate-800 text-base">062-607-2670</div>
-          <div class="text-xs text-slate-500">เวลาทำการ 09:00–21:00 น.</div>
-        </div>
-        <div class="space-y-1 text-sm">
-          <div class="font-semibold">Facebook</div>
-          <a class="text-indigo-600 hover:underline break-all" href="https://www.facebook.com/S.Sonsupap" target="_blank" rel="noopener">
-            facebook.com/S.Sonsupap
-          </a>
-        </div>
-        <div class="space-y-1 text-sm">
-          <div class="font-semibold">LINE</div>
-          <div class="text-slate-700">ID: <span class="font-medium">@825lhqmj</span></div>
-          <div class="flex items-center gap-3">
-            <!-- เปลี่ยนเป็น LINE_QR.png -->
-            <img src="LINE_QR.png" alt="LINE QR Code" class="w-24 h-24 rounded-md border" />
-            <a class="text-indigo-600 hover:underline" href="https://line.me/R/ti/p/@825lhqmj" target="_blank" rel="noopener">เพิ่มเพื่อน</a>
-          </div>
-        </div>
-      </div>
-    </section>
+    
   </main>
 
-  <!-- Modal Contact -->
-  <div id="contactModal" class="modal" aria-hidden="true">
-    <div class="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 relative">
-      <button id="closeModal" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">ติดต่อ / สั่งซื้อ</h3>
-      <div class="space-y-4 text-sm">
-        <div>
-          <div class="font-semibold text-slate-700">📞 โทรศัพท์</div>
-          <div class="text-lg text-indigo-700">062-607-2670</div>
-        </div>
-        <div>
-          <div class="font-semibold text-slate-700">📘 Facebook</div>
-          <a href="https://www.facebook.com/S.Sonsupap" target="_blank" class="text-indigo-600 hover:underline">
-            facebook.com/S.Sonsupap
-          </a>
-        </div>
-        <div>
-          <div class="font-semibold text-slate-700">💬 LINE</div>
-          <p>ID: <strong>@825lhqmj</strong></p>
-          <div class="flex gap-4 items-center mt-2">
-            <!-- เปลี่ยนเป็น LINE_QR.png -->
-            <img src="LINE_QR.png" alt="LINE QR" class="w-24 h-24 rounded-md border">
-            <a href="https://line.me/R/ti/p/@825lhqmj" target="_blank" class="text-indigo-600 hover:underline">เพิ่มเพื่อน</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  
 
   <footer class="max-w-6xl mx-auto px-6 py-6 text-sm text-slate-500 text-center">
     © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · FB: S.Sonsupap · LINE: @825lhqmj
@@ -213,6 +172,95 @@
   let ADMIN_ORDERS_UNSUB = null;
   let PRODUCTS_UNSUB = null;
   let CART = [];
+  let PENDING_RESET_CODE = null;
+  let PENDING_RESET_EMAIL = "";
+
+  const SECURITY_QUESTIONS = [
+    { value: "first_pet", label: "สัตว์เลี้ยงตัวแรกของคุณชื่ออะไร?" },
+    { value: "birth_city", label: "คุณเกิดที่จังหวัดอะไร?" },
+    { value: "favorite_food", label: "อาหารจานโปรดของคุณคืออะไร?" },
+    { value: "best_friend", label: "ชื่อเล่นเพื่อนสนิทของคุณคืออะไร?" }
+  ];
+  const SECURITY_OPTIONS_HTML = SECURITY_QUESTIONS.map(q => `<option value="${q.value}">${q.label}</option>`).join("");
+
+  async function hashAnswer(answer){
+    if(!answer && answer !== 0) return '';
+    const normalized = String(answer).trim().toLowerCase();
+    try{
+      const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalized));
+      return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }catch(_){
+      try{ return btoa(normalized); }catch(__){ return normalized; }
+    }
+  }
+
+  async function computeSecurityDocId(email){
+    const emailLower = (email||'').trim().toLowerCase();
+    if(!emailLower) return '';
+    try{
+      const hashed = await hashAnswer(emailLower);
+      const safe = (hashed||'').replace(/[^a-z0-9]/gi,'');
+      return safe || emailLower.replace(/[^a-z0-9]/gi,'');
+    }catch(_){
+      return emailLower.replace(/[^a-z0-9]/gi,'');
+    }
+  }
+
+  async function upsertSecurityQA(email, questionKey, answerHash, ownerUid = (auth?.currentUser?.uid||'')){
+    if(!email || !questionKey || !answerHash || !ownerUid) return;
+    const emailLower = (email||'').trim().toLowerCase();
+    const docId = await computeSecurityDocId(emailLower);
+    if(!docId) return;
+    try{
+      await setDoc(doc(db,'userSecurity', docId),{
+        emailLower,
+        ownerUid,
+        questionKey,
+        answerHash,
+        updatedAt: serverTimestamp()
+      },{ merge:true });
+    }catch(e){ console.warn('security QA store failed', e?.message||e); }
+  }
+
+  const PRODUCT_VIEW_KEY = 'productViewMode';
+  const VIEW_MODES = { LIST: 'list', TABLE: 'table' };
+  let PRODUCT_VIEW_MODE = VIEW_MODES.LIST;
+  try{
+    const savedView = localStorage.getItem(PRODUCT_VIEW_KEY);
+    if(savedView && Object.values(VIEW_MODES).includes(savedView)) PRODUCT_VIEW_MODE = savedView;
+  }catch(_){ PRODUCT_VIEW_MODE = VIEW_MODES.LIST; }
+
+  function updateViewToggleUI(){
+    const listBtn = document.getElementById('viewListBtn');
+    const tableBtn = document.getElementById('viewTableBtn');
+    const listActive = PRODUCT_VIEW_MODE === VIEW_MODES.LIST;
+    const tableActive = PRODUCT_VIEW_MODE === VIEW_MODES.TABLE;
+    if(listBtn){
+      listBtn.classList.toggle('bg-indigo-600', listActive);
+      listBtn.classList.toggle('text-white', listActive);
+      listBtn.classList.toggle('border-indigo-600', listActive);
+      listBtn.classList.toggle('bg-white', !listActive);
+      listBtn.classList.toggle('text-slate-700', !listActive);
+      listBtn.classList.toggle('border-slate-200', !listActive);
+    }
+    if(tableBtn){
+      tableBtn.classList.toggle('bg-indigo-600', tableActive);
+      tableBtn.classList.toggle('text-white', tableActive);
+      tableBtn.classList.toggle('border-indigo-600', tableActive);
+      tableBtn.classList.toggle('bg-white', !tableActive);
+      tableBtn.classList.toggle('text-slate-700', !tableActive);
+      tableBtn.classList.toggle('border-slate-200', !tableActive);
+    }
+  }
+
+  function setProductViewMode(mode){
+    if(!Object.values(VIEW_MODES).includes(mode)) return;
+    if(PRODUCT_VIEW_MODE === mode){ updateViewToggleUI(); return; }
+    PRODUCT_VIEW_MODE = mode;
+    try{ localStorage.setItem(PRODUCT_VIEW_KEY, mode); }catch(_){ }
+    updateViewToggleUI();
+    render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
+  }
 
   // ----- Firebase Configuration -----
   const firebaseConfig = {
@@ -232,7 +280,8 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import {
     getAuth, onAuthStateChanged,
-    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+    sendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc,
@@ -245,7 +294,10 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   // Optional: Analytics (non-blocking)
-  try { isSupported().then(ok=>{ if(ok) getAnalytics(app); }); } catch {}
+  const canUseAnalytics = typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http');
+  if(canUseAnalytics){
+    try { isSupported().then(ok=>{ if(ok) getAnalytics(app); }); } catch(e){ console.warn('Analytics disabled', e?.message||e); }
+  }
 
   // Configure admin emails (edit to your admin accounts) or use isAdmin in user doc
   const ADMIN_EMAILS = [
@@ -257,9 +309,7 @@
   const statusEl   = document.getElementById("status");
   const emptyEl    = document.getElementById("emptyState");
   const searchEl   = document.getElementById("searchInput");
-  const contactBtn = document.getElementById("contactBtn");
-  const modal      = document.getElementById("contactModal");
-  const closeBtn   = document.getElementById("closeModal");
+  
 
 // Auth UI bits (ย้ายไปอยู่ฝั่งขวารวมกับปุ่ม "ติดต่อ / สั่งซื้อ")
 const header = document.querySelector('header');
@@ -269,9 +319,8 @@ const headerRight = document.createElement('div');
 // จัดให้ปุ่ม auth + ปุ่มติดต่ออยู่ขวาเสมอ และเว้นช่องว่างสวยงาม
 headerRight.className = 'flex items-center gap-3 ml-auto';
 
-// วาง headerRight ไว้ก่อนปุ่มติดต่อ แล้วดึงปุ่มติดต่อเข้าไปอยู่ในกล่องเดียวกัน
-header.insertBefore(headerRight, contactBtn);
-headerRight.appendChild(contactBtn);
+// วาง headerRight ท้าย header
+header.appendChild(headerRight);
 
   headerRight.innerHTML = `
     <div class="flex items-center gap-3">
@@ -294,6 +343,11 @@ headerRight.appendChild(contactBtn);
         <input id="authEmailR" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
         <input id="authPassR" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
         <input id="authPass2R" type="password" placeholder="ยืนยันรหัสผ่าน" class="w-full border rounded p-2" />
+        <select id="authQuestionR" class="w-full border rounded p-2">
+          <option value="">เลือกคำถามเพื่อความปลอดภัย</option>
+          ${SECURITY_OPTIONS_HTML}
+        </select>
+        <input id="authAnswerR" type="text" placeholder="คำตอบ" class="w-full border rounded p-2" />
         <button id="doRegister" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">สมัครสมาชิก</button>
         <div id="authMsgR" class="text-sm text-red-600"></div>
       </div>
@@ -310,11 +364,43 @@ headerRight.appendChild(contactBtn);
       <div class="space-y-3">
         <input id="authEmailL" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
         <input id="authPassL" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
-        <button id="doLogin" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">ลงชื่อเข้าใช้</button>
+        <button id="doLogin" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">เข้าสู่ระบบ</button>
+        <button id="openForgot" type="button" class="text-sm text-indigo-600 hover:underline">ลืมรหัสผ่าน?</button>
         <div id="authMsgL" class="text-sm text-red-600"></div>
       </div>
     </div>`;
   document.body.appendChild(loginModal);
+
+  // Forgot Password Modal
+  const forgotModal = document.createElement('div');
+  forgotModal.className = 'modal'; forgotModal.id = 'forgotModal'; forgotModal.setAttribute('aria-hidden','true');
+  forgotModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeForgot" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ลืมรหัสผ่าน</h3>
+      <div class="space-y-4 text-center text-sm text-slate-600">
+        <p>กรุณาติดต่อ <span class="font-semibold text-slate-800">LINE @825lhqmj</span> เพื่อให้เจ้าหน้าที่ช่วยรีเซ็ตรหัสผ่านให้คุณ</p>
+        <a href="https://line.me/R/ti/p/@825lhqmj" target="_blank" rel="noopener" class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition">เปิด LINE</a>
+      </div>
+    </div>`;
+  document.body.appendChild(forgotModal);
+
+  // Reset Password Modal
+  const resetPasswordModal = document.createElement('div');
+  resetPasswordModal.className = 'modal'; resetPasswordModal.id = 'resetPasswordModal'; resetPasswordModal.setAttribute('aria-hidden','true');
+  resetPasswordModal.innerHTML = `
+    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+      <button id="closeReset" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <h3 class="text-xl font-bold mb-4 text-center">ตั้งรหัสผ่านใหม่</h3>
+      <p id="resetEmail" class="text-sm text-slate-500 text-center mb-2"></p>
+      <div class="space-y-3">
+        <input id="resetPass" type="password" placeholder="รหัสผ่านใหม่" class="w-full border rounded p-2" />
+        <input id="resetPass2" type="password" placeholder="ยืนยันรหัสผ่านใหม่" class="w-full border rounded p-2" />
+        <button id="doResetPassword" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">บันทึกรหัสผ่านใหม่</button>
+        <div id="resetMsg" class="text-sm text-red-600"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(resetPasswordModal);
 
   // Order Modal
   const orderModal = document.createElement('div');
@@ -393,14 +479,13 @@ headerRight.appendChild(contactBtn);
             <div class="text-sm text-slate-700 mt-2">ติดต่อผ่าน LINE</div>
           </div>
         </div>
-        <div class="rounded-lg p-3 bg-amber-50 border max-w-[90%]">โปรดติดต่อเพื่อยืนยันการชำระเงินผ่าน LINE เท่านั้น:<br/><strong>LINE ID: @825lhqmj</strong><br/>หากต้องการความสะดวก ให้ส่งภาพสลิปผ่านแชท LINE</div>
+        <div class="rounded-lg p-3 bg-amber-50 border max-w-[90%]">โปรดติดต่อเพื่อยืนยันการชำระเงินผ่าน LINE เท่านั้น:<br/><strong>LINE ID: @825lhqmj</strong><br/></div>
       </div>
     </div>`;
   document.body.appendChild(topupModal);
   // wire topup modal buttons
-  document.getElementById('closeTopup')?.addEventListener('click', ()=>{ document.getElementById('topupModal')?.classList.remove('active'); });
-  document.getElementById('topupModal')?.addEventListener('click', (e)=>{ if(e.target===document.getElementById('topupModal')) document.getElementById('topupModal')?.classList.remove('active'); });
-
+  document.getElementById('closeTopup')?.addEventListener('click', ()=>{ const tm = document.getElementById('topupModal'); if(tm) hideModalElement(tm); });
+  
   // Cart Modal
   const cartModal = document.createElement('div');
   cartModal.className = 'modal'; cartModal.id = 'cartModal'; cartModal.setAttribute('aria-hidden','true');
@@ -431,13 +516,17 @@ headerRight.appendChild(contactBtn);
         <div class="space-y-3">
           <h3 class="text-2xl font-bold" id="pdName"></h3>
           <div class="text-2xl font-extrabold text-indigo-700">฿<span id="pdPrice">0</span></div>
+          <div id="pdInstructionsWrap" class="space-y-2 text-sm text-slate-600 hidden">
+            <h4 class="font-semibold text-slate-700">รายละเอียดสินค้า</h4>
+            <div id="pdInstructions" class="space-y-1 leading-relaxed"></div>
+          </div>
           <div id="pdFields" class="space-y-2"></div>
-          <div>
-            <button id="pdAddCart" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มในตะกร้า</button>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button id="pdAddCart" class="w-full sm:flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มในตะกร้า</button>
+            <button id="pdCancel" class="w-full sm:flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ปิด</button>
           </div>
           <div id="pdMsg" class="text-sm"></div>
         </div>
-      </div>
     </div>`;
   document.body.appendChild(productModal);
 
@@ -468,8 +557,7 @@ headerRight.appendChild(contactBtn);
     </div>`;
   document.body.appendChild(adminOrdersModal);
   // close handler
-  document.getElementById('closeAdminOrders')?.addEventListener('click', ()=>{ document.getElementById('adminOrdersModal')?.classList.remove('active'); });
-  adminOrdersModal.addEventListener('click', (e)=>{ if(e.target===adminOrdersModal) adminOrdersModal.classList.remove('active'); });
+  document.getElementById('closeAdminOrders')?.addEventListener('click', ()=>{ const ordersModal = document.getElementById('adminOrdersModal'); if(ordersModal) hideModalElement(ordersModal); });
 
   // Admin Credit Modal (open from header)
   const adminCreditModal = document.createElement('div');
@@ -486,8 +574,7 @@ headerRight.appendChild(contactBtn);
       </div>
     </div>`;
   document.body.appendChild(adminCreditModal);
-  document.getElementById('closeAdminCredit')?.addEventListener('click', ()=>{ document.getElementById('adminCreditModal')?.classList.remove('active'); });
-  adminCreditModal.addEventListener('click',(e)=>{ if(e.target===adminCreditModal) adminCreditModal.classList.remove('active'); });
+  document.getElementById('closeAdminCredit')?.addEventListener('click', ()=>{ const creditModal = document.getElementById('adminCreditModal'); if(creditModal) hideModalElement(creditModal); });
 
   // Admin Product Modal (open from header) - enhanced with product management
   const adminProductModal = document.createElement('div');
@@ -509,6 +596,7 @@ headerRight.appendChild(contactBtn);
             </div>
             <textarea id="pBulkLines" rows="3" placeholder="6 เดือน, 1200
 12 เดือน, 2200" class="border rounded p-2 w-full"></textarea>
+            <textarea id="pDetails" rows="3" placeholder="กรอกข้อความ" class="border rounded p-2 w-full"></textarea>
             <p class="text-xs text-slate-500 w-full">เพิ่มหลายรายการ: กรอกแพ็กเกจกับราคา (คั่นด้วยเครื่องหมาย , หรือ |) ทีละบรรทัด</p>
             <div class="flex flex-wrap items-center gap-3 w-full">
               <label class="inline-flex items-center gap-2"><input id="pReqEmail" type="checkbox" /> ต้องการอีเมล</label>
@@ -546,6 +634,7 @@ headerRight.appendChild(contactBtn);
                     <th class="p-2">username?</th>
                     <th class="p-2">sn?</th>
                     <th class="p-2">imei?</th>
+                    <th class="p-2">รายละเอียด</th>
                     <th class="p-2">จัดการ</th>
                   </tr>
                 </thead>
@@ -560,11 +649,15 @@ headerRight.appendChild(contactBtn);
             <div id="bulkMsg" class="text-sm text-slate-600 ml-3"></div>
           </div>
         </div>
+        <div class="mt-6 flex justify-end">
+          <button id="closeAdminProductFooter" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ปิด</button>
+        </div>
       </div>
     </div>
   `;
   document.body.appendChild(adminProductModal);
-  document.getElementById('closeAdminProduct')?.addEventListener('click', ()=>{ document.getElementById('adminProductModal')?.classList.remove('active'); });
+  document.getElementById('closeAdminProduct')?.addEventListener('click', ()=>{ const productModalEl = document.getElementById('adminProductModal'); if(productModalEl) hideModalElement(productModalEl); });
+  document.getElementById('closeAdminProductFooter')?.addEventListener('click', ()=>{ const productModalEl = document.getElementById('adminProductModal'); if(productModalEl) hideModalElement(productModalEl); });
   document.getElementById('adminProductSearch')?.addEventListener('input', (e)=>{ applyAdminProductFilter(e.target.value); });
 
   // Helper: persist/restore admin orders filter (exclude 'paid')
@@ -757,57 +850,96 @@ headerRight.appendChild(contactBtn);
   }
 
   function render(groups, filter=""){
-    const q=nk(filter);
-    groupsEl.innerHTML="";
-    let total=0;
+    const q = nk(filter);
+    groupsEl.innerHTML = "";
+    let total = 0;
+    updateViewToggleUI();
+    if(PRODUCT_VIEW_MODE === VIEW_MODES.TABLE){
+      groupsEl.className = 'space-y-6';
+    } else {
+      groupsEl.className = 'grid gap-6 md:grid-cols-2';
+    }
 
     Object.entries(groups).forEach(([program,items])=>{
       let keep = items.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
       if(!keep.length) return;
-      // Sort packages within the same program by duration (months) when detectable.
       keep.sort((a,b)=>{
         const da = parseDurationMonths(a.pack);
         const db = parseDurationMonths(b.pack);
         if(isFinite(da) && isFinite(db) && da !== db) return da - db;
-        // if durations equal or unknown, sort by price ascending then name
         const pa = Number(a.price)||0; const pb = Number(b.price)||0;
         if(pa !== pb) return pa - pb;
         return (a.pack||'').localeCompare(b.pack||'', 'th');
       });
-      total+=keep.length;
+      total += keep.length;
 
-      const card=document.createElement("div");
-      card.className="card-hover bg-white rounded-2xl p-6 shadow";
-      card.innerHTML=`
-        <div class="flex items-center justify-between mb-4">
-          <div>
+      if(PRODUCT_VIEW_MODE === VIEW_MODES.TABLE){
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bg-white rounded-2xl shadow overflow-hidden';
+        wrapper.innerHTML = `
+          <div class="px-6 py-4 border-b">
             <h4 class="text-xl font-semibold">${program}</h4>
-            <p class="text-sm text-slate-500">เลือกสินค้าและสั่งซื้อด้วยเครดิต</p>
+
           </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
-      const body=card.querySelector("[data-body]");
-
-keep.forEach(p=>{
-  const item=document.createElement("div");
-  item.className="border rounded-lg p-4 flex flex-col items-center text-center gap-2";
-  item.innerHTML=`
-    ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
-    <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
-    <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
-    <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
-  `;
-  const open = ()=> openProductModal(p);
-  item.querySelector('button').addEventListener('click', open);
-  const clickable = item.querySelectorAll('[data-open]');
-  clickable.forEach(el=> el.addEventListener('click', open));
-  body.appendChild(item);
-});
-
-groupsEl.appendChild(card);
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-4 py-2 text-left font-semibold text-slate-600 w-1/2">แพ็กเกจ</th>
+                  <th class="px-4 py-2 text-center font-semibold text-slate-600 w-28">ราคา</th>
+                  <th class="px-4 py-2 text-center font-semibold text-slate-600 w-36">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody data-body class="bg-white divide-y divide-slate-100"></tbody>
+            </table>
+          </div>`;
+        const body = wrapper.querySelector('[data-body]');
+        keep.forEach(p=>{
+          const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="px-4 py-2">
+                <div class="font-semibold text-slate-700 cursor-pointer pl-8" data-open="1">${p.pack}</div>
+              </td>
+              <td class="px-4 py-2 text-center text-slate-700 font-semibold whitespace-nowrap w-28">฿${currencyTH(p.price)}</td>
+              <td class="px-4 py-2 text-center w-36">
+                <button class="inline-flex items-center justify-center bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mx-auto">ดูรายละเอียด</button>
+              </td>`;
+          const open = ()=> openProductModal(p);
+          row.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', open));
+          row.querySelector('button').addEventListener('click', open);
+          body.appendChild(row);
+        });
+        groupsEl.appendChild(wrapper);
+      } else {
+        const card = document.createElement('div');
+        card.className = 'card-hover bg-white rounded-2xl p-6 shadow';
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h4 class="text-xl font-semibold">${program}</h4>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" data-body></div>`;
+        const body = card.querySelector('[data-body]');
+        keep.forEach(p=>{
+          const item = document.createElement('div');
+          item.className = 'border rounded-lg p-4 flex flex-col items-center text-center gap-2';
+          item.innerHTML = `
+            ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
+            <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
+            <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
+            <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
+          `;
+          const open = ()=> openProductModal(p);
+          item.querySelector('button').addEventListener('click', open);
+          item.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', open));
+          body.appendChild(item);
+        });
+        groupsEl.appendChild(card);
+      }
     });
 
-    emptyEl.classList.toggle("hidden", total>0);
+    emptyEl.classList.toggle('hidden', total>0);
   }
 
   function formatProducts(items) {
@@ -822,8 +954,23 @@ groupsEl.appendChild(card);
       requiresUsername: !!p.requiresUsername,
       requiresSN: !!p.requiresSN,
       requiresIMEI: !!p.requiresIMEI,
-      requiresPassword: !!p.requiresPassword
+      requiresPassword: !!p.requiresPassword,
+      details: p.details||''
     })).filter(x => x.price > 0);
+  }
+
+  function renderProductSteps(wrapperId, listId, details) {
+    const wrap = document.getElementById(wrapperId);
+    const list = document.getElementById(listId);
+    if(!wrap || !list) return;
+    const steps = String(details || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if(!steps.length){
+      wrap.classList.add('hidden');
+      list.innerHTML = '';
+      return;
+    }
+    wrap.classList.remove('hidden');
+    list.innerHTML = `<ol class="list-decimal pl-5 space-y-1">${steps.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ol>`;
   }
 
   // Show inline product detail panel on main page (does not add to cart by itself)
@@ -835,6 +982,7 @@ groupsEl.appendChild(card);
     document.getElementById('detailProgram').textContent = p.program||'';
     document.getElementById('detailName').textContent = p.pack||p.name||'';
     document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+    renderProductSteps('detailInstructionsWrap', 'detailInstructions', p.details);
     const fields = document.getElementById('detailFields');
     // build dynamic inputs depending on required fields (email, username, SN, IMEI)
     fields.innerHTML = '';
@@ -914,86 +1062,123 @@ groupsEl.appendChild(card);
         requiresUsername: !!d.data().requiresUsername,
         requiresSN: !!d.data().requiresSN,
         requiresIMEI: !!d.data().requiresIMEI,
-        requiresPassword: !!d.data().requiresPassword
+        requiresPassword: !!d.data().requiresPassword,
+        details: d.data().details || ''
       })).filter(x => x.price > 0);
       render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
     });
   }
 
+  async function performLogout(){
+    try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); }
+  }
+
+  async function logoutWithConfirm(){
+    if(!confirm("ต้องการออกจากระบบหรือไม่?")) return;
+    await performLogout();
+  }
+
   function updateHeaderAuth(){
+    // Rebuild header actions every time to avoid stale elements and duplicated listeners.
+    // We'll clear the container and recreate the buttons, then attach listeners.
     const bal = CURRENT_USER_DOC?.credits || 0;
-    // Rebuild header actions every time to avoid stale elements
+    headerRight.innerHTML = '';
+
     if(CURRENT_USER){
-      headerRight.innerHTML = `
-        <div class="flex items-center gap-3">
-            <div id="userInfo" class="text-sm text-slate-700">${CURRENT_USER.email||''}</div>
-            <div id="balanceInfo" class="text-sm font-semibold text-indigo-700">เครดิต: ${currencyTH(bal)}</div>
-            <button id="topupBtn" class="bg-emerald-600 text-white text-sm px-3 py-2 rounded-md">เติมเครดิต</button>
-            <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
-            <button id="historyBtn" class="bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ประวัติการสั่งซื้อ</button>
-            <button id="adminOrdersBtn" class="bg-amber-100 text-amber-800 text-sm px-3 py-2 rounded-md shadow">คำสั่งซื้อ (Admin)</button>
-            <button id="openAdminCreditBtn" class="bg-emerald-500 text-white text-sm px-3 py-2 rounded-md shadow">เติมเครดิตลูกค้า</button>
-            <button id="openAdminProductBtn" class="bg-indigo-600 text-white text-sm px-3 py-2 rounded-md shadow">เพิ่มสินค้า</button>
-            <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow">ออกจากระบบ</button>
-          </div>`;
-      const topupBtn   = document.getElementById('topupBtn');
-      const historyBtn = document.getElementById('historyBtn');
-      const cartBtn    = document.getElementById('cartBtn');
-      const logoutBtn  = document.getElementById('logoutBtn');
-      const adminOrdersBtn = document.getElementById('adminOrdersBtn');
-      const openAdminCreditBtn = document.getElementById('openAdminCreditBtn');
-      const openAdminProductBtn = document.getElementById('openAdminProductBtn');
-    if(topupBtn){ topupBtn.addEventListener('click', ()=>{ if(!CURRENT_USER){ openLoginModal(); return; } const tmodal = document.getElementById('topupModal'); if(tmodal) tmodal.classList.add('active'); }); }
-    historyBtn.addEventListener('click', openHistoryModal);
-    cartBtn.addEventListener('click', openCartModal);
-    if(adminOrdersBtn){ adminOrdersBtn.addEventListener('click', ()=>{ 
-      // open admin orders modal with previously saved filter (or defaults)
-      try{ const saved = getSavedAdminFilter(); if(saved) applyFilterToUI(saved); else applyFilterToUI(['pending','accepted','rejected']); }catch{}
-      document.getElementById('adminOrdersModal')?.classList.add('active'); 
-      listenOrdersForAdmin(); 
-    }); }
-    if(openAdminCreditBtn){ openAdminCreditBtn.addEventListener('click', ()=>{ document.getElementById('adminCreditModal')?.classList.add('active'); }); }
-    if(openAdminProductBtn){ openAdminProductBtn.addEventListener('click', ()=>{ document.getElementById('adminProductModal')?.classList.add('active'); }); }
+      const container = document.createElement('div');
+      container.className = 'flex items-center gap-3';
+
+      const userInfo = document.createElement('div');
+      userInfo.id = 'userInfo'; userInfo.className = 'text-sm text-slate-700'; userInfo.textContent = CURRENT_USER.email||'';
+      const balanceInfo = document.createElement('div');
+      balanceInfo.id = 'balanceInfo'; balanceInfo.className = 'text-sm font-semibold text-indigo-700'; balanceInfo.textContent = `เครดิต: ${currencyTH(bal)}`;
+
+      const topupBtn = document.createElement('button'); topupBtn.id = 'topupBtn'; topupBtn.className = 'bg-emerald-600 text-white text-sm px-3 py-2 rounded-md'; topupBtn.textContent = 'เติมเครดิต';
+      const cartBtn = document.createElement('button'); cartBtn.id = 'cartBtn'; cartBtn.className = 'bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow'; cartBtn.textContent = 'ตะกร้า (0)';
+      const historyBtn = document.createElement('button'); historyBtn.id = 'historyBtn'; historyBtn.className = 'bg-slate-100 text-slate-700 text-sm px-3 py-2 rounded-md shadow'; historyBtn.textContent = 'ประวัติการสั่งซื้อ';
+      const logoutBtn = document.createElement('button'); logoutBtn.id = 'logoutBtn'; logoutBtn.className = 'bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow'; logoutBtn.textContent = 'ออกจากระบบ';
+
+      container.appendChild(userInfo);
+      container.appendChild(balanceInfo);
+      container.appendChild(topupBtn);
+      container.appendChild(cartBtn);
+      container.appendChild(historyBtn);
+
+      // Admin-only buttons (only include when IS_ADMIN true)
+      if(IS_ADMIN){
+        const adminOrdersBtn = document.createElement('button'); adminOrdersBtn.id = 'adminOrdersBtn'; adminOrdersBtn.className = 'bg-amber-100 text-amber-800 text-sm px-3 py-2 rounded-md shadow'; adminOrdersBtn.textContent = 'คำสั่งซื้อ (Admin)';
+        const openAdminCreditBtn = document.createElement('button'); openAdminCreditBtn.id = 'openAdminCreditBtn'; openAdminCreditBtn.className = 'bg-emerald-500 text-white text-sm px-3 py-2 rounded-md shadow'; openAdminCreditBtn.textContent = 'เติมเครดิตลูกค้า';
+        const openAdminProductBtn = document.createElement('button'); openAdminProductBtn.id = 'openAdminProductBtn'; openAdminProductBtn.className = 'bg-indigo-600 text-white text-sm px-3 py-2 rounded-md shadow'; openAdminProductBtn.textContent = 'เพิ่มสินค้า';
+        container.appendChild(adminOrdersBtn);
+        container.appendChild(openAdminCreditBtn);
+        container.appendChild(openAdminProductBtn);
+      }
+
+      container.appendChild(logoutBtn);
+      headerRight.appendChild(container);
+
+      
+
+      // Attach listeners
+      topupBtn.addEventListener('click', ()=>{ if(!CURRENT_USER){ openLoginModal(); return; } const tmodal = document.getElementById('topupModal'); if(tmodal) showModalElement(tmodal); });
+      historyBtn.addEventListener('click', openHistoryModal);
+      cartBtn.addEventListener('click', openCartModal);
+      logoutBtn.addEventListener('click', logoutWithConfirm);
+      if(IS_ADMIN){
+        const adminOrdersBtnEl = document.getElementById('adminOrdersBtn');
+        const openAdminCreditBtnEl = document.getElementById('openAdminCreditBtn');
+        const openAdminProductBtnEl = document.getElementById('openAdminProductBtn');
+        if(adminOrdersBtnEl){ adminOrdersBtnEl.addEventListener('click', ()=>{ try{ const saved = getSavedAdminFilter(); if(saved) applyFilterToUI(saved); else applyFilterToUI(['pending','accepted','rejected']); }catch{} const ordersModal = document.getElementById('adminOrdersModal'); showModalElement(ordersModal); listenOrdersForAdmin(); }); }
+        if(openAdminCreditBtnEl){ openAdminCreditBtnEl.addEventListener('click', ()=>{ const creditModal = document.getElementById('adminCreditModal'); showModalElement(creditModal); }); }
+        if(openAdminProductBtnEl){ openAdminProductBtnEl.addEventListener('click', ()=>{ const productModalEl = document.getElementById('adminProductModal'); showModalElement(productModalEl); }); }
+      }
       updateCartCount();
-      logoutBtn.addEventListener('click', async ()=>{
-        try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); }
-      });
-    }else{
-      // show cart to guests as well so they can inspect what they added
-      headerRight.innerHTML = `
-        <div class="flex items-center gap-3">
-          <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
-          <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
-          <button id="cartBtn" class="bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow">ตะกร้า (0)</button>
-          <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
-          <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
-        </div>`;
-      const registerBtn = document.getElementById('registerBtn');
-      const loginBtn    = document.getElementById('loginBtn');
-      const cartBtn     = document.getElementById('cartBtn');
+    } else {
+      // Guest view
+      const container = document.createElement('div'); container.className = 'flex items-center gap-3';
+      const cartBtn = document.createElement('button'); cartBtn.id = 'cartBtn'; cartBtn.className = 'bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow'; cartBtn.textContent = `ตะกร้า (${CART.length})`;
+      const registerBtn = document.createElement('button'); registerBtn.id = 'registerBtn'; registerBtn.className = 'bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow'; registerBtn.textContent = 'สมัครสมาชิก';
+      const loginBtn = document.createElement('button'); loginBtn.id = 'loginBtn'; loginBtn.className = 'bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow'; loginBtn.textContent = 'เข้าสู่ระบบ';
+      container.appendChild(cartBtn); container.appendChild(registerBtn); container.appendChild(loginBtn);
+      headerRight.appendChild(container);
+      
       registerBtn.addEventListener('click', openRegModal);
       loginBtn.addEventListener('click', openLoginModal);
       cartBtn.addEventListener('click', openCartModal);
       updateCartCount();
     }
-  // adminSection was removed from the main page — no inline admin panel to toggle
   }
 
   async function ensureUserProfile(u){
+    if(!u) return null;
     const ref = doc(db,'users',u.uid);
-    const snap = await getDoc(ref);
-    if(!snap.exists()){
-      const rawEmail = (u.email||'');
-      await setDoc(ref,{
-        email: rawEmail,
-        emailLower: rawEmail.toLowerCase(),
-        credits: 0,
-        createdAt: serverTimestamp()
-      });
-      return (await getDoc(ref)).data();
+    try{
+      const snap = await getDoc(ref);
+      if(!snap.exists()){
+        const rawEmail = (u.email||'');
+        try{
+          await setDoc(ref,{
+            email: rawEmail,
+            displayName: typeof u.displayName === 'string' ? u.displayName : '',
+            credits: 0,
+            createdAt: serverTimestamp()
+          });
+        }catch(e){
+          // Could be permission rules preventing creation; log and continue
+          console.warn('ensureUserProfile: failed to create user profile', e?.message||e);
+        }
+        // try to read it back (may still fail)
+        try{ const newSnap = await getDoc(ref); return newSnap.exists()? newSnap.data() : null; }catch(e){ console.warn('ensureUserProfile: failed to read user profile after create', e?.message||e); return null; }
+      }
+      return snap.data();
+    }catch(e){
+      console.warn('ensureUserProfile: getDoc error', e?.message||e);
+      return null;
     }
-    return snap.data();
   }
+
+  function showModalElement(el){ if(!el) return; el.classList.add('active'); el.setAttribute('aria-hidden','false'); }
+  function hideModalElement(el){ if(!el) return; el.classList.remove('active'); el.setAttribute('aria-hidden','true'); }
 
   async function bootstrapFirestoreAfterSignup(u){
     try{
@@ -1019,10 +1204,76 @@ groupsEl.appendChild(card);
     }catch(e){ console.warn('bootstrap error', e?.message||e); }
   }
 
-  function openRegModal(){ regModal.classList.add('active'); }
-  function closeRegModal(){ regModal.classList.remove('active'); }
-  function openLoginModal(){ loginModal.classList.add('active'); }
-  function closeLoginModal(){ loginModal.classList.remove('active'); }
+  function openRegModal(){ showModalElement(regModal); }
+  function closeRegModal(){ hideModalElement(regModal); }
+  function openLoginModal(){
+    // reset login inputs and message to avoid stale success/error text
+    try{
+      const emailEl = document.getElementById('authEmailL');
+      const passEl = document.getElementById('authPassL');
+      const msgEl = document.getElementById('authMsgL');
+      if(emailEl) emailEl.value = '';
+      if(passEl) passEl.value = '';
+      if(msgEl){ msgEl.textContent = ''; msgEl.className = 'text-sm text-red-600'; }
+    }catch(_){ }
+    showModalElement(loginModal);
+  }
+  function closeLoginModal(){
+    try{
+      const emailEl = document.getElementById('authEmailL');
+      const passEl = document.getElementById('authPassL');
+      const msgEl = document.getElementById('authMsgL');
+      if(emailEl) emailEl.value = '';
+      if(passEl) passEl.value = '';
+      if(msgEl){ msgEl.textContent = ''; msgEl.className = 'text-sm text-red-600'; }
+    }catch(_){ }
+    hideModalElement(loginModal);
+  }
+  function openForgotModal(){ showModalElement(forgotModal); }
+
+  function closeForgotModal(){ hideModalElement(forgotModal); }
+
+  function openResetPasswordModal(email, code){
+    PENDING_RESET_CODE = code || null;
+    PENDING_RESET_EMAIL = email || '';
+    const info = document.getElementById('resetEmail');
+    if(info){ info.textContent = email ? `อีเมล: ${email}` : ''; }
+    const pass1 = document.getElementById('resetPass');
+    const pass2 = document.getElementById('resetPass2');
+    if(pass1) pass1.value = '';
+    if(pass2) pass2.value = '';
+    const msg = document.getElementById('resetMsg');
+    if(msg){ msg.textContent=''; msg.className='text-sm text-red-600'; }
+    showModalElement(resetPasswordModal);
+  }
+
+  function closeResetPasswordModal(){
+    hideModalElement(resetPasswordModal);
+    PENDING_RESET_CODE = null;
+    PENDING_RESET_EMAIL = "";
+  }
+
+  async function handleResetPassword(){
+    const pass1 = document.getElementById('resetPass')?.value || '';
+    const pass2 = document.getElementById('resetPass2')?.value || '';
+    const msg = document.getElementById('resetMsg');
+    if(msg){ msg.textContent=''; msg.className='text-sm text-red-600'; }
+    if(!msg) return;
+    if(!PENDING_RESET_CODE){ msg.textContent = 'ลิงก์รีเซ็ตไม่ถูกต้องหรือหมดอายุแล้ว'; return; }
+    if(!pass1){ msg.textContent = 'กรุณากรอกรหัสผ่านใหม่'; return; }
+    if(pass1.length < 6){ msg.textContent = 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; return; }
+    if(pass1 !== pass2){ msg.textContent = 'รหัสผ่านใหม่ไม่ตรงกัน'; return; }
+    try{
+      await confirmPasswordReset(auth, PENDING_RESET_CODE, pass1);
+      msg.classList.remove('text-red-600');
+      msg.classList.add('text-emerald-700');
+      msg.textContent = 'ตั้งรหัสผ่านใหม่เรียบร้อย';
+      setTimeout(()=>{ closeResetPasswordModal(); openLoginModal(); }, 1500);
+    }catch(e){
+      msg.textContent = e?.message || 'ไม่สามารถตั้งรหัสผ่านใหม่ได้';
+    }
+  }
+
 
   function openOrderModal(product){
     if(!CURRENT_USER){
@@ -1045,14 +1296,14 @@ groupsEl.appendChild(card);
     document.getElementById('orderPasswordBlock').classList.toggle('hidden', !product.requiresPassword);
     document.getElementById('orderPasswordInput').value = '';
     document.getElementById('orderMsg').textContent='';
-    orderModal.classList.add('active');
+    showModalElement(orderModal);
   }
-  function closeOrder(){ orderModal.classList.remove('active'); PENDING_ORDER=null; }
+  function closeOrder(){ hideModalElement(orderModal); PENDING_ORDER=null; }
   function openHistoryModal(){
     if(!CURRENT_USER){ openLoginModal(); return; }
     const list = document.getElementById('ordersTbody');
     if(list) list.innerHTML = '<tr><td colspan="5" class="p-4 text-slate-500">กำลังโหลด...</td></tr>';
-    historyModal.classList.add('active');
+    showModalElement(historyModal);
     // Fetch once in case snapshot hasn't arrived yet
     try {
       const qref = query(collection(db,'orders'), where('userId','==', CURRENT_USER.uid));
@@ -1063,7 +1314,7 @@ groupsEl.appendChild(card);
       });
     } catch {}
   }
-  function closeHistoryModal(){ historyModal.classList.remove('active'); }
+  function closeHistoryModal(){ hideModalElement(historyModal); }
 
   async function placeOrder(){
     if(!PENDING_ORDER||!CURRENT_USER) return;
@@ -1276,9 +1527,11 @@ groupsEl.appendChild(card);
   }
 
   async function addCreditsByEmail(email, amount){
-    const qref = query(collection(db,'users'), where('emailLower','==', (email||'').toLowerCase()));
+    const emailTrim = (email || '').trim();
+    if(!emailTrim) throw new Error('กรุณากรอกอีเมล');
+    const qref = query(collection(db,'users'), where('email','==', emailTrim));
     const snap = await getDocs(qref);
-    if(snap.empty) throw new Error('ไม่พบผู้ใช้ตามอีเมล');
+    if(snap.empty) throw new Error('ไม่พบผู้ใช้อีเมลนี้');
     const d = snap.docs[0];
     await updateDoc(doc(db,'users',d.id),{ credits: increment(Number(amount)||0) });
   }
@@ -1294,6 +1547,7 @@ groupsEl.appendChild(card);
       requiresUsername: !!p.requiresUsername,
       requiresSN: !!p.requiresSN,
       requiresIMEI: !!p.requiresIMEI,
+      details: norm(p.details||''),
       createdAt: serverTimestamp()
     });
   }
@@ -1325,9 +1579,9 @@ groupsEl.appendChild(card);
   function openCartModal(){
     // allow guests to open and inspect cart; require login only at confirmation
     renderCart();
-    cartModal.classList.add('active');
+    showModalElement(cartModal);
   }
-  function closeCartModal(){ cartModal.classList.remove('active'); }
+  function closeCartModal(){ hideModalElement(cartModal); }
 
   let PRODUCT_SELECTED = null;
   function openProductModal(p){
@@ -1338,6 +1592,7 @@ groupsEl.appendChild(card);
     document.getElementById('pdProgram').textContent = p.program||'';
     document.getElementById('pdName').textContent = p.pack||p.name||'';
     document.getElementById('pdPrice').textContent = currencyTH(p.price||0);
+    renderProductSteps('pdInstructionsWrap', 'pdInstructions', p.details);
     const fields = document.getElementById('pdFields');
     fields.innerHTML='';
     const addField = (id,label,type='text')=>{
@@ -1351,9 +1606,9 @@ groupsEl.appendChild(card);
     if(p.requiresIMEI) addField('pdIMEI','IMEI');
     if(p.requiresPassword) addField('pdPassword','รหัสผ่าน','password');
     document.getElementById('pdMsg').textContent='';
-    productModal.classList.add('active');
+    showModalElement(productModal);
   }
-  function closeProductModal(){ productModal.classList.remove('active'); PRODUCT_SELECTED=null; }
+  function closeProductModal(){ hideModalElement(productModal); PRODUCT_SELECTED=null; }
 
   function renderCart(){
     const list = document.getElementById('cartList');
@@ -1537,54 +1792,92 @@ groupsEl.appendChild(card);
 
   // ----- Events -----
   searchEl.addEventListener("input", ()=>render(groupByProgram(FS_PRODUCTS), searchEl.value));
-  contactBtn.addEventListener("click", ()=> modal.classList.add("active"));
-  closeBtn.addEventListener("click", ()=> modal.classList.remove("active"));
-  modal.addEventListener("click", (e)=>{ if(e.target===modal) modal.classList.remove("active"); });
 
   document.getElementById('registerBtn').addEventListener('click', openRegModal);
   document.getElementById('loginBtn').addEventListener('click', openLoginModal);
-  document.getElementById('logoutBtn').addEventListener('click', async ()=>{
-    try{ await signOut(auth); }
-    finally{
-      // อัปเดตปุ่มทันทีหลังออกจากระบบ
-      CURRENT_USER = null; CURRENT_USER_DOC = null; IS_ADMIN = false;
-      updateHeaderAuth();
-    }
-  });
+  document.getElementById('logoutBtn').addEventListener('click', logoutWithConfirm);
+  document.getElementById('viewListBtn').addEventListener('click', ()=> setProductViewMode(VIEW_MODES.LIST));
+  document.getElementById('viewTableBtn').addEventListener('click', ()=> setProductViewMode(VIEW_MODES.TABLE));
   document.getElementById('closeReg').addEventListener('click', closeRegModal);
-  regModal.addEventListener('click',(e)=>{ if(e.target===regModal) closeRegModal(); });
-  document.getElementById('doRegister').addEventListener('click', async ()=>{
+    document.getElementById('doRegister').addEventListener('click', async ()=>{
     const email = document.getElementById('authEmailR').value.trim();
     const pass = document.getElementById('authPassR').value;
     const pass2 = document.getElementById('authPass2R').value;
+    const question = document.getElementById('authQuestionR').value;
+    const answer = document.getElementById('authAnswerR').value.trim();
     const msg = document.getElementById('authMsgR'); msg.textContent=''; msg.className='text-sm';
     if(!email){ msg.textContent='กรุณากรอกอีเมล'; return; }
     if(!pass){ msg.textContent='กรุณากรอกรหัสผ่าน'; return; }
     if(pass !== pass2){ msg.textContent='รหัสผ่านไม่ตรงกัน'; return; }
+    if(!question){ msg.textContent='กรุณาเลือกคำถามเพื่อความปลอดภัย'; return; }
+    if(!answer){ msg.textContent='กรุณากรอกคำตอบ'; return; }
+    let answerHash = '';
+    try{ answerHash = await hashAnswer(answer); }catch(_){ answerHash = answer.trim().toLowerCase(); }
+    const extraProfile = {
+      securityQuestionKey: question,
+      securityAnswerHash: answerHash,
+      securityQuestionUpdatedAt: serverTimestamp()
+    };
     try{
       const cred = await createUserWithEmailAndPassword(auth,email,pass);
+      try { await upsertSecurityQA(email, question, answerHash, cred.user?.uid||''); } catch(_){/* ignore */}
       // Create user profile in background; ignore failures here (rules may block)
-      try { CURRENT_USER_DOC = await ensureUserProfile(cred.user); await bootstrapFirestoreAfterSignup(cred.user); updateHeaderAuth(); } catch(_) {}
+      try { CURRENT_USER_DOC = await ensureUserProfile(cred.user); await bootstrapFirestoreAfterSignup(cred.user); updateHeaderAuth(); } catch(_){ }
       // Show success then leave registration
-      msg.textContent = 'สมัครสมาชิกสำเร็จ';
+      msg.textContent = 'สมัครสมาชิกเรียบร้อย';
       msg.classList.add('text-emerald-700');
       setTimeout(()=>{ closeRegModal(); }, 900);
     }catch(e){ msg.textContent = e.message; }
   });
+
+  document.getElementById('openForgot').addEventListener('click', ()=>{ closeLoginModal(); openForgotModal(); });
   document.getElementById('closeLogin').addEventListener('click', closeLoginModal);
-  loginModal.addEventListener('click',(e)=>{ if(e.target===loginModal) closeLoginModal(); });
   document.getElementById('doLogin').addEventListener('click', async ()=>{
     const email = document.getElementById('authEmailL').value.trim();
     const pass = document.getElementById('authPassL').value;
-    const msg = document.getElementById('authMsgL'); msg.textContent='';
+    const msg = document.getElementById('authMsgL'); msg.textContent=''; msg.className='text-sm text-red-600';
+    if(!email){ msg.textContent='กรุณากรอกอีเมล'; return; }
+    if(!pass){ msg.textContent='กรุณากรอกรหัสผ่าน'; return; }
     try{
-      const cred = await signInWithEmailAndPassword(auth,email,pass);
-      // Close modal immediately on successful login
-      closeLoginModal();
-      // Ensure profile exists in background; ignore failures
-      try { CURRENT_USER_DOC = await ensureUserProfile(cred.user); updateHeaderAuth(); } catch(_) {}
-    }catch(e){ msg.textContent = e.message; }
+      await signInWithEmailAndPassword(auth,email,pass);
+      msg.classList.remove('text-red-600'); msg.classList.add('text-emerald-700');
+      msg.textContent = 'เข้าสู่ระบบสำเร็จ';
+      setTimeout(()=>{ closeLoginModal(); }, 500);
+    }catch(e){ 
+      msg.classList.add('text-red-600');
+      msg.textContent = e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' 
+        ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' 
+        : e.message; 
+    }
   });
+  document.getElementById('closeForgot').addEventListener('click', closeForgotModal);
+  document.getElementById('closeReset').addEventListener('click', closeResetPasswordModal);
+        document.getElementById('doResetPassword').addEventListener('click', handleResetPassword);
+  updateViewToggleUI();
+
+  (async ()=>{
+    try{
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      const code = params.get('oobCode');
+      if(mode === 'resetPassword' && code){
+        try{
+          const email = await verifyPasswordResetCode(auth, code);
+          openResetPasswordModal(email, code);
+        }catch(_){
+          alert('ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุ');
+        }finally{
+          params.delete('mode');
+          params.delete('oobCode');
+          params.delete('lang');
+          params.delete('continueUrl');
+          const qs = params.toString();
+          const newUrl = `${window.location.origin}${window.location.pathname}${qs ? '?' + qs : ''}${window.location.hash}`;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }
+    }catch(_){ }
+  })();
 
   // escape HTML to avoid injection when rendering arbitrary text
   function escapeHtml(str){
@@ -1651,10 +1944,9 @@ groupsEl.appendChild(card);
   orderModal.addEventListener('click',(e)=>{ if(e.target===orderModal) closeOrder(); });
   document.getElementById('confirmOrder').addEventListener('click', placeOrder);
   document.getElementById('closeHistory').addEventListener('click', closeHistoryModal);
-  historyModal.addEventListener('click',(e)=>{ if(e.target===historyModal) closeHistoryModal(); });
-  document.getElementById('closeCart').addEventListener('click', ()=>{ cartModal.classList.remove('active'); });
+  document.getElementById('closeCart').addEventListener('click', closeCartModal);
   document.getElementById('closeProduct').addEventListener('click', closeProductModal);
-  productModal.addEventListener('click',(e)=>{ if(e.target===productModal) closeProductModal(); });
+  document.getElementById('pdCancel').addEventListener('click', closeProductModal);
 
   // Inline detail panel buttons
   document.getElementById('detailAddCart')?.addEventListener('click', addToCartFromDetail);
@@ -1678,6 +1970,7 @@ groupsEl.appendChild(card);
     const singleName = document.getElementById('pName').value.trim();
     const singlePrice = document.getElementById('pPrice').value.trim();
     const bulkRaw = document.getElementById('pBulkLines')?.value || '';
+    const details = document.getElementById('pDetails')?.value.trim() || '';
 
     const messageEl = document.getElementById('productMsg');
     messageEl.textContent = '';
@@ -1703,7 +1996,8 @@ groupsEl.appendChild(card);
           requiresPassword,
           requiresUsername,
           requiresSN,
-          requiresIMEI
+          requiresIMEI,
+          details
         });
       };
 
@@ -1749,6 +2043,7 @@ groupsEl.appendChild(card);
 
       document.getElementById('pName').value = '';
       document.getElementById('pPrice').value = '';
+      if (document.getElementById('pDetails')) document.getElementById('pDetails').value = '';
       if (document.getElementById('pBulkLines')) document.getElementById('pBulkLines').value = '';
 
       messageEl.classList.add('text-emerald-700');
@@ -1801,7 +2096,8 @@ groupsEl.appendChild(card);
       const program = nk(row.dataset.program || '');
       const name = nk(row.dataset.name || '');
       const pack = nk(row.dataset.pack || '');
-      const match = !normalized || program.includes(normalized) || name.includes(normalized) || pack.includes(normalized);
+      const details = nk(row.dataset.details || '');
+      const match = !normalized || program.includes(normalized) || name.includes(normalized) || pack.includes(normalized) || details.includes(normalized);
       row.classList.toggle('hidden', !match);
     });
   }
@@ -1845,6 +2141,7 @@ groupsEl.appendChild(card);
         tr.dataset.program = String(data.program || '');
         tr.dataset.name = String(data.name || data.pack || '');
         tr.dataset.pack = String(data.pack || '');
+        tr.dataset.details = String(data.details || '');
         tr.innerHTML = `
           <td class="p-2"><input type="checkbox" class="product-select" data-id="${doc.id}" ${adminSelectedProducts.has(doc.id) ? 'checked' : ''}></td>
           <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.program ?? ''}" data-field="program"></td>
@@ -1856,6 +2153,7 @@ groupsEl.appendChild(card);
           <td class="p-2"><input type="checkbox" data-field="requiresUsername" ${data.requiresUsername ? 'checked' : ''}></td>
           <td class="p-2"><input type="checkbox" data-field="requiresSN" ${data.requiresSN ? 'checked' : ''}></td>
           <td class="p-2"><input type="checkbox" data-field="requiresIMEI" ${data.requiresIMEI ? 'checked' : ''}></td>
+          <td class="p-2"><textarea class="border rounded px-2 py-1 w-full text-xs leading-relaxed" rows="3" data-field="details">${data.details ?? ''}</textarea></td>
           <td class="p-2">
             <button class="bg-emerald-600 text-white px-2 py-1 rounded text-xs save-row" data-id="${doc.id}">Save</button>
             <button class="bg-red-600 text-white px-2 py-1 rounded text-xs delete-row" data-id="${doc.id}">Delete</button>
@@ -1863,11 +2161,14 @@ groupsEl.appendChild(card);
         `;
         tbody.appendChild(tr);
 
-        const inputs = tr.querySelectorAll('input:not(.product-select)');
+        const inputs = tr.querySelectorAll('input:not(.product-select), textarea[data-field]');
         inputs.forEach(input => {
-          input.addEventListener('change', () => {
+          const evt = input.type === 'checkbox' ? 'change' : 'input';
+          input.addEventListener(evt, () => {
             if (!adminEditedProducts.has(doc.id)) adminEditedProducts.set(doc.id, new Set());
-            adminEditedProducts.get(doc.id).add(input.dataset.field);
+            if (input.dataset.field) {
+              adminEditedProducts.get(doc.id).add(input.dataset.field);
+            }
             tr.classList.add('bg-amber-50');
           });
         });
@@ -1882,10 +2183,11 @@ groupsEl.appendChild(card);
           
           const updates = {};
           adminEditedProducts.get(id).forEach(field => {
-            const input = tr.querySelector(`input[data-field="${field}"]`);
-            if (field === 'price') updates[field] = parseInt(input.value) || 0;
-            else if (field.startsWith('requires')) updates[field] = input.checked;
-            else updates[field] = input.value.trim();
+            const element = tr.querySelector(`[data-field="${field}"]`);
+            if (!element) return;
+            if (field === 'price') updates[field] = parseInt(element.value) || 0;
+            else if (field.startsWith('requires')) updates[field] = element.checked;
+            else updates[field] = (element.value || '').trim();
           });
 
           try {
@@ -1937,7 +2239,7 @@ groupsEl.appendChild(card);
       openAdminProductBtn.addEventListener('click', async () => {
         if (!checkIsAdmin()) return;
         if (modal) {
-          modal.classList.add('active');
+          showModalElement(modal);
           try {
             // store unsubscribe so cleanupProductListeners can stop it later
             PRODUCTS_UNSUB = await setupProductTable();
@@ -1950,15 +2252,12 @@ groupsEl.appendChild(card);
 
     // Clean up listeners when modal closes
     document.getElementById('closeAdminProduct')?.addEventListener('click', () => {
-      modal?.classList.remove('active');
+      if(modal) hideModalElement(modal);
       cleanupProductListeners();
     });
-
-    modal?.addEventListener('click', (e) => {
-      if(e.target === modal) {
-        modal.classList.remove('active');
-        cleanupProductListeners();
-      }
+    document.getElementById('closeAdminProductFooter')?.addEventListener('click', () => {
+      if(modal) hideModalElement(modal);
+      cleanupProductListeners();
     });
 
     // bulk save/delete UI removed - single-row Save/Delete remain in each row

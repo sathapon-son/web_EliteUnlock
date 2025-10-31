@@ -14,12 +14,11 @@ exports.order = onRequest(
         return res.status(405).send("Method Not Allowed");
       }
 
-      const { name, phone, product, qty, total, note } = req.body || {};
+      const { name, product, qty, total, note } = req.body || {};
 
       const text = [
         "🛒 มีคำสั่งซื้อใหม่",
         `👤 ลูกค้า: ${name || "-"}`,
-        `📞 เบอร์: ${phone || "-"}`,
         `📦 สินค้า: ${product || "-"}`,
         `🔢 จำนวน: ${qty || "-"}`,
         `💰 ยอดรวม: ${total || "-"}`,
