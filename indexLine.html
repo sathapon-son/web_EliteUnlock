@@ -1,0 +1,42 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ฟอร์มสั่งซื้อสินค้า</title>
+</head>
+<body>
+  <h2>🛍️ ฟอร์มสั่งซื้อสินค้า</h2>
+
+  <form id="orderForm">
+    <input name="name" placeholder="ชื่อ-นามสกุล" required><br><br>
+    <input name="phone" placeholder="เบอร์โทร" required><br><br>
+    <input name="product" placeholder="ชื่อสินค้า" required><br><br>
+    <input name="qty" type="number" placeholder="จำนวน" required><br><br>
+    <input name="total" placeholder="ยอดรวม (บาท)" required><br><br>
+    <textarea name="note" placeholder="หมายเหตุเพิ่มเติม"></textarea><br><br>
+    <button type="submit">ส่งคำสั่งซื้อ</button>
+  </form>
+
+  <script>
+    document.getElementById("orderForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+
+      try {
+        const res = await fetch("/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        alert(result.message || "ส่งข้อมูลเรียบร้อย ✅");
+      } catch (err) {
+        alert("❌ เกิดข้อผิดพลาดในการส่งข้อมูล");
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
