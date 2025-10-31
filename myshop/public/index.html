@@ -95,10 +95,15 @@
     <section class="mb-4">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="relative w-full md:w-96">
-          <input id="searchInput" type="search"
-                 autocomplete="off"
-                 placeholder="ค้นหา: โปรแกรม ชื่อ หรือคีย์เวิร์ด (เช่น Unlocktool, 6 เดือน, 1 ปี)"
-                 class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
+          <!-- Hidden dummy fields: browsers will often autofill credentials into the first username/password inputs they find.
+               These off-screen inputs are present to absorb autofill so the visible search input isn't populated. -->
+          <div style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
+            <input type="text" name="fake_username" autocomplete="username" tabindex="-1">
+            <input type="password" name="fake_password" autocomplete="current-password" tabindex="-1">
+          </div>
+
+          <!-- autocomplete="search" and a non-username name help prevent Chrome autofill from treating this as a username field -->
+          <input id="searchInput" type="search" name="search_query" inputmode="search" autocomplete="search" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="ค้นหา" placeholder="ตัวอย่าง: (เช่น Unlocktool, 6 เดือน, 1 ปี)" class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
           <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z"/>
           </svg>
@@ -309,7 +314,52 @@
   const groupsEl   = document.getElementById("groups");
   const statusEl   = document.getElementById("status");
   const emptyEl    = document.getElementById("emptyState");
-  const searchEl   = document.getElementById("searchInput");
+  let searchEl     = document.getElementById("searchInput");
+  // Prevent Chrome from autofilling saved login info into the search box.
+  function resetSearchInputForAutofillGuard(node){
+    if(!node) return node;
+    const clone = node.cloneNode(true);
+    clone.value = "";
+    clone.setAttribute("autocomplete","off");
+    clone.setAttribute("autocorrect","off");
+    clone.setAttribute("autocapitalize","none");
+    clone.setAttribute("spellcheck","false");
+    if(!clone.getAttribute("name")) clone.setAttribute("name","site-search");
+    node.replaceWith(clone);
+    return clone;
+  }
+
+  function sanitizeSearchPrefill(){
+    if(!searchEl) return;
+    const params = new URLSearchParams(window.location.search);
+    if(params.has("search") || params.has("q")) return;
+    const value = (searchEl.value || "").trim();
+    if(!value) return;
+    const currentEmail = (CURRENT_USER?.email || "").toLowerCase();
+    if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || (currentEmail && value.toLowerCase() === currentEmail)){
+      searchEl.value = "";
+    }
+  }
+
+  searchEl = resetSearchInputForAutofillGuard(searchEl);
+  sanitizeSearchPrefill();
+  let searchAutofillChecks = 0;
+  const searchAutofillGuard = searchEl ? setInterval(() => {
+    if(document.activeElement === searchEl) return;
+    searchAutofillChecks += 1;
+    const before = searchEl.value;
+    sanitizeSearchPrefill();
+    if(!searchEl.value || before !== searchEl.value || searchAutofillChecks > 10){
+      clearInterval(searchAutofillGuard);
+    }
+  }, 400) : null;
+  if(searchEl){
+    if(searchAutofillGuard !== null){
+      searchEl.addEventListener("input", () => clearInterval(searchAutofillGuard), { once: true });
+    }
+    searchEl.addEventListener("focus", sanitizeSearchPrefill);
+  }
+
   
 
 // Auth UI bits (ย้ายไปอยู่ฝั่งขวารวมกับปุ่ม "ติดต่อ / สั่งซื้อ")
@@ -964,14 +1014,23 @@ header.appendChild(headerRight);
     const wrap = document.getElementById(wrapperId);
     const list = document.getElementById(listId);
     if(!wrap || !list) return;
-    const steps = String(details || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    if(!steps.length){
+    // Keep admin-provided lines as-is (no automatic numbering). Convert URLs to clickable links
+    const lines = String(details || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if(!lines.length){
       wrap.classList.add('hidden');
       list.innerHTML = '';
       return;
     }
     wrap.classList.remove('hidden');
-    list.innerHTML = `<ol class="list-decimal pl-5 space-y-1">${steps.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ol>`;
+    // linkify helper: escape then replace URLs with anchors that open in new tab
+    const linkify = (text) => {
+      if(!text) return '';
+      const escaped = escapeHtml(text);
+      // Match http/https links
+      return escaped.replace(/(https?:\/\/[^\s]+)/g, (m) => `<a href="${m}" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">${m}</a>`);
+    };
+    // Render each line as a paragraph (preserves any leading numbering typed by admin)
+    list.innerHTML = `<div class="space-y-1 text-sm leading-relaxed">${lines.map(l=> `<div>${linkify(l)}</div>`).join('')}</div>`;
   }
 
   // Show inline product detail panel on main page (does not add to cart by itself)
@@ -1071,7 +1130,7 @@ header.appendChild(headerRight);
   }
 
   async function performLogout(){
-    try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); }
+    try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); sanitizeSearchPrefill(); }
   }
 
   async function logoutWithConfirm(){
@@ -1148,6 +1207,7 @@ header.appendChild(headerRight);
       cartBtn.addEventListener('click', openCartModal);
       updateCartCount();
     }
+  sanitizeSearchPrefill();
   }
 
   async function ensureUserProfile(u){
@@ -2299,6 +2359,7 @@ header.appendChild(headerRight);
     try{ loadCart(); } catch(e) { CART = []; }
     updateCartCount();
     updateHeaderAuth();
+    sanitizeSearchPrefill();
     if(IS_ADMIN) listenOrdersForAdmin();
     // If there was an action waiting for login, resume it now (but do not auto-confirm cart)
     if(CURRENT_USER && AFTER_LOGIN_ACTION){
