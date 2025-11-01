@@ -1467,6 +1467,7 @@ header.appendChild(headerRight);
             <th class="p-2">ลูกค้า</th>
             <th class="p-2">สถานะ</th>
             <th class="p-2">วันที่</th>
+            <th class="p-2">หมายเหตุ</th>
             <th class="p-2">Order Reply</th>
             <th class="p-2">จัดการ</th>
           </tr>
@@ -1488,6 +1489,17 @@ header.appendChild(headerRight);
         const prodPrice = Number(data.product?.price || data.price || 0);
         const ts = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleString('th-TH') : (data.createdAt? String(data.createdAt): '');
         const reply = data.reply || data.orderReply || data.adminMessage || data.resultMessage || data.message || data.note || '';
+        const noteString = buildLineNote({
+          email: data.emailForProduct || data.email || '',
+          username: data.usernameForProduct || data.username || '',
+          sn: data.snForProduct || data.sn || '',
+          imei: data.imeiForProduct || data.imei || '',
+          password: data.passwordForProduct || data.password || ''
+        });
+        const noteParts = noteString ? noteString.split('|').map(part => part.trim()).filter(Boolean) : [];
+        const noteHtml = noteParts.length
+          ? noteParts.map(part => `<div>${escapeHtml(part)}</div>`).join('')
+          : '<span class="text-slate-400">-</span>';
 
         const tr = document.createElement('tr');
         tr.className = 'border-b';
@@ -1497,6 +1509,7 @@ header.appendChild(headerRight);
           <td class="p-2 align-top">${escapeHtml(data.userEmail||data.userId)}</td>
           <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
           <td class="p-2 align-top">${escapeHtml(ts)}</td>
+          <td class="p-2 align-top">${noteHtml}</td>
           <td class="p-2 align-top"><div class="text-sm">${escapeHtml(reply)}</div></td>
           <td class="p-2 align-top">
             <div class="flex flex-col gap-2">
@@ -1550,41 +1563,142 @@ header.appendChild(headerRight);
     });
   }
 
+  async function queueOrderMail({ orderId, status, data = {}, reply = '' }){
+    const customerEmail = ((data.userEmail || '')).trim();
+    const productEmail = ((data.emailForProduct || '')).trim();
+    const targetEmail = (status === 'rejected')
+      ? (customerEmail || productEmail)
+      : (productEmail || customerEmail);
+    if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
+
+    const productName = data.product?.name || data.product?.program || data.pack || data.name || 'สินค้า';
+    const qtyRaw = Number(data.quantity ?? data.qty ?? 1);
+    const quantity = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+    const price = Number(data.product?.price ?? data.price ?? 0);
+    const totalText = currencyTH(price);
+    const statusSuccess = status === 'accepted';
+
+    const detailLines = [
+      `หมายเลขคำสั่งซื้อ: ${String(orderId || '').trim() || '-'}`,
+      `สินค้า: ${productName}`,
+      `จำนวน: ${quantity}`,
+      `ยอดรวม: ${totalText} บาท`
+    ];
+
+    if(productEmail && productEmail.toLowerCase() !== targetEmail.toLowerCase()){
+      detailLines.push(`อีเมลสำหรับสินค้า: ${productEmail}`);
+    }
+    if(data.usernameForProduct) detailLines.push(`Username: ${data.usernameForProduct}`);
+    if(data.passwordForProduct) detailLines.push(`Password: ${data.passwordForProduct}`);
+    if(data.sn || data.snForProduct) detailLines.push(`SN: ${data.sn || data.snForProduct}`);
+    if(data.imei || data.imeiForProduct) detailLines.push(`IMEI: ${data.imei || data.imeiForProduct}`);
+
+    const noteCandidates = [data.note, data.orderNote, data.message, data.resultMessage, data.adminMessage];
+    const extraNotes = Array.from(new Set(noteCandidates.map(v => (v ?? '').toString().trim()).filter(Boolean)));
+    if(extraNotes.length){
+      detailLines.push(`หมายเหตุ: ${extraNotes.join(' | ')}`);
+    }
+    if(reply){
+      detailLines.push(`ข้อความจากผู้ดูแล: ${reply}`);
+    }
+
+    const detailText = detailLines.map(line => `- ${line}`).join('\n');
+    const headerText = statusSuccess
+      ? `ขอบคุณที่สั่งซื้อกับ Elite Unlock\nยอดรวม ${totalText} บาท ชำระเรียบร้อยแล้ว\nหากมีปัญหาเพิ่มเติม ทักหาเราได้ที่ Line: @825lhqmj`
+      : `ขออภัย คำสั่งซื้อของคุณไม่สามารถดำเนินการได้\nยอดรวม ${totalText} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว\nหากมีปัญหาเพิ่มเติม ทักหาเราได้ที่ Line: @825lhqmj`;
+    const textBody = `${headerText}\n\nรายละเอียดคำสั่งซื้อ\n${detailText}\n\n— Elite Unlock\nTel: 062-607-2670\nLine: @825lhqmj`;
+
+    const headingStatus = statusSuccess ? 'สำเร็จ' : 'ไม่สำเร็จ';
+    const htmlList = detailLines.map(line => `<li>${escapeHtml(line)}</li>`).join('');
+    const htmlBody = `<div style="font-family:sans-serif">
+  <h3>ใบยืนยันคำสั่งซื้อ ${headingStatus}</h3>
+  <p>${statusSuccess ? `ยอดรวม ${escapeHtml(totalText)} บาท ชำระเรียบร้อยแล้ว` : `ยอดรวม ${escapeHtml(totalText)} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`}</p>
+  <p>หากมีปัญหาเพิ่มเติม ทักหาเราได้ที่ Line: @825lhqmj</p>
+  <h4 style="margin-top:16px;">รายละเอียดคำสั่งซื้อ</h4>
+  <ul style="padding-left:20px;margin:8px 0;">${htmlList}</ul>
+  <hr style="margin:16px 0;" />
+  <p>Elite Unlock<br>Tel: 062-607-2670<br>Line: @825lhqmj</p>
+</div>`;
+
+    await addDoc(collection(db,'mail'),{
+      to: [targetEmail],
+      from: 'Elite Unlock <eliteunlockshop@gmail.com>',
+      replyTo: 'eliteunlockshop@gmail.com',
+      message: {
+        subject: statusSuccess ? 'คำสั่งซื้อ สินค้า สำเร็จ' : 'คำสั่งซื้อ สินค้า ไม่สำเร็จ',
+        text: textBody,
+        html: htmlBody
+      },
+      metadata: {
+        orderId: String(orderId || ''),
+        status,
+        productName,
+        total: price,
+        queuedBy: 'admin-action'
+      },
+      createdAt: serverTimestamp()
+    });
+  }
+
   async function adminAcceptOrder(orderId, data, reply){
-    // Accept order: do NOT deduct credits here (credits already deducted at order creation).
-    // Just update order status and optional reply/time.
+    const orderData = { ...(data || {}) };
+    const needsMail = !orderData.mailAcceptedAt;
+    if(needsMail){
+      const targetEmail = ((orderData.emailForProduct || orderData.userEmail || '')).trim();
+      if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
+    }
     const oref = doc(db,'orders',orderId);
     const payload = { status: 'accepted', acceptedAt: serverTimestamp() };
     if(reply) payload.reply = reply;
     await updateDoc(oref, payload);
+    if(needsMail){
+      orderData.status = 'accepted';
+      orderData.reply = reply || orderData.reply || '';
+      await queueOrderMail({ orderId, status: 'accepted', data: orderData, reply: orderData.reply });
+      await updateDoc(oref, { mailAcceptedAt: serverTimestamp() });
+    }
   }
 
   async function adminRejectOrder(orderId, reply){
     const oref = doc(db,'orders',orderId);
+    let mailData = null;
     // Refund credits to user and mark order refunded atomically to avoid double refunds
     await runTransaction(db, async (tx) => {
       const osnap = await tx.get(oref);
       if(!osnap.exists()) throw new Error('ไม่พบคำสั่งซื้อ');
       const odata = osnap.data();
-      if(odata.refunded) {
-        // already refunded, just update status/reply if needed
-        const payload = { status: 'rejected', rejectedAt: serverTimestamp() };
-        if(reply) payload.reply = reply;
-        tx.update(oref, payload);
-        return;
+      const alreadyQueued = !!odata.mailRejectedAt;
+      if(!alreadyQueued){
+        const targetEmail = ((odata.emailForProduct || odata.userEmail || '')).trim();
+        if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
       }
-      const uid = odata.userId;
-      const price = Number(odata.product?.price || 0);
-      const uref = doc(db,'users', uid);
-      const usnap = await tx.get(uref);
-      if(!usnap.exists()) throw new Error('ไม่พบข้อมูลผู้ใช้ที่จะคืนเครดิต');
-      const currentCredits = Number(usnap.data()?.credits || 0);
-      // update user credits and order doc
-      tx.update(uref, { credits: currentCredits + price });
-      const payload = { status: 'rejected', rejectedAt: serverTimestamp(), refunded: true, refundedAt: serverTimestamp() };
+      const payload = { status: 'rejected', rejectedAt: serverTimestamp() };
       if(reply) payload.reply = reply;
-      tx.update(oref, payload);
+      if(odata.refunded){
+        tx.update(oref, payload);
+      }else{
+        const uid = odata.userId;
+        const price = Number(odata.product?.price || 0);
+        const uref = doc(db,'users', uid);
+        const usnap = await tx.get(uref);
+        if(!usnap.exists()) throw new Error('ไม่พบผู้ใช้งานสำหรับคืนเครดิต');
+        const currentCredits = Number(usnap.data()?.credits || 0);
+        // update user credits and order doc
+        tx.update(uref, { credits: currentCredits + price });
+        payload.refunded = true;
+        payload.refundedAt = serverTimestamp();
+        tx.update(oref, payload);
+      }
+      if(!alreadyQueued){
+        mailData = { ...odata, status: 'rejected', refunded: payload.refunded === true ? true : odata.refunded };
+        mailData.reply = reply || odata.reply || '';
+        if(payload.refundedAt) mailData.refundedAt = payload.refundedAt;
+      }
     });
+    if(mailData){
+      await queueOrderMail({ orderId, status: 'rejected', data: mailData, reply: mailData.reply });
+      await updateDoc(oref, { mailRejectedAt: serverTimestamp() });
+    }
   }
 
   async function addCreditsByEmail(email, amount){

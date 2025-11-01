@@ -15,6 +15,18 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
       );
     }
+
+    function isNonEmptyStringList(arr) {
+      return arr is list && arr.size() > 0 && arr[0] is string;
+    }
+
+    function isMailMessage(msg) {
+      return msg is map
+        && msg.keys().hasOnly(['subject','text','html'])
+        && msg.subject is string
+        && msg.text is string
+        && msg.html is string;
+    }
     
     // ===== users =====
     match /users/{uid} {
@@ -75,6 +87,22 @@ service cloud.firestore {
     match /config/{doc} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ===== mail queue =====
+    match /mail/{docId} {
+      allow read: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['to','from','replyTo','message','metadata','createdAt'])
+        && isNonEmptyStringList(request.resource.data.to)
+        && request.resource.data.from is string
+        && request.resource.data.replyTo is string
+        && isMailMessage(request.resource.data.message)
+        && (request.resource.data.metadata is map || !(request.resource.data.keys().hasAny(['metadata'])))
+        && request.resource.data.createdAt == request.time;
+
+      allow update, delete: if false;
     }
   }
 }
