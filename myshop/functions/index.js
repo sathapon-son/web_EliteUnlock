@@ -1,7 +1,11 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const nodemailer = require("nodemailer");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
 const REGION = "asia-southeast1";
+
+initializeApp();
+const db = getFirestore();
 
 exports.order = onRequest(
   {
@@ -10,13 +14,8 @@ exports.order = onRequest(
     secrets: [
       "LINE_CHANNEL_ACCESS_TOKEN",
       "LINE_TARGET_ID",
-      // Optional email settings
+      // Optional: store mail to Firestore
       "ADMIN_EMAIL",
-      "SMTP_HOST",
-      "SMTP_PORT",
-      "SMTP_SECURE",
-      "SMTP_USER",
-      "SMTP_PASS",
       "MAIL_FROM",
     ],
   },
@@ -61,45 +60,39 @@ exports.order = onRequest(
 
       console.log("✅ LINE message sent successfully");
 
-      // Send the same message to admin email (optional, best-effort)
+      // Store email payload to Firestore (mail queue) for admin
       try {
         const adminEmail = process.env.ADMIN_EMAIL;
-        const smtpHost = process.env.SMTP_HOST;
-        const smtpPort = Number(process.env.SMTP_PORT || 587);
-        const smtpSecure = String(process.env.SMTP_SECURE || "").toLowerCase() === "true" || smtpPort === 465;
-        const smtpUser = process.env.SMTP_USER;
-        const smtpPass = process.env.SMTP_PASS;
-        const mailFrom = process.env.MAIL_FROM || smtpUser || adminEmail;
+        const fromEmail = process.env.MAIL_FROM || adminEmail || "noreply@eliteunlock.app";
 
-        if (adminEmail && smtpHost && mailFrom) {
-          const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpSecure,
-            auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
-          });
+        if (adminEmail) {
+          const mailDoc = {
+            to: [adminEmail],
+            from: fromEmail,
+            replyTo: fromEmail,
+            message: {
+              subject: "คำสั่งซื้อใหม่",
+              text,
+              html: text.replace(/\n/g, "<br>")
+            },
+            metadata: { source: "order-function" },
+            createdAt: FieldValue.serverTimestamp(),
+          };
 
-          await transporter.sendMail({
-            from: mailFrom,
-            to: adminEmail,
-            subject: "คำสั่งซื้อใหม่",
-            text,
-          });
-
-          console.log("📧 Admin email sent successfully");
+          await db.collection("mail").add(mailDoc);
+          console.log("🗳️ Stored mail for admin in Firestore");
         } else {
-          console.log("📧 Email not configured. Skipping (set ADMIN_EMAIL/SMTP_*)");
+          console.log("🗳️ ADMIN_EMAIL not set; skip storing mail");
         }
       } catch (mailErr) {
-        console.error("Email send failed:", mailErr);
-        // Do not fail the request if email fails; LINE already sent
+        console.error("Store mail failed:", mailErr);
+        // Do not fail the request if storing mail fails; LINE already sent
       }
 
-      return res.send("ส่งแจ้งเตือนไปที่ LINE และ Email (ถ้าตั้งค่า) สำเร็จ ✅");
+      return res.send("ส่งแจ้งเตือนไปที่ LINE และบันทึกเมลถึงแอดมินสำเร็จ (ถ้าตั้งค่า) ✅");
     } catch (e) {
       console.error("Function Error:", e);
       return res.status(500).send(String(e));
     }
   }
 );
-
