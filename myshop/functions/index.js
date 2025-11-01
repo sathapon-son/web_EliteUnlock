@@ -1,23 +1,12 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
 const REGION = "asia-southeast1";
-
-initializeApp();
-const db = getFirestore();
 
 exports.order = onRequest(
   {
     region: REGION,
-    invoker: "public", // allow public invoke; app handles auth if needed
-    secrets: [
-      "LINE_CHANNEL_ACCESS_TOKEN",
-      "LINE_TARGET_ID",
-      // Optional: store mail to Firestore
-      "ADMIN_EMAIL",
-      "MAIL_FROM",
-    ],
+    invoker: "public", // อนุญาตให้เรียกจากหน้าเว็บได้โดยไม่ต้อง login
+    secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "LINE_TARGET_ID"],
   },
   async (req, res) => {
     try {
@@ -28,12 +17,12 @@ exports.order = onRequest(
       const { name, product, qty, total, note } = req.body || {};
 
       const text = [
-        "คำสั่งซื้อใหม่",
-        `ชื่อลูกค้า: ${name || "-"}`,
-        `สินค้า: ${product || "-"}`,
-        `จำนวน: ${qty || "-"}`,
-        `ยอดรวม: ${total || "-"}`,
-        note ? `หมายเหตุ: ${note}` : "",
+        "🛒 มีคำสั่งซื้อใหม่",
+        `👤 ลูกค้า: ${name || "-"}`,
+        `📦 สินค้า: ${product || "-"}`,
+        `🔢 จำนวน: ${qty || "-"}`,
+        `💰 ยอดรวม: ${total || "-"}`,
+        note ? `📝 หมายเหตุ: ${note}` : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -59,37 +48,7 @@ exports.order = onRequest(
       }
 
       console.log("✅ LINE message sent successfully");
-
-      // Store email payload to Firestore (mail queue) for admin
-      try {
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const fromEmail = process.env.MAIL_FROM || adminEmail || "noreply@eliteunlock.app";
-
-        if (adminEmail) {
-          const mailDoc = {
-            to: [adminEmail],
-            from: fromEmail,
-            replyTo: fromEmail,
-            message: {
-              subject: "คำสั่งซื้อใหม่",
-              text,
-              html: text.replace(/\n/g, "<br>")
-            },
-            metadata: { source: "order-function" },
-            createdAt: FieldValue.serverTimestamp(),
-          };
-
-          await db.collection("mail").add(mailDoc);
-          console.log("🗳️ Stored mail for admin in Firestore");
-        } else {
-          console.log("🗳️ ADMIN_EMAIL not set; skip storing mail");
-        }
-      } catch (mailErr) {
-        console.error("Store mail failed:", mailErr);
-        // Do not fail the request if storing mail fails; LINE already sent
-      }
-
-      return res.send("ส่งแจ้งเตือนไปที่ LINE และบันทึกเมลถึงแอดมินสำเร็จ (ถ้าตั้งค่า) ✅");
+      return res.send("ส่งแจ้งเตือนเข้า LINE สำเร็จ ✅");
     } catch (e) {
       console.error("Function Error:", e);
       return res.status(500).send(String(e));
