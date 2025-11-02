@@ -342,6 +342,7 @@
   }
 
   searchEl = resetSearchInputForAutofillGuard(searchEl);
+  try{ updateSidebar(); }catch(_){}
   sanitizeSearchPrefill();
   let searchAutofillChecks = 0;
   const searchAutofillGuard = searchEl ? setInterval(() => {
@@ -366,22 +367,143 @@
 const header = document.querySelector('header');
 header.classList.add('flex-wrap', 'gap-3'); // ให้พับบรรทัดได้ ป้องกันปุ่มล้น
 
+// Create a nav wrapper that contains a mobile toggle and the right-side menu.
+// The right-side menu is hidden on small screens and shown via the toggler.
+const navWrapper = document.createElement('div');
+navWrapper.className = 'flex items-center gap-3 ml-auto';
+
+// Mobile toggle (hamburger) - visible only on small screens
+const mobileToggle = document.createElement('button');
+mobileToggle.type = 'button';
+mobileToggle.className = 'md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:bg-slate-100 mr-3';
+mobileToggle.setAttribute('aria-expanded', 'false');
+mobileToggle.setAttribute('aria-label', 'เปิดเมนู');
+mobileToggle.innerHTML = `
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+  </svg>`;
+
+// Header right container: hidden on small, flex on md+
 const headerRight = document.createElement('div');
-// จัดให้ปุ่ม auth + ปุ่มติดต่ออยู่ขวาเสมอ และเว้นช่องว่างสวยงาม
-headerRight.className = 'flex items-center gap-3 ml-auto';
+headerRight.className = 'hidden md:flex items-center gap-3';
 
-// วาง headerRight ท้าย header
-header.appendChild(headerRight);
+// assemble and append
+navWrapper.appendChild(headerRight);
+// place the mobile toggle at the start of the header (left side)
+header.insertBefore(mobileToggle, header.firstChild);
+header.appendChild(navWrapper);
 
-  headerRight.innerHTML = `
+// fill headerRight content (same buttons as before)
+headerRight.innerHTML = `
+  <div class="flex items-center gap-3">
+    <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
+    <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
+    <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
+    <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
+    <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow hidden">ออกจากระบบ</button>
+  </div>
+`;
+
+// Toggle behavior: show/hide headerRight on small screens
+// Create overlay and sidebar for mobile drawer
+const mobileOverlay = document.createElement('div');
+mobileOverlay.id = 'mobileOverlay';
+mobileOverlay.className = 'hidden fixed inset-0 bg-black/60 z-40';
+document.body.appendChild(mobileOverlay);
+
+const mobileSidebar = document.createElement('aside');
+mobileSidebar.id = 'mobileSidebar';
+mobileSidebar.className = 'fixed left-0 top-0 h-full w-72 bg-slate-900 text-white z-50 transform -translate-x-full transition-transform duration-300 overflow-y-auto';
+mobileSidebar.setAttribute('aria-hidden','true');
+mobileSidebar.innerHTML = `
+  <div class="p-4 border-b border-slate-800">
     <div class="flex items-center gap-3">
-      <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
-      <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
-      <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
-      <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
-      <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow hidden">ออกจากระบบ</button>
+      <img src="logo.png" alt="logo" class="w-10 h-10 rounded bg-white/5" />
+      <div class="flex-1">
+        <div id="sbName" class="font-semibold">สวัสดี</div>
+        <div id="sbEmail" class="text-xs text-slate-300"></div>
+      </div>
+      <button id="closeSidebar" class="text-slate-300 hover:text-white">✕</button>
     </div>
-  `;
+  </div>
+  <nav class="p-3">
+    <ul id="sbMenu" class="space-y-1 text-sm">
+      <!-- Menu items populated by updateSidebar() -->
+    </ul>
+  </nav>
+`;
+document.body.appendChild(mobileSidebar);
+
+function showMobileSidebar(){
+  mobileOverlay.classList.remove('hidden');
+  mobileSidebar.classList.remove('-translate-x-full');
+  mobileSidebar.classList.add('translate-x-0');
+  mobileSidebar.setAttribute('aria-hidden','false');
+  mobileToggle.setAttribute('aria-expanded','true');
+}
+
+function hideMobileSidebar(){
+  mobileOverlay.classList.add('hidden');
+  mobileSidebar.classList.remove('translate-x-0');
+  mobileSidebar.classList.add('-translate-x-full');
+  mobileSidebar.setAttribute('aria-hidden','true');
+  mobileToggle.setAttribute('aria-expanded','false');
+}
+
+mobileToggle.addEventListener('click', (e) => {
+  // On small screens open the sidebar; on md+ the toggle is hidden by CSS so this will only run on mobile
+  updateSidebar();
+  showMobileSidebar();
+});
+
+mobileOverlay.addEventListener('click', hideMobileSidebar);
+document.getElementById('closeSidebar')?.addEventListener('click', hideMobileSidebar);
+
+// Populate sidebar menu based on current auth state; called from updateHeaderAuth
+function updateSidebar(){
+  const nameEl = document.getElementById('sbName');
+  const emailEl = document.getElementById('sbEmail');
+  const menu = document.getElementById('sbMenu');
+  if(!menu) return;
+  nameEl.textContent = CURRENT_USER?.displayName || 'สวัสดี';
+  if(emailEl){
+    const em = CURRENT_USER?.email || '';
+    emailEl.textContent = em;
+    emailEl.classList.toggle('hidden', !em);
+  }
+  // build menu HTML (use functions already defined for actions)
+  const items = [];
+  if(CURRENT_USER){
+    items.push({ label: `เครดิต: ${currencyTH(CURRENT_USER_DOC?.credits||0)}`, action: null, cls: 'font-semibold text-indigo-300' });
+    items.push({ label: 'เติมเครดิต', action: ()=>{ hideMobileSidebar(); document.getElementById('topupModal') && showModalElement(document.getElementById('topupModal')); } });
+    items.push({ label: 'ตะกร้า', action: ()=>{ hideMobileSidebar(); openCartModal(); } });
+    items.push({ label: 'ประวัติการสั่งซื้อ', action: ()=>{ hideMobileSidebar(); openHistoryModal(); } });
+    if(IS_ADMIN){
+      items.push({ label: 'คำสั่งซื้อ (Admin)', action: ()=>{ hideMobileSidebar(); const ordersModal = document.getElementById('adminOrdersModal'); if(ordersModal){ const saved = getSavedAdminFilter(); if(saved) applyFilterToUI(saved); else applyFilterToUI(['pending','accepted','rejected']); showModalElement(ordersModal); listenOrdersForAdmin(); } } });
+      items.push({ label: 'เติมเครดิตลูกค้า', action: ()=>{ hideMobileSidebar(); showModalElement(document.getElementById('adminCreditModal')); } });
+      items.push({ label: 'เพิ่มสินค้า', action: ()=>{ hideMobileSidebar(); showModalElement(document.getElementById('adminProductModal')); } });
+    }
+    items.push({ label: 'ออกจากระบบ', action: async ()=>{ hideMobileSidebar(); await logoutWithConfirm(); } });
+  } else {
+    items.push({ label: 'สมัครสมาชิก', action: ()=>{ hideMobileSidebar(); openRegModal(); } });
+    items.push({ label: 'เข้าสู่ระบบ', action: ()=>{ hideMobileSidebar(); openLoginModal(); } });
+    items.push({ label: 'ตะกร้า', action: ()=>{ hideMobileSidebar(); openCartModal(); } });
+  }
+  // render
+  menu.innerHTML = items.map((it,idx)=>{
+    const cls = it.cls ? ` ${it.cls}` : 'text-slate-200 hover:bg-slate-800 rounded px-3 py-2 block';
+    return `<li><a href="#" data-sb-idx="${idx}" class="w-full inline-block ${cls}">${escapeHtml(it.label)}</a></li>`;
+  }).join('');
+  // bind actions
+  menu.querySelectorAll('[data-sb-idx]').forEach(el=>{
+    el.addEventListener('click', (ev)=>{
+      ev.preventDefault();
+      const idx = Number(el.getAttribute('data-sb-idx'));
+      const action = items[idx] && items[idx].action;
+      if(typeof action === 'function') action();
+    });
+  });
+}
 
   // Register Modal
   const regModal = document.createElement('div');
