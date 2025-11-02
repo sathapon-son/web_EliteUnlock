@@ -496,6 +496,7 @@ header.appendChild(headerRight);
               <th class="p-2">สถานะ</th>
               <th class="p-2">เครดิต</th>
               <th class="p-2">วันที่</th>
+              <th class="p-2">หมายเหตุ</th>
               <th class="p-2">Order Reply</th>
             </tr>
           </thead>
@@ -1475,7 +1476,16 @@ header.appendChild(headerRight);
       const tbody = document.createElement('tbody');
       tbody.className = 'text-slate-700';
 
-      snap.docs.forEach(d=>{
+      // sort snapshot docs by createdAt descending (newest first)
+      const docs = Array.from(snap.docs || []);
+      docs.sort((a,b)=>{
+        const da = a?.data?.() || {};
+        const db = b?.data?.() || {};
+        const ta = da.createdAt && typeof da.createdAt.toMillis === 'function' ? da.createdAt.toMillis() : (da.createdAt ? Number(da.createdAt) : 0);
+        const tb = db.createdAt && typeof db.createdAt.toMillis === 'function' ? db.createdAt.toMillis() : (db.createdAt ? Number(db.createdAt) : 0);
+        return tb - ta; // newest first
+      });
+      docs.forEach(d=>{
         const data = d.data();
         const status = (data.status||'').toString();
         let statusLabel = status;
@@ -1503,15 +1513,10 @@ header.appendChild(headerRight);
 
         const tr = document.createElement('tr');
         tr.className = 'border-b';
-        tr.innerHTML = `
-          <td class="p-2 align-top">${escapeHtml(prodName)}</td>
-          <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
-          <td class="p-2 align-top">${escapeHtml(data.userEmail||data.userId)}</td>
-          <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
-          <td class="p-2 align-top">${escapeHtml(ts)}</td>
-          <td class="p-2 align-top">${noteHtml}</td>
-          <td class="p-2 align-top"><div class="text-sm">${escapeHtml(reply)}</div></td>
-          <td class="p-2 align-top">
+        // Only show manage controls for pending orders
+        let manageHtml = '';
+        if(status === 'pending'){
+          manageHtml = `
             <div class="flex flex-col gap-2">
               <textarea data-reply-id="${d.id}" class="w-full border rounded p-1 text-sm" rows="2" placeholder="Order Reply">${escapeHtml(reply)}</textarea>
               <div class="flex gap-2">
@@ -1520,7 +1525,21 @@ header.appendChild(headerRight);
               </div>
               <div data-msg-id="${d.id}" class="text-sm"></div>
             </div>
-          </td>
+          `;
+        } else {
+          // For accepted/rejected/paid orders do not show manage controls
+          manageHtml = `<div class="text-sm text-slate-500">-</div>`;
+        }
+
+        tr.innerHTML = `
+          <td class="p-2 align-top">${escapeHtml(prodName)}</td>
+          <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
+          <td class="p-2 align-top">${escapeHtml(data.userEmail||data.userId)}</td>
+          <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
+          <td class="p-2 align-top">${escapeHtml(ts)}</td>
+          <td class="p-2 align-top">${noteHtml}</td>
+          <td class="p-2 align-top"><div class="text-sm">${escapeHtml(reply)}</div></td>
+          <td class="p-2 align-top">${manageHtml}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -2092,11 +2111,24 @@ header.appendChild(headerRight);
 
       const tr = document.createElement('tr');
       tr.className = 'border-b';
+      const noteString = buildLineNote({
+        email: p.emailForProduct || p.email || '',
+        username: p.usernameForProduct || p.username || '',
+        sn: p.snForProduct || p.sn || '',
+        imei: p.imeiForProduct || p.imei || '',
+        password: p.passwordForProduct || p.password || ''
+      });
+      const noteParts = noteString ? noteString.split('|').map(part => part.trim()).filter(Boolean) : [];
+      const noteHtml = noteParts.length
+        ? noteParts.map(part => `<div class="text-sm text-slate-600">${escapeHtml(part)}</div>`).join('')
+        : '<span class="text-slate-400">-</span>';
+
       tr.innerHTML = `
         <td class="p-2 align-top">${escapeHtml(prodName)}</td>
-        <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
+        <td class="p-2 align-top whitespace-nowrap"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
         <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
         <td class="p-2 align-top">${escapeHtml(ts)}</td>
+        <td class="p-2 align-top">${noteHtml}</td>
         <td class="p-2 align-top">${escapeHtml(reply)}</td>
       `;
       tbody.appendChild(tr);
