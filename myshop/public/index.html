@@ -25,6 +25,10 @@
     .modal.active{display:flex}
     .badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .7rem;border-radius:.6rem;font-size:.8rem}
     #adminOrdersModal .orders-scroll{max-height:70vh;overflow-y:auto;padding-right:.75rem;}
+    /* Make product detail modal scrollable when content exceeds viewport */
+    #productModal > div { max-height: 80vh; overflow-y: auto; padding-right: .75rem; }
+    /* Allow long inline product detail instructions to scroll */
+    #detailInstructionsWrap { max-height: 60vh; overflow-y: auto; padding-right: .5rem; }
   </style>
 </head>
 
@@ -874,6 +878,8 @@ function updateSidebar(){
   // No longer need CSV-related headers
   const norm = s => (s??"").toString().trim();
   const nk   = s => norm(s).toLowerCase().replace(/\s+/g,"").replace(/[._-]/g,"");
+  // Normalize tokens for search: keep letters, numbers and Thai characters; remove punctuation
+  const tokenNorm = s => (s??"").toString().trim().toLowerCase().replace(/[^0-9a-z\u0E00-\u0E7F]/g, "");
 
   const currencyTH = v => {
     const n=Number(String(v).replace(/[^\d.]/g,""));
@@ -1024,7 +1030,8 @@ function updateSidebar(){
   }
 
   function render(groups, filter=""){
-    const q = nk(filter);
+  // Tokenize search query and normalize each token. Empty tokens => show all.
+  const tokens = (filter||"").toString().toLowerCase().split(/\s+/).map(t=>tokenNorm(t)).filter(Boolean);
     groupsEl.innerHTML = "";
     let total = 0;
     updateViewToggleUI();
@@ -1035,7 +1042,17 @@ function updateSidebar(){
     }
 
     Object.entries(groups).forEach(([program,items])=>{
-      let keep = items.filter(p=>!q || nk(program).includes(q) || nk(p.pack).includes(q));
+      let keep;
+      if(!tokens.length){
+        keep = items.slice();
+      } else {
+        keep = items.filter(p=>{
+          // build a searchable haystack from program, pack and details
+          const hay = `${p.program||''} ${p.pack||''} ${p.details||''}`;
+          const hayNorm = tokenNorm(hay);
+          return tokens.every(tok => hayNorm.includes(tok));
+        });
+      }
       if(!keep.length) return;
       keep.sort((a,b)=>{
         const da = parseDurationMonths(a.pack);
