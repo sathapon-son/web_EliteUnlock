@@ -693,7 +693,10 @@ function updateSidebar(){
         </div>
         <div class="space-y-3">
           <h3 class="text-2xl font-bold" id="pdName"></h3>
-          <div class="text-2xl font-extrabold text-indigo-700">฿<span id="pdPrice">0</span></div>
+          <div class="text-2xl font-extrabold text-indigo-700" id="pdPriceWrap">
+            <div id="pdPriceLabel"></div>
+            <div>฿<span id="pdPrice">0</span></div>
+          </div>
           <div id="pdInstructionsWrap" class="space-y-2 text-sm text-slate-600 hidden">
             <h4 class="font-semibold text-slate-700">รายละเอียดสินค้า</h4>
             <div id="pdInstructions" class="space-y-1 leading-relaxed"></div>
@@ -782,6 +785,7 @@ function updateSidebar(){
               <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> ต้องการ Username</label>
               <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> ต้องการ SN</label>
               <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> ต้องการ IMEI</label>
+              <label class="inline-flex items-center gap-2"><input id="pTypeCredit" type="checkbox" /> เป็นสินค้าประเภทเครดิต</label>
               <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มสินค้า</button>
             </div>
           </div>
@@ -812,6 +816,7 @@ function updateSidebar(){
                     <th class="p-2">username?</th>
                     <th class="p-2">sn?</th>
                     <th class="p-2">imei?</th>
+                    <th class="p-2">ประเภท</th>
                     <th class="p-2">รายละเอียด</th>
                     <th class="p-2">จัดการ</th>
                   </tr>
@@ -1181,21 +1186,57 @@ function updateSidebar(){
     document.getElementById('detailImage').classList.toggle('hidden', !p.image);
     document.getElementById('detailProgram').textContent = p.program||'';
     document.getElementById('detailName').textContent = p.pack||p.name||'';
-    document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+    
+    // Set price display based on product type
+    if(p.type === 'credit') {
+      document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+      document.getElementById('detailPrice').parentElement.innerHTML = 
+        `<div class="text-sm text-slate-600">ราคาต่อเครดิต</div>
+         ฿<span id="detailPrice">${currencyTH(p.price||0)}</span>`;
+    } else {
+      document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+    }
     renderProductSteps('detailInstructionsWrap', 'detailInstructions', p.details);
     const fields = document.getElementById('detailFields');
     // build dynamic inputs depending on required fields (email, username, SN, IMEI)
     fields.innerHTML = '';
+
     const addField = (id,label,type='text')=>{
       const wrap = document.createElement('div');
       wrap.innerHTML = `<label class="text-sm">${label}</label><input id="${id}" type="${type}" class="w-full border rounded p-2 text-sm" />`;
       fields.appendChild(wrap);
     };
+    
+    // Add credit amount field for credit products
+    if(p.type === 'credit') {
+      const creditDiv = document.createElement('div');
+      creditDiv.className = 'mb-4';
+      creditDiv.innerHTML = `
+        <label class="text-sm block">จำนวนเครดิต</label>
+        <div class="flex gap-2 items-center">
+          <input type="number" id="detailCredits" class="flex-1 border rounded p-2 text-sm" min="1" step="1" value="1">
+          <span class="text-sm text-slate-600">เครดิต</span>
+        </div>
+      `;
+      fields.appendChild(creditDiv);
+      const credits = document.getElementById('detailCredits');
+      if(credits) {
+        // Auto-calculate price when credit amount changes
+        credits.addEventListener('input', () => {
+          const amount = Math.max(1, parseInt(credits.value) || 0);
+          credits.value = amount;
+          const pricePerCredit = Number(p.price) || 0;
+          const total = amount * pricePerCredit;
+          document.getElementById('detailPrice').textContent = currencyTH(total);
+        });
+      }
+    }
+    
     if(p.requiresEmail) addField('detailEmail','Email','email');
     if(p.requiresUsername) addField('detailUsername','Username','text');
     if(p.requiresSN) addField('detailSN','SN / Serial Number','text');
     if(p.requiresIMEI) addField('detailIMEI','IMEI','text');
-  if(p.requiresPassword) addField('detailPassword','รหัสผ่าน','password');
+    if(p.requiresPassword) addField('detailPassword','รหัสผ่าน','password');
     document.getElementById('detailMsg').textContent = '';
     panel.classList.remove('hidden');
     // scroll into view
@@ -1225,6 +1266,7 @@ function updateSidebar(){
     const p = CURRENT_DETAIL_PRODUCT;
     const msgEl = document.getElementById('detailMsg'); msgEl.textContent=''; msgEl.className='text-sm text-red-600';
     if(!p){ msgEl.textContent = 'ไม่พบสินค้า'; return; }
+    
     // collect dynamic details
     const details = {
       emailForProduct: document.getElementById('detailEmail')?.value?.trim()||'',
@@ -1233,6 +1275,32 @@ function updateSidebar(){
       imeiForProduct: document.getElementById('detailIMEI')?.value?.trim()||'',
       passwordForProduct: document.getElementById('detailPassword')?.value?.trim()||''
     };
+
+    // Handle credit products
+    if(p.type === 'credit') {
+      const credits = document.getElementById('detailCredits');
+      if(!credits || !credits.value) {
+        msgEl.textContent = 'กรุณาระบุจำนวนเครดิต';
+        return;
+      }
+      const amount = Math.max(1, parseInt(credits.value) || 0);
+      if(amount < 1) {
+        msgEl.textContent = 'จำนวนเครดิตต้องมากกว่า 0';
+        return;
+      }
+      const pricePerCredit = Number(p.price) || 0;
+      const total = amount * pricePerCredit;
+      
+      // Create a modified product object for the cart
+      const creditProduct = {
+        ...p,
+        price: total,
+        originalPrice: pricePerCredit,
+        creditAmount: amount,
+        pack: `${p.pack || p.name} (${amount} เครดิต)`
+      };
+      p = creditProduct;
+    }
     if(p.requiresEmail && !details.emailForProduct){ msgEl.textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้'; return; }
     if(p.requiresUsername && !details.usernameForProduct){ msgEl.textContent = 'กรุณากรอก Username สำหรับสินค้านี้'; return; }
     if(p.requiresSN && !details.snForProduct){ msgEl.textContent = 'กรุณากรอก SN/Serial สำหรับสินค้านี้'; return; }
@@ -1263,7 +1331,17 @@ function updateSidebar(){
         requiresSN: !!d.data().requiresSN,
         requiresIMEI: !!d.data().requiresIMEI,
         requiresPassword: !!d.data().requiresPassword,
-        details: d.data().details || ''
+        details: d.data().details || '',
+        // include type so UI can render credit-specific inputs (expects 'credit' or 'normal')
+        // Fallbacks: read explicit `type`, then `isCredit` boolean, then heuristics (program/name contains 'เติมเครดิต')
+        type: (function(){
+          const data = d.data() || {};
+          if(data.type) return data.type;
+          if(data.isCredit) return 'credit';
+          const combined = ((data.program||'') + ' ' + (data.name||'')).toLowerCase();
+          if(combined.includes('เติมเครดิต')) return 'credit';
+          return 'normal';
+        })()
       })).filter(x => x.price > 0);
       render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
     });
@@ -1881,6 +1959,9 @@ function updateSidebar(){
       requiresSN: !!p.requiresSN,
       requiresIMEI: !!p.requiresIMEI,
       details: norm(p.details||''),
+      // preserve explicit `type` when provided (admin UI sets `type`),
+      // otherwise fall back to legacy `isCredit` boolean
+      type: (p.type && String(p.type)) ? String(p.type) : (p.isCredit ? 'credit' : 'normal'),
       createdAt: serverTimestamp()
     });
   }
@@ -1924,6 +2005,14 @@ function updateSidebar(){
     document.getElementById('pdImage').classList.toggle('hidden', !p.image);
     document.getElementById('pdProgram').textContent = p.program||'';
     document.getElementById('pdName').textContent = p.pack||p.name||'';
+    
+    // Set price display based on product type
+    const priceLabel = document.getElementById('pdPriceLabel');
+    if(p.type === 'credit') {
+      priceLabel.textContent = 'ราคาต่อเครดิต';
+    } else {
+      priceLabel.textContent = 'ราคา';
+    }
     document.getElementById('pdPrice').textContent = currencyTH(p.price||0);
     renderProductSteps('pdInstructionsWrap', 'pdInstructions', p.details);
     const fields = document.getElementById('pdFields');
@@ -1933,6 +2022,33 @@ function updateSidebar(){
       wrap.innerHTML = `<label class="text-sm">${label}</label><input id="${id}" type="${type}" class="w-full border rounded p-2 text-sm" />`;
       fields.appendChild(wrap);
     };
+    // If this product is a credit product, add credits input
+    if(p.type === 'credit'){
+      const creditWrap = document.createElement('div');
+      creditWrap.className = 'mb-2';
+      creditWrap.innerHTML = `
+        <label class="text-sm">จำนวนเครดิต</label>
+        <div class="flex gap-2 items-center">
+          <input id="pdCredits" type="number" min="1" step="1" value="1" class="flex-1 border rounded p-2 text-sm" />
+          <span class="text-sm text-slate-600">เครดิต</span>
+        </div>
+      `;
+      fields.appendChild(creditWrap);
+      // attach handler to auto-update total price display
+      const updatePdPrice = () => {
+        const creditsEl = document.getElementById('pdCredits');
+        if(!creditsEl) return;
+        const amount = Math.max(1, parseInt(creditsEl.value) || 0);
+        creditsEl.value = amount;
+        const pricePer = Number(p.price) || 0;
+        const total = amount * pricePer;
+        document.getElementById('pdPrice').textContent = currencyTH(total);
+      };
+      setTimeout(()=>{
+        const creditsEl = document.getElementById('pdCredits');
+        if(creditsEl){ creditsEl.addEventListener('input', updatePdPrice); }
+      }, 0);
+    }
     if(p.requiresEmail) addField('pdEmail','Email');
     if(p.requiresUsername) addField('pdUsername','Username');
     if(p.requiresSN) addField('pdSN','SN / Serial Number');
@@ -2114,6 +2230,38 @@ function updateSidebar(){
       imeiForProduct: document.getElementById('pdIMEI')?.value?.trim()||'',
       passwordForProduct: document.getElementById('pdPassword')?.value?.trim()||''
     };
+    
+    // Handle credit products
+    if(PRODUCT_SELECTED.type === 'credit') {
+      const credits = document.getElementById('pdCredits');
+      if(!credits || !credits.value) {
+        msg.classList.add('text-red-600');
+        msg.textContent = 'กรุณาระบุจำนวนเครดิต';
+        return;
+      }
+      const amount = Math.max(1, parseInt(credits.value) || 0);
+      if(amount < 1) {
+        msg.classList.add('text-red-600');
+        msg.textContent = 'จำนวนเครดิตต้องมากกว่า 0';
+        return;
+      }
+      const pricePerCredit = Number(PRODUCT_SELECTED.price) || 0;
+      const total = amount * pricePerCredit;
+      
+      // Create a modified product object for the cart
+      const creditProduct = {
+        ...PRODUCT_SELECTED,
+        price: total,
+        originalPrice: pricePerCredit,
+        creditAmount: amount,
+        pack: `${PRODUCT_SELECTED.pack} (${amount} เครดิต)`
+      };
+      addToCart(creditProduct, details);
+      closeProductModal();
+      return;
+    }
+
+    // Handle normal products
     if(PRODUCT_SELECTED.requiresEmail && !details.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Email'; return; }
     if(PRODUCT_SELECTED.requiresUsername && !details.usernameForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก Username'; return; }
     if(PRODUCT_SELECTED.requiresSN && !details.snForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก SN/Serial'; return; }
@@ -2313,6 +2461,7 @@ function updateSidebar(){
     const requiresUsername = document.getElementById('pReqUsername')?.checked || false;
     const requiresSN = document.getElementById('pReqSN')?.checked || false;
     const requiresIMEI = document.getElementById('pReqIMEI')?.checked || false;
+    const isCredit = document.getElementById('pTypeCredit')?.checked || false;
     const singleName = document.getElementById('pName').value.trim();
     const singlePrice = document.getElementById('pPrice').value.trim();
     const bulkRaw = document.getElementById('pBulkLines')?.value || '';
@@ -2343,7 +2492,8 @@ function updateSidebar(){
           requiresUsername,
           requiresSN,
           requiresIMEI,
-          details
+          details,
+          type: isCredit ? 'credit' : 'normal'
         });
       };
 
@@ -2499,6 +2649,7 @@ function updateSidebar(){
           <td class="p-2"><input type="checkbox" data-field="requiresUsername" ${data.requiresUsername ? 'checked' : ''}></td>
           <td class="p-2"><input type="checkbox" data-field="requiresSN" ${data.requiresSN ? 'checked' : ''}></td>
           <td class="p-2"><input type="checkbox" data-field="requiresIMEI" ${data.requiresIMEI ? 'checked' : ''}></td>
+          <td class="p-2"><input type="checkbox" data-field="type" ${data.type === 'credit' ? 'checked' : ''} value="credit"> Credit</td>
           <td class="p-2"><textarea class="border rounded px-2 py-1 w-full text-xs leading-relaxed" rows="3" data-field="details">${data.details ?? ''}</textarea></td>
           <td class="p-2">
             <button class="bg-emerald-600 text-white px-2 py-1 rounded text-xs save-row" data-id="${doc.id}">Save</button>
