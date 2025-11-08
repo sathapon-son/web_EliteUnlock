@@ -10,22 +10,54 @@ exports.order = onRequest(
   },
   async (req, res) => {
     try {
-      if (req.method !== "POST") {
-        return res.status(405).send("Method Not Allowed");
+      // CORS: allow browser requests. Use the request Origin when present to be less permissive than '*'.
+      const origin = req.get("origin") || "*";
+      res.set("Access-Control-Allow-Origin", origin);
+      res.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+      res.set("Access-Control-Allow-Headers", "Content-Type,Authorization");
+
+      // Handle preflight
+      if (req.method === "OPTIONS") {
+        return res.status(204).send("");
       }
 
-      const { name, product, qty, total, note } = req.body || {};
+      if (req.method !== "POST") {
+        return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+      }
 
-      const text = [
-        "🛒 มีคำสั่งซื้อใหม่",
-        `👤 ลูกค้า: ${name || "-"}`,
-        `📦 สินค้า: ${product || "-"}`,
-        `🔢 จำนวน: ${qty || "-"}`,
-        `💰 ยอดรวม: ${total || "-"}`,
-        note ? `📝 หมายเหตุ: ${note}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      const body = req.body || {};
+      const { name, product, qty, total, note, type, email, amount, proofImageUrl } = body;
+
+      if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_TARGET_ID) {
+        console.error("Missing LINE secrets");
+        return res.status(500).json({ ok: false, error: "Server not configured with LINE secrets" });
+      }
+      let text;
+      // Check if this is a credit request by checking both type and amount
+      if (type === 'credit' && amount) {
+        const userEmail = email || name || '-';
+        const amt = Number(amount) || 0;
+        text = [
+          "� มีคำสั่งซื้อใหม่",
+          `👤 ลูกค้า: ${userEmail}`,
+          `� สินค้า: เติมเครดิต ${amt} เครดิต`,
+          `🔢 จำนวน: -`,
+          `💰 ยอดรวม: ${amt}`,
+          `📝 หมายเหตุ: คำขอเติมเครดิต รอตรวจสอบ`
+        ].join('\n');
+        console.log('Credit request LINE notification:', { userEmail, amt });
+      } else {
+        text = [
+          "🛒 มีคำสั่งซื้อใหม่",
+          `👤 ลูกค้า: ${name || "-"}`,
+          `📦 สินค้า: ${product || "-"}`,
+          `🔢 จำนวน: ${qty || "-"}`,
+          `💰 ยอดรวม: ${total || "-"}`,
+          note ? `📝 หมายเหตุ: ${note}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
 
       const payload = {
         to: process.env.LINE_TARGET_ID,
@@ -44,14 +76,14 @@ exports.order = onRequest(
       const out = await r.text();
       if (!r.ok) {
         console.error("LINE API Error:", out);
-        return res.status(500).send(out);
+        return res.status(502).json({ ok: false, error: out });
       }
 
       console.log("✅ LINE message sent successfully");
-      return res.send("ส่งแจ้งเตือนเข้า LINE สำเร็จ ✅");
+      return res.json({ ok: true, message: "ส่งแจ้งเตือนเข้า LINE สำเร็จ" });
     } catch (e) {
       console.error("Function Error:", e);
-      return res.status(500).send(String(e));
+      return res.status(500).json({ ok: false, error: String(e) });
     }
   }
 );

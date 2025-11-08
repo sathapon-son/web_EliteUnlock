@@ -7,17 +7,19 @@
   <meta name="description" content="ขายโปรแกรมปลดล็อคมือถือของแท้ Unlocktool, TSM TOOL PRO ฯลฯ ราคาเป็นมิตร เปิดใช้งานรวดเร็ว มีรับประกัน และดูแลหลังการขายจริง">
 
   <!-- Favicon / App Icons -->
-  <link rel="icon" type="image/png" sizes="32x32" href="logo.png">
-  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/logo.png?v=1">
+  <link rel="shortcut icon" href="/logo.png?v=1" type="image/png">
+  <link rel="apple-touch-icon" href="/logo.png?v=1">
   <meta name="theme-color" content="#4f46e5">
-
+  
   <!-- Open Graph / Social -->
   <meta property="og:title" content="Elite Unlock — โปรแกรมปลดล็อคมือถือ">
   <meta property="og:description" content="ของแท้ 100% • เปิดใช้งานรวดเร็ว • ราคาคุ้มค่า">
   <meta property="og:image" content="logo.png">
   <meta property="og:type" content="website">
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com?v=3.3.5"></script>
+  <!-- หากใช้งานจริง ควรติดตั้ง Tailwind ผ่าน npm และ build แทนการใช้ CDN -->
   <style>
     .card-hover{transition:.25s ease}
     .card-hover:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,.08)}
@@ -29,6 +31,57 @@
     #productModal > div { max-height: 80vh; overflow-y: auto; padding-right: .75rem; }
     /* Allow long inline product detail instructions to scroll */
     #detailInstructionsWrap { max-height: 60vh; overflow-y: auto; padding-right: .5rem; }
+
+    /* Custom scrollbar styles */
+    .custom-scrollbar {
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+      border: 2px solid #f1f5f9;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background-color: #94a3b8;
+    }
+
+    /* Apply custom scrollbar to topup modal */
+    #topupModal .overflow-y-auto {
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 #f1f5f9;
+    }
+    
+    #topupModal .overflow-y-auto::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    #topupModal .overflow-y-auto::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    
+    #topupModal .overflow-y-auto::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+      border: 2px solid #f1f5f9;
+    }
+    
+    #topupModal .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+      background-color: #94a3b8;
+    }
   </style>
 </head>
 
@@ -182,6 +235,7 @@
   let USER_ORDERS_UNSUB = null;
   let ADMIN_ORDERS_UNSUB = null;
   let PRODUCTS_UNSUB = null;
+  let CREDIT_REQUESTS_UNSUB = null;
   let CART = [];
   let PENDING_RESET_CODE = null;
   let PENDING_RESET_EMAIL = "";
@@ -298,9 +352,10 @@
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc,
     query, where, getDocs, onSnapshot, serverTimestamp, increment,
-    runTransaction, deleteDoc
+    runTransaction, deleteDoc, orderBy, limit
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
   import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
+  import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -308,7 +363,69 @@
   // Optional: Analytics (non-blocking)
   const canUseAnalytics = typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http');
   if(canUseAnalytics){
-    try { isSupported().then(ok=>{ if(ok) getAnalytics(app); }); } catch(e){ console.warn('Analytics disabled', e?.message||e); }
+    try { 
+      // Wrap analytics initialization in a safe try-catch
+      const initAnalytics = async () => {
+        const supported = await isSupported().catch(() => false);
+        if (supported) {
+          try {
+            getAnalytics(app);
+          } catch (err) {
+            console.warn('Analytics init failed:', err?.message || err);
+          }
+        }
+      };
+      initAnalytics().catch(e => console.warn('Analytics check failed:', e?.message || e));
+    } catch(e){ 
+      console.warn('Analytics setup failed:', e?.message || e); 
+    }
+  }
+
+  // Upload image to Firebase Storage and return URL
+  async function uploadImageToStorage(file, folder = 'slips') {
+    if (!file || !(file instanceof File)) throw new Error('Invalid file');
+    if (!file.type.startsWith('image/')) throw new Error('File must be an image');
+    if (!CURRENT_USER?.email) throw new Error('กรุณาเข้าสู่ระบบก่อนอัปโหลดรูป');
+    
+    try {
+      // Debug auth info
+      console.log('Current User:', CURRENT_USER);
+      console.log('User Email:', CURRENT_USER.email);
+      const token = await CURRENT_USER.getIdToken();
+      console.log('Auth Token:', token);
+      
+      const storage = getStorage(app);
+      const fileExt = file.name.split('.').pop().toLowerCase();
+      
+      // Create sanitized email folder name (replace all . with _)
+      const emailFolder = CURRENT_USER.email.toLowerCase().replaceAll('.', '_');
+      
+      // Create date folder name in format YYYY-MM-DD
+      const now = new Date();
+      const dateFolder = now.toISOString().split('T')[0];
+      
+      // Create full path: slips/email/YYYY-MM-DD/timestamp_random.ext
+      const fileName = `${folder}/${emailFolder}/${dateFolder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
+      console.log('Uploading to path:', fileName);
+      
+      const storageRef = ref(storage, fileName);
+      
+      // Upload file first
+      const uploadResult = await uploadBytes(storageRef, file);
+      console.log('Upload successful:', uploadResult);
+      
+      // Then get download URL
+      const url = await getDownloadURL(storageRef);
+      console.log('Got download URL:', url);
+      
+      return url;
+    } catch (error) {
+      console.error('Storage error:', error);
+      if (error.code === 'storage/unauthorized') {
+        throw new Error('ไม่สามารถเข้าถึงพื้นที่จัดเก็บได้ กรุณาลองเข้าสู่ระบบใหม่');
+      }
+      throw new Error('เกิดข้อผิดพลาดในการอัปโหลดรูป: ' + (error.message || 'Unknown error'));
+    }
   }
 
   // Configure admin emails (edit to your admin accounts) or use isAdmin in user doc
@@ -641,21 +758,47 @@ function updateSidebar(){
     <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
       <button id="closeTopup" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4 text-center">เติมเครดิต</h3>
-      <div class="space-y-3 text-sm text-center flex flex-col items-center">
+      <div class="space-y-4 overflow-y-auto max-h-[80vh] pr-2 custom-scrollbar">
+        <!-- Credit amount input -->
         <div>
-          <div class="font-semibold">🏦 โอนผ่านบัญชีธนาคาร กรุงไทย</div>
-          <div class="text-lg">💳 เลขที่บัญชี 403-0-42658-1</div>
-          <div>👤 สถาพร สอนสุภาพ</div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">จำนวนเครดิตที่ต้องการเติม</label>
+          <input type="number" id="topupAmount" class="w-full border rounded-md p-2" min="1" step="1" placeholder="ระบุจำนวนเครดิต" />
+          <p class="text-xs text-gray-500 mt-1">1 เครดิต = 1 บาท</p>
         </div>
-        <div class="flex flex-col md:flex-row items-center justify-center gap-6">
-          <div class="text-center">
-            <img src="LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded mx-auto" />
+
+        <!-- File upload -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">แนบหลักฐานการโอนเงิน</label>
+          <input type="file" id="topupProof" accept="image/*" class="w-full" />
+          <p class="text-xs text-gray-500 mt-1">รองรับไฟล์รูปภาพ (jpg, png)</p>
+        </div>
+
+        <!-- Submit button -->
+        <button id="submitTopup" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+          ส่งคำขอเติมเครดิต
+        </button>
+
+        <!-- Status message -->
+        <div id="topupMessage" class="text-sm text-center"></div>
+
+        <!-- Bank info -->
+        <div class="rounded-lg p-4 bg-amber-50 border space-y-2">
+          <div class="font-medium">ช่องทางการชำระเงิน:</div>
+          <div class="bg-white p-3 rounded">
+            <div class="font-semibold">🏦 บัญชีธนาคาร กรุงไทย</div>
+            <div class="text-lg my-1">💳 403-0-42658-1</div>
+            <div>👤 สถาพร สอนสุภาพ</div>
+          </div>
+          <div class="flex items-center justify-center gap-4 p-2">
+            <div class="text-center">
+              <img src="LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded" />
+              <div class="text-sm mt-1">LINE: @825lhqmj</div>
+            </div>
           </div>
         </div>
-        <div class="rounded-lg p-3 bg-amber-50 border max-w-[90%]">โปรดติดต่อเพื่อยืนยันการชำระเงินผ่าน LINE เท่านั้น:<br/><strong>LINE ID: @825lhqmj</strong><br/></div>
-        
+
         <!-- Agent upgrade promotion -->
-        <div class="mt-4 rounded-lg p-4 bg-indigo-50 border-2 border-indigo-200 max-w-[90%]">
+        <div class="rounded-lg p-4 bg-indigo-50 border-2 border-indigo-200">
           <div class="text-indigo-800 font-semibold mb-2">🌟 สิทธิพิเศษสำหรับลูกค้า</div>
           <div class="text-indigo-700">
             เมื่อสะสมเครดิตครบ 4,500 เครดิต<br/>
@@ -663,12 +806,79 @@ function updateSidebar(){
             พร้อมส่วนลดราคาพิเศษ!
           </div>
         </div>
+
+        <!-- Request history -->
+        <div id="creditRequestHistory" class="space-y-4 mt-6">
+          <div class="font-medium text-lg">ประวัติคำขอเติมเครดิต</div>
+          <div id="creditRequestsList" class="space-y-2">
+            <!-- Credit requests will be inserted here -->
+          </div>
+        </div>
+      </div>
       </div>
     </div>`;
   document.body.appendChild(topupModal);
   // wire topup modal buttons
-  document.getElementById('closeTopup')?.addEventListener('click', ()=>{ const tm = document.getElementById('topupModal'); if(tm) hideModalElement(tm); });
-  
+  document.getElementById('closeTopup')?.addEventListener('click', ()=>{ 
+    const tm = document.getElementById('topupModal'); 
+    if(tm) {
+      hideModalElement(tm);
+      // Reset form and message when closing
+      const msgEl = document.getElementById('topupMessage');
+      const amountInput = document.getElementById('topupAmount');
+      const fileInput = document.getElementById('topupProof');
+      if (msgEl) msgEl.textContent = '';
+      if (amountInput) amountInput.value = '';
+      if (fileInput) fileInput.value = '';
+    } 
+  });
+
+  // Setup topup form submission
+  document.getElementById('submitTopup')?.addEventListener('click', async () => {
+    const msgEl = document.getElementById('topupMessage');
+    msgEl.textContent = '';
+    msgEl.className = 'text-sm text-center';
+
+    try {
+      if (!CURRENT_USER) {
+        throw new Error('กรุณาเข้าสู่ระบบก่อนเติมเครดิต');
+      }
+
+      const amountInput = document.getElementById('topupAmount');
+      const fileInput = document.getElementById('topupProof');
+      
+      const amount = Number(amountInput.value);
+      if (!amount || amount < 1) {
+        throw new Error('กรุณาระบุจำนวนเครดิตที่ต้องการเติม');
+      }
+
+      const file = fileInput.files[0];
+      if (!file) {
+        throw new Error('กรุณาแนบหลักฐานการโอนเงิน');
+      }
+
+      msgEl.textContent = 'กำลังอัปโหลดรูปภาพ...';
+      const imageUrl = await uploadImageToStorage(file);
+
+      msgEl.textContent = 'กำลังส่งคำขอ...';
+      await submitCreditRequest(amount, imageUrl);
+
+      msgEl.className = 'text-sm text-emerald-600 text-center';
+      msgEl.textContent = 'ส่งคำขอเติมเครดิตเรียบร้อย กำลังรอการตรวจสอบ';
+
+      // Clear form
+      amountInput.value = '';
+      fileInput.value = '';
+
+      // Start listening for request updates
+      listenCreditRequests();
+
+    } catch (err) {
+      msgEl.className = 'text-sm text-red-600 text-center';
+      msgEl.textContent = err.message || 'เกิดข้อผิดพลาด';
+    }
+  });
+
   // Cart Modal
   const cartModal = document.createElement('div');
   cartModal.className = 'modal'; cartModal.id = 'cartModal'; cartModal.setAttribute('aria-hidden','true');
@@ -749,14 +959,34 @@ function updateSidebar(){
   const adminCreditModal = document.createElement('div');
   adminCreditModal.className = 'modal'; adminCreditModal.id = 'adminCreditModal'; adminCreditModal.setAttribute('aria-hidden','true');
   adminCreditModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
+    <div class="bg-white rounded-xl shadow-lg max-w-4xl w-full p-6 relative">
       <button id="closeAdminCredit" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">เพิ่มเครดิตให้ลูกค้า</h3>
-      <div class="space-y-3 text-sm">
-        <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
-        <input id="creditAmount" type="number" placeholder="จำนวนเครดิต (+เพิ่ม/-ลด)" class="w-full border rounded p-2" />
-        <button id="addCreditBtn" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">อัปเดตเครดิต</button>
-        <div id="creditMsg" class="text-sm"></div>
+      <h3 class="text-xl font-bold mb-4">จัดการเครดิต</h3>
+      
+      <div class="flex gap-6">
+        <!-- Left side: Manual credit adjustment -->
+        <div class="flex-1 space-y-4">
+          <div class="bg-white rounded-lg border p-4">
+            <h4 class="font-semibold mb-3">เพิ่ม/ลดเครดิตโดยตรง</h4>
+            <div class="space-y-3">
+              <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
+              <input id="creditAmount" type="number" placeholder="จำนวนเครดิต (+เพิ่ม/-ลด)" class="w-full border rounded p-2" />
+              <button id="addCreditBtn" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">อัปเดตเครดิต</button>
+              <div id="creditMsg" class="text-sm"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right side: Credit requests -->
+        <div class="flex-1 space-y-4">
+          <div class="bg-white rounded-lg border p-4">
+            <h4 class="font-semibold mb-3">คำขอเติมเครดิต</h4>
+            <div class="space-y-4" id="creditRequestsList">
+              <!-- Credit requests will be listed here -->
+              <div class="text-sm text-gray-500">กำลังโหลด...</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(adminCreditModal);
@@ -1433,7 +1663,22 @@ function updateSidebar(){
       
 
       // Attach listeners
-      topupBtn.addEventListener('click', ()=>{ if(!CURRENT_USER){ openLoginModal(); return; } const tmodal = document.getElementById('topupModal'); if(tmodal) showModalElement(tmodal); });
+      topupBtn.addEventListener('click', ()=>{ 
+        if(!CURRENT_USER){ 
+          openLoginModal(); 
+          return; 
+        } 
+        const tmodal = document.getElementById('topupModal'); 
+        if(tmodal) {
+          showModalElement(tmodal);
+          // Show request history for current user
+          const historyEl = document.getElementById('creditRequestHistory');
+          if (historyEl) {
+            historyEl.classList.remove('hidden');
+            listenCreditRequests();
+          }
+        }
+      });
       historyBtn.addEventListener('click', openHistoryModal);
       cartBtn.addEventListener('click', openCartModal);
       logoutBtn.addEventListener('click', logoutWithConfirm);
@@ -1491,8 +1736,82 @@ function updateSidebar(){
     }
   }
 
-  function showModalElement(el){ if(!el) return; el.classList.add('active'); el.setAttribute('aria-hidden','false'); }
-  function hideModalElement(el){ if(!el) return; el.classList.remove('active'); el.setAttribute('aria-hidden','true'); }
+  // Store last focused element before modal opens
+  let lastFocusedElement = null;
+
+  function showModalElement(el) {
+    if (!el) return;
+    
+    // Store current focus
+    lastFocusedElement = document.activeElement;
+    
+    // Show modal
+    el.classList.add('active');
+    
+    // Set ARIA attributes
+    el.removeAttribute('aria-hidden');
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    
+    // Get the modal content div (first child of modal)
+    const modalContent = el.querySelector('div');
+    if (modalContent) {
+      modalContent.setAttribute('role', 'document');
+    }
+    
+    // Find the first focusable element and focus it
+    const focusable = el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length) {
+      focusable[0].focus();
+    }
+    
+    // Enable the modal
+    el.removeAttribute('inert');
+    
+    // Make other content inert
+    document.body.querySelectorAll('main, header, footer').forEach(section => {
+      if (section !== el) {
+        section.setAttribute('inert', '');
+      }
+    });
+
+    // If admin opens the admin credit modal, start listening for credit requests
+    try{
+      if (el.id === 'adminCreditModal' && IS_ADMIN) {
+        // start admin listener
+        listenCreditRequests();
+      }
+      // If user opens topup modal, ensure their request history is listened to (some code already does this but keep as safety)
+      if (el.id === 'topupModal' && !IS_ADMIN) {
+        listenCreditRequests();
+      }
+    }catch(e){ console.warn('listenCreditRequests trigger failed', e?.message||e); }
+  }
+
+  function hideModalElement(el) {
+    if (!el) return;
+    
+    // Hide modal
+    el.classList.remove('active');
+    
+    // Reset ARIA attributes
+    el.setAttribute('aria-hidden', 'true');
+    el.removeAttribute('aria-modal');
+    
+    // Set modal inert
+    el.setAttribute('inert', '');
+    
+    // Re-enable main content
+    document.body.querySelectorAll('[inert]').forEach(section => {
+      section.removeAttribute('inert');
+    });
+    
+    // Restore focus
+    if (lastFocusedElement) {
+      lastFocusedElement.focus();
+      lastFocusedElement = null;
+    }
+  }
 
   async function bootstrapFirestoreAfterSignup(u){
     try{
@@ -1980,6 +2299,294 @@ function updateSidebar(){
     if(snap.empty) throw new Error('ไม่พบผู้ใช้อีเมลนี้');
     const d = snap.docs[0];
     await updateDoc(doc(db,'users',d.id),{ credits: increment(Number(amount)||0) });
+  }
+
+  async function submitCreditRequest(amount, proofImageUrl) {
+    try {
+      if (!CURRENT_USER) throw new Error('กรุณาเข้าสู่ระบบ');
+      if (!amount || amount < 1) throw new Error('จำนวนเครดิตต้องมากกว่า 0');
+      if (!proofImageUrl) throw new Error('กรุณาแนบหลักฐานการโอนเงิน');
+
+      console.log('Submitting credit request:', { amount, proofImageUrl });
+
+      // Create credit request only
+      const requestRef = await addDoc(collection(db, 'creditRequests'), {
+        userId: CURRENT_USER.uid,
+        userEmail: CURRENT_USER.email,
+        amount: Number(amount),
+        status: 'pending',
+        proofImageUrl: proofImageUrl,
+        createdAt: serverTimestamp()
+      });
+
+      // Send LINE notification with explicit type:credit
+      await notifyLineOrder({
+        type: 'credit',
+        name: CURRENT_USER.email, // send email as name for better visibility
+        email: CURRENT_USER.email,
+        amount: Number(amount),
+        proofImageUrl: proofImageUrl
+      });
+
+      return requestRef.id;
+  } catch (err) {
+      console.error('Error submitting credit request:', err);
+      throw err;
+    }
+  }
+
+  async function confirmCreditRequest(requestId) {
+    try {
+      if (!IS_ADMIN) throw new Error('Unauthorized');
+      
+      const requestRef = doc(db, 'creditRequests', requestId);
+      const requestSnap = await getDoc(requestRef);
+      if (!requestSnap.exists()) throw new Error('ไม่พบคำขอเติมเครดิต');
+    
+      const data = requestSnap.data();
+      if (data.status !== 'pending') throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว');
+
+      // Update credit request status
+      await updateDoc(requestRef, {
+        status: 'approved',
+        approvedAt: serverTimestamp(),
+        approvedBy: CURRENT_USER.email
+      });
+
+      // Add credits to user
+      const userRef = doc(db, 'users', data.userId);
+      await updateDoc(userRef, {
+        credits: increment(data.amount)
+      });
+
+      // Send confirmation email to user
+      await addDoc(collection(db, 'mail'), {
+        to: [data.userEmail],
+        from: 'Elite Unlock <noreply@eliteunlock.com>',
+        message: {
+          subject: 'เติมเครดิตสำเร็จ',
+          html: `
+            <div>
+              <h3>เติมเครดิตสำเร็จ</h3>
+              <p>เติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว</p>
+              <p>หากมีข้อสงสัยกรุณาติดต่อ LINE: @825lhqmj</p>
+            </div>
+          `,
+          text: `เติมเครดิตสำเร็จ\n\nเติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว\n\nหากมีข้อสงสัยกรุณาติดต่อ LINE: @825lhqmj`
+        },
+        createdAt: serverTimestamp()
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error confirming credit request:', err);
+      throw err;
+    }
+  }
+
+function listenCreditRequests() {
+    console.log('Starting listenCreditRequests');
+    try {
+      if (CREDIT_REQUESTS_UNSUB) {
+        CREDIT_REQUESTS_UNSUB();
+        CREDIT_REQUESTS_UNSUB = null;
+      }
+
+      if (!CURRENT_USER) {
+        console.log('No user logged in, not listening for credit requests');
+        return;
+      }
+
+      // Get both admin and user credit request list elements
+
+      // Admin: use admin modal, User: use only the creditRequestsList inside creditRequestHistory in topupModal
+      let adminListEl = null;
+      const adminModal = document.getElementById('adminCreditModal');
+      if (adminModal) {
+        adminListEl = adminModal.querySelector('#creditRequestsList');
+      }
+
+      // For users, pick the list inside the topup modal's history section
+      let userListEl = null;
+      const topupModal = document.getElementById('topupModal');
+      if (topupModal) {
+        const historySection = topupModal.querySelector('#creditRequestHistory');
+        if (historySection) userListEl = historySection.querySelector('#creditRequestsList');
+      }
+
+      // Choose list based on IS_ADMIN flag. Do not rely on offsetParent or visibility tests here;
+      // caller (e.g., button handlers) should call listenCreditRequests() when appropriate (modal opened).
+      const listEl = IS_ADMIN ? adminListEl : userListEl;
+      if (!listEl) {
+        console.warn('Credit request list element not found for', IS_ADMIN ? 'admin' : 'user');
+        return;
+      }
+      // Show loading state
+      listEl.innerHTML = '<div class="text-sm text-gray-500">กำลังโหลด...</div>';
+
+      const creditRequestsRef = collection(db, 'creditRequests');
+      
+      // Simple query without complex filters - we'll filter client-side
+      const queryRef = query(
+        creditRequestsRef,
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
+
+      CREDIT_REQUESTS_UNSUB = onSnapshot(queryRef, (snap) => {
+        listEl.innerHTML = '';
+        if (snap.empty) {
+          listEl.innerHTML = `<div class="text-sm text-gray-500">ไม่พบคำขอเติมเครดิต</div>`;
+          return;
+        }
+
+        // Filter in memory based on user role
+        const docs = snap.docs.filter(doc => {
+          const data = doc.data();
+          if (IS_ADMIN && listEl === adminListEl) {
+            // Admin sees all pending requests
+            return data.status === 'pending';
+          } else {
+            // User and admin (in user view) see their own requests (all statuses)
+            return data.userId === CURRENT_USER.uid;
+          }
+        });
+
+        if (docs.length === 0) {
+          listEl.innerHTML = `<div class="text-sm text-gray-500">ไม่พบคำขอเติมเครดิต</div>`;
+          return;
+        }
+
+        docs.forEach((doc) => {
+          const data = doc.data();
+          const status = data.status || 'pending';
+          let statusText = 'กำลังตรวจสอบ...';
+          let statusClass = 'bg-amber-100 text-amber-800 font-medium';
+          if (status === 'approved') {
+            statusText = 'อนุมัติแล้ว ✓';
+            statusClass = 'bg-emerald-100 text-emerald-800 font-medium';
+          } else if (status === 'rejected') {
+            statusText = 'ปฏิเสธ ✗';
+            statusClass = 'bg-red-100 text-red-800 font-medium';
+          }
+          const createdAt = data.createdAt?.toDate?.() || new Date();
+          const amount = data.amount || 0;
+          const el = document.createElement('div');
+          el.className = 'border rounded-lg p-4 space-y-2';
+          // Admin modal: show approve/reject, User modal: do not show
+          if (IS_ADMIN && listEl === adminListEl) {
+            el.innerHTML = `
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-medium">${data.userEmail || 'ไม่ระบุอีเมล'}</div>
+                  <div class="text-sm text-gray-500">${createdAt.toLocaleString('th-TH')}</div>
+                </div>
+                <span class="px-2 py-1 rounded text-sm ${statusClass}">${statusText}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="font-medium">จำนวน: ${amount.toLocaleString()} เครดิต</div>
+                ${status === 'pending' ? `
+                  <div class="flex gap-2">
+                    <button data-approve="${doc.id}" class="px-3 py-1 rounded text-sm bg-emerald-600 text-white hover:bg-emerald-700">อนุมัติ</button>
+                    <button data-reject="${doc.id}" class="px-3 py-1 rounded text-sm bg-red-600 text-white hover:bg-red-700">ปฏิเสธ</button>
+                  </div>
+                ` : ''}
+              </div>
+              <div>
+                <a href="${data.proofImageUrl}" target="_blank" class="text-sm text-indigo-600 hover:underline">ดูหลักฐานการโอนเงิน</a>
+              </div>
+            `;
+            // Add event listeners for admin actions
+            const approveBtn = el.querySelector(`[data-approve="${doc.id}"]`);
+            const rejectBtn = el.querySelector(`[data-reject="${doc.id}"]`);
+            if (approveBtn) {
+              approveBtn.addEventListener('click', async () => {
+                try {
+                  await confirmCreditRequest(doc.id);
+                } catch (err) {
+                  alert(err.message || 'เกิดข้อผิดพลาด');
+                }
+              });
+            }
+            if (rejectBtn) {
+              rejectBtn.addEventListener('click', async () => {
+                try {
+                  await rejectCreditRequest(doc.id);
+                } catch (err) {
+                  alert(err.message || 'เกิดข้อผิดพลาด');
+                }
+              });
+            }
+          } else {
+            // User view: no approve/reject buttons
+            el.innerHTML = `
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-medium">จำนวน: ${amount.toLocaleString()} เครดิต</span>
+                    <span class="px-2 py-1 rounded text-sm ${statusClass}">${statusText}</span>
+                  </div>
+                  <div class="text-sm text-gray-500">${createdAt.toLocaleString('th-TH')}</div>
+                </div>
+                <div class="flex-shrink-0">
+                  <a href="${data.proofImageUrl}" target="_blank" class="text-sm text-indigo-600 hover:underline">ดูหลักฐานการโอนเงิน</a>
+                </div>
+              </div>
+            `;
+          }
+          listEl.appendChild(el);
+        });
+      }, (error) => {
+        console.error('Error listening to credit requests:', error);
+        listEl.innerHTML = `<div class="text-sm text-red-500">เกิดข้อผิดพลาด: ${error.message}</div>`;
+      });
+    } catch (err) {
+      console.error('Error listening credit requests:', err);
+    }
+  }
+
+  // Reject a credit request
+  async function rejectCreditRequest(requestId) {
+    try {
+      if (!IS_ADMIN) throw new Error('Unauthorized');
+      
+      const requestRef = doc(db, 'creditRequests', requestId);
+      const requestSnap = await getDoc(requestRef);
+      if (!requestSnap.exists()) throw new Error('ไม่พบคำขอเติมเครดิต');
+      
+      const data = requestSnap.data();
+      if (data.status !== 'pending') throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว');
+
+      // Update request status
+      await updateDoc(requestRef, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+        rejectedBy: CURRENT_USER.email
+      });
+
+      // Send rejection email
+      await addDoc(collection(db, 'mail'), {
+        to: [data.userEmail],
+        from: 'Elite Unlock <noreply@eliteunlock.com>',
+        message: {
+          subject: 'คำขอเติมเครดิตถูกปฏิเสธ',
+          html: `
+            <div>
+              <h3>คำขอเติมเครดิตถูกปฏิเสธ</h3>
+              <p>คำขอเติมเครดิตจำนวน ${data.amount} เครดิต ของคุณถูกปฏิเสธ</p>
+              <p>กรุณาติดต่อ LINE: @825lhqmj เพื่อสอบถามข้อมูลเพิ่มเติม</p>
+            </div>
+          `,
+          text: `คำขอเติมเครดิตถูกปฏิเสธ\n\nคำขอเติมเครดิตจำนวน ${data.amount} เครดิต ของคุณถูกปฏิเสธ\n\nกรุณาติดต่อ LINE: @825lhqmj เพื่อสอบถามข้อมูลเพิ่มเติม`
+        },
+        createdAt: serverTimestamp()
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error rejecting credit request:', err);
+      throw err;
+    }
   }
 
   async function addProductFS(p){
@@ -2771,50 +3378,91 @@ function updateSidebar(){
 
   // Wire up admin product management
   const wireProductManagement = () => {
+    if (!IS_ADMIN) return; // ไม่ต้อง wire ถ้าไม่ใช่ admin
+    
     const openAdminProductBtn = document.getElementById('openAdminProductBtn');
     const modal = document.getElementById('adminProductModal');
 
-    if (openAdminProductBtn) {
-      openAdminProductBtn.addEventListener('click', async () => {
-        if (!checkIsAdmin()) return;
-        if (modal) {
-          showModalElement(modal);
-          try {
-            // store unsubscribe so cleanupProductListeners can stop it later
-            PRODUCTS_UNSUB = await setupProductTable();
-          } catch (error) {
-            showMessage('bulkMsg', 'Error loading products: ' + error.message, 'error');
+    if (!openAdminProductBtn || !modal) {
+      console.warn('Product management elements not found');
+      return;
+    }
+
+    // Set up click handler with proper admin check and error handling
+    openAdminProductBtn.addEventListener('click', async () => {
+      try {
+        if (!checkIsAdmin()) {
+          showMessage('bulkMsg', 'ต้องเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแล', 'error');
+          return;
+        }
+
+        // Clean up any existing product listeners before showing modal
+        cleanupProductListeners();
+        
+        // Show modal and set up product table
+        showModalElement(modal);
+        
+        // Set up real-time product updates
+        PRODUCTS_UNSUB = await setupProductTable();
+        
+        if (!PRODUCTS_UNSUB) {
+          throw new Error('Failed to initialize product table');
+        }
+      } catch (error) {
+        console.error('Error setting up product management:', error);
+        showMessage('bulkMsg', 'เกิดข้อผิดพลาด: ' + (error.message || 'ไม่สามารถโหลดข้อมูลสินค้าได้'), 'error');
+        // Hide modal on error to prevent stuck state
+        hideModalElement(modal);
+      }
+    });
+  };
+
+    // Set up close button handlers with proper cleanup
+    const setupCloseHandler = (buttonId) => {
+      const button = document.getElementById(buttonId);
+      if (button) {
+        button.addEventListener('click', () => {
+          if (modal) {
+            hideModalElement(modal);
+            cleanupProductListeners();
           }
+        });
+      }
+    };
+
+    setupCloseHandler('closeAdminProduct');
+    setupCloseHandler('closeAdminProductFooter');
+
+    // Set up refresh button with proper error handling
+    const refreshButton = document.getElementById('btnRefreshProducts');
+    if (refreshButton) {
+      refreshButton.addEventListener('click', async () => {
+        try {
+          if (!checkIsAdmin()) {
+            showMessage('bulkMsg', 'ต้องเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแล', 'error');
+            return;
+          }
+
+          showMessage('bulkMsg', 'กำลังรีเฟรชรายการ...');
+          
+          // Clean up and re-attach listeners
+          cleanupProductListeners();
+          PRODUCTS_UNSUB = await setupProductTable();
+          
+          if (!PRODUCTS_UNSUB) {
+            throw new Error('Failed to initialize product table');
+          }
+
+          showMessage('bulkMsg', 'รีเฟรชเรียบร้อย', 'success');
+        } catch (error) {
+          console.error('Error refreshing products:', error);
+          showMessage('bulkMsg', 'เกิดข้อผิดพลาด: ' + (error.message || 'ไม่สามารถรีเฟรชข้อมูลได้'), 'error');
         }
       });
     }
 
-    // Clean up listeners when modal closes
-    document.getElementById('closeAdminProduct')?.addEventListener('click', () => {
-      if(modal) hideModalElement(modal);
-      cleanupProductListeners();
-    });
-    document.getElementById('closeAdminProductFooter')?.addEventListener('click', () => {
-      if(modal) hideModalElement(modal);
-      cleanupProductListeners();
-    });
-
-    // bulk save/delete UI removed - single-row Save/Delete remain in each row
-
-    // Refresh products button (manual)
-    document.getElementById('btnRefreshProducts')?.addEventListener('click', async () => {
-      if(!checkIsAdmin()) return;
-      showMessage('bulkMsg', 'กำลังรีเฟรชรายการ...');
-      try{
-        // clean up previous listener and re-attach
-        cleanupProductListeners();
-        PRODUCTS_UNSUB = await setupProductTable();
-        showMessage('bulkMsg', 'รีเฟรชเรียบร้อย', 'success');
-      }catch(e){ showMessage('bulkMsg', 'Error: '+(e.message||e), 'error'); }
-    });
-  };
-
   // ----- Auth state -----
+  // Set up auth state change listener
   onAuthStateChanged(auth, async (user)=>{
     CURRENT_USER = user||null;
     if(user){
@@ -2863,7 +3511,7 @@ function updateSidebar(){
     }
   });
 
-  // ----- Init -----
+  // Initialize the application
   (async () => {
     try {
       // Set up Firestore listener
@@ -2875,6 +3523,15 @@ function updateSidebar(){
         updateCartCount(); 
       } catch(err) {
         console.error('Cart init error:', err);
+      }
+      
+      // Wire up product management if admin
+      if (IS_ADMIN) {
+        try {
+          wireProductManagement();
+        } catch(err) {
+          console.error('Product management init error:', err);
+        }
       }
       
       // Update status
