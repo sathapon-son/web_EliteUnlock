@@ -1,5 +1,5 @@
 @echo off
-cd /d "D:\Web\web_EliteUnlock\myshop"
+cd /d "%~dp0"
 echo ============================
 echo Deploying Firebase Project...
 echo ============================

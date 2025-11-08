@@ -176,6 +176,7 @@
   let CURRENT_USER = null;
   let CURRENT_USER_DOC = null;
   let IS_ADMIN = false;
+  let IS_AGENT = false;
   let FS_PRODUCTS = [];
   let PENDING_ORDER = null;
   let USER_ORDERS_UNSUB = null;
@@ -291,7 +292,8 @@
   import {
     getAuth, onAuthStateChanged,
     createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
-    sendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode
+    sendPasswordResetEmail, confirmPasswordReset, verifyPasswordResetCode,
+    getIdTokenResult
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc,
@@ -641,15 +643,9 @@ function updateSidebar(){
       <h3 class="text-xl font-bold mb-4 text-center">เติมเครดิต</h3>
       <div class="space-y-3 text-sm text-center flex flex-col items-center">
         <div>
-          <div class="font-semibold">1. พร้อมเพย์</div>
-          <div class="text-lg">0885698501</div>
-          <div>สถาพร สอนสุภาพ</div>
-        </div>
-        <div>
-          <div class="font-semibold">2. บัญชี</div>
-          <div class="text-lg">4030426581</div>
-          <div>กรุงไทย</div>
-          <div>สถาพร สอนสุภาพ</div>
+          <div class="font-semibold">🏦 โอนผ่านบัญชีธนาคาร กรุงไทย</div>
+          <div class="text-lg">💳 เลขที่บัญชี 403-0-42658-1</div>
+          <div>👤 สถาพร สอนสุภาพ</div>
         </div>
         <div class="flex flex-col md:flex-row items-center justify-center gap-6">
           <div class="text-center">
@@ -771,9 +767,10 @@ function updateSidebar(){
           <div class="flex flex-wrap gap-3">
             <input id="pProgram" type="text" placeholder="โปรแกรม" class="border rounded p-2 min-w-[12rem] flex-1" />
             <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ" class="border rounded p-2 min-w-[12rem] flex-1" />
-            <div class="grid gap-2 w-full sm:grid-cols-2">
+            <div class="grid gap-2 w-full sm:grid-cols-3">
               <input id="pName" type="text" placeholder="แพ็กเกจ / ชื่อ (เพิ่มรายการเดียว)" class="border rounded p-2" />
               <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="border rounded p-2" />
+              <input id="pAgentPrice" type="number" placeholder="ราคาตัวแทน (optional)" class="border rounded p-2" />
             </div>
             <textarea id="pBulkLines" rows="3" placeholder="6 เดือน, 1200
 12 เดือน, 2200" class="border rounded p-2 w-full"></textarea>
@@ -810,6 +807,7 @@ function updateSidebar(){
                     <th class="p-2">โปรแกรม</th>
                     <th class="p-2">แพ็กเกจ / ชื่อ</th>
                     <th class="p-2">ราคา</th>
+                    <th class="p-2">ราคา (ตัวแทน)</th>
                     <th class="p-2">image</th>
                     <th class="p-2">email?</th>
                     <th class="p-2">password?</th>
@@ -890,6 +888,20 @@ function updateSidebar(){
     const n=Number(String(v).replace(/[^\d.]/g,""));
     return isNaN(n)?norm(v):n.toLocaleString("th-TH");
   };
+
+  // Agent pricing helpers
+  function getEffectivePrice(p){
+    const base = Number(p?.price) || 0;
+    const agent = Number(p?.agentPrice) || 0;
+    if(IS_AGENT && agent > 0) return agent;
+    return base;
+  }
+
+  function priceHasAgentDiscount(p){
+    const base = Number(p?.price) || 0;
+    const agent = Number(p?.agentPrice) || 0;
+    return IS_AGENT && agent > 0 && agent !== base;
+  }
 
   function buildLineNote(details = {}) {
     const parts = [];
@@ -1092,11 +1104,13 @@ function updateSidebar(){
         const body = wrapper.querySelector('[data-body]');
         keep.forEach(p=>{
           const row = document.createElement('tr');
+          const displayPrice = getEffectivePrice(p);
+          const showAgentBadge = priceHasAgentDiscount(p);
             row.innerHTML = `
               <td class="px-4 py-2">
                 <div class="font-semibold text-slate-700 cursor-pointer pl-8" data-open="1">${p.pack}</div>
               </td>
-              <td class="px-4 py-2 text-center text-slate-700 font-semibold whitespace-nowrap w-28">฿${currencyTH(p.price)}</td>
+              <td class="px-4 py-2 text-center text-slate-700 font-semibold whitespace-nowrap w-28">฿${currencyTH(displayPrice)}</td>
               <td class="px-4 py-2 text-center w-36">
                 <button class="inline-flex items-center justify-center bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mx-auto">ดูรายละเอียด</button>
               </td>`;
@@ -1120,10 +1134,12 @@ function updateSidebar(){
         keep.forEach(p=>{
           const item = document.createElement('div');
           item.className = 'border rounded-lg p-4 flex flex-col items-center text-center gap-2';
+          const displayPrice = getEffectivePrice(p);
+          const showAgentBadge = priceHasAgentDiscount(p);
           item.innerHTML = `
             ${p.image? `<img data-open="1" src="${p.image}" alt="${p.pack}" class="w-40 object-cover rounded-md border cursor-pointer" style="aspect-ratio: 800/550;" />` : ''}
             <div data-open="1" class="font-semibold cursor-pointer">${p.pack}</div>
-            <div class="text-2xl font-extrabold mt-1">฿${currencyTH(p.price)}</div>
+            <div class="text-2xl font-extrabold mt-1">฿${currencyTH(displayPrice)}</div>
             <button class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-md mt-2">ดูรายละเอียด</button>
           `;
           const open = ()=> openProductModal(p);
@@ -1145,6 +1161,7 @@ function updateSidebar(){
       program: p.program||'อื่น ๆ',
       pack: p.name||p.pack||'สินค้า',
       price: Number(p.price)||0,
+  agentPrice: Number(p.agentPrice)||0,
       image: p.image||'',
       requiresEmail: !!p.requiresEmail,
       requiresUsername: !!p.requiresUsername,
@@ -1152,7 +1169,7 @@ function updateSidebar(){
       requiresIMEI: !!p.requiresIMEI,
       requiresPassword: !!p.requiresPassword,
       details: p.details||''
-    })).filter(x => x.price > 0);
+  })).filter(x => (Number(x.price)||0) > 0 || (Number(x.agentPrice)||0) > 0);
   }
 
   function renderProductSteps(wrapperId, listId, details) {
@@ -1187,14 +1204,21 @@ function updateSidebar(){
     document.getElementById('detailProgram').textContent = p.program||'';
     document.getElementById('detailName').textContent = p.pack||p.name||'';
     
-    // Set price display based on product type
+    // Set price display based on product type and agent pricing
+    const displayPrice = getEffectivePrice(p);
+    const isAgentDiscount = priceHasAgentDiscount(p);
     if(p.type === 'credit') {
-      document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+      // price per credit
+      document.getElementById('detailPrice').textContent = currencyTH(displayPrice||0);
       document.getElementById('detailPrice').parentElement.innerHTML = 
         `<div class="text-sm text-slate-600">ราคาต่อเครดิต</div>
-         ฿<span id="detailPrice">${currencyTH(p.price||0)}</span>`;
+         ฿<span id="detailPrice">${currencyTH(displayPrice||0)}</span>`;
     } else {
-      document.getElementById('detailPrice').textContent = currencyTH(p.price||0);
+      document.getElementById('detailPrice').textContent = currencyTH(displayPrice||0);
+      if(isAgentDiscount){
+        const el = document.getElementById('detailPrice');
+        el.insertAdjacentHTML('afterend', ' <span class="text-xs inline-block ml-2 bg-amber-100 text-amber-800 px-2 py-0.5 rounded">ราคาตัวแทน</span>');
+      }
     }
     renderProductSteps('detailInstructionsWrap', 'detailInstructions', p.details);
     const fields = document.getElementById('detailFields');
@@ -1225,7 +1249,7 @@ function updateSidebar(){
         credits.addEventListener('input', () => {
           const amount = Math.max(1, parseInt(credits.value) || 0);
           credits.value = amount;
-          const pricePerCredit = Number(p.price) || 0;
+          const pricePerCredit = Number(getEffectivePrice(p)) || 0;
           const total = amount * pricePerCredit;
           document.getElementById('detailPrice').textContent = currencyTH(total);
         });
@@ -1325,6 +1349,7 @@ function updateSidebar(){
         program: d.data().program || 'อื่น ๆ',
         pack: d.data().name || d.data().pack || 'สินค้า',
         price: Number(d.data().price) || 0,
+        agentPrice: Number(d.data().agentPrice) || 0,
         image: d.data().image || '',
         requiresEmail: !!d.data().requiresEmail,
         requiresUsername: !!d.data().requiresUsername,
@@ -1342,7 +1367,7 @@ function updateSidebar(){
           if(combined.includes('เติมเครดิต')) return 'credit';
           return 'normal';
         })()
-      })).filter(x => x.price > 0);
+  })).filter(x => (Number(x.price) || 0) > 0 || (Number(x.agentPrice) || 0) > 0);
       render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
     });
   }
@@ -1367,7 +1392,8 @@ function updateSidebar(){
       container.className = 'flex items-center gap-3';
 
       const userInfo = document.createElement('div');
-      userInfo.id = 'userInfo'; userInfo.className = 'text-sm text-slate-700'; userInfo.textContent = CURRENT_USER.email||'';
+      userInfo.id = 'userInfo'; userInfo.className = 'text-sm text-slate-700'; 
+      userInfo.innerHTML = IS_AGENT ? `<span class="font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-md">ตัวแทน</span> ${CURRENT_USER.email||''}` : (CURRENT_USER.email||'');
       const balanceInfo = document.createElement('div');
       balanceInfo.id = 'balanceInfo'; balanceInfo.className = 'text-sm font-semibold text-indigo-700'; balanceInfo.textContent = `เครดิต: ${currencyTH(bal)}`;
 
@@ -1952,6 +1978,7 @@ function updateSidebar(){
       program: norm(p.program),
       name: norm(p.name),
       price: Number(p.price)||0,
+      agentPrice: Number(p.agentPrice)||0,
       image: norm(p.image||''),
       requiresEmail: !!p.requiresEmail,
       requiresPassword: !!p.requiresPassword,
@@ -1973,7 +2000,8 @@ function updateSidebar(){
       source: p.source||'firestore',
       program: p.program,
       name: p.pack||p.name,
-      price: Number(p.price)||0,
+      // For credit products we expect p.price to already be a total; otherwise compute effective price
+      price: p.creditAmount ? Number(p.price)||0 : getEffectivePrice(p),
       image: p.image||'',
       requiresEmail: !!p.requiresEmail,
       requiresUsername: !!p.requiresUsername,
@@ -2006,14 +2034,16 @@ function updateSidebar(){
     document.getElementById('pdProgram').textContent = p.program||'';
     document.getElementById('pdName').textContent = p.pack||p.name||'';
     
-    // Set price display based on product type
+    // Set price display based on product type and agent pricing
     const priceLabel = document.getElementById('pdPriceLabel');
+    const displayPrice = getEffectivePrice(p);
+    const isAgentDiscount = priceHasAgentDiscount(p);
     if(p.type === 'credit') {
       priceLabel.textContent = 'ราคาต่อเครดิต';
     } else {
       priceLabel.textContent = 'ราคา';
     }
-    document.getElementById('pdPrice').textContent = currencyTH(p.price||0);
+    document.getElementById('pdPrice').textContent = currencyTH(displayPrice||0);
     renderProductSteps('pdInstructionsWrap', 'pdInstructions', p.details);
     const fields = document.getElementById('pdFields');
     fields.innerHTML='';
@@ -2040,7 +2070,7 @@ function updateSidebar(){
         if(!creditsEl) return;
         const amount = Math.max(1, parseInt(creditsEl.value) || 0);
         creditsEl.value = amount;
-        const pricePer = Number(p.price) || 0;
+        const pricePer = Number(getEffectivePrice(p)) || 0;
         const total = amount * pricePer;
         document.getElementById('pdPrice').textContent = currencyTH(total);
       };
@@ -2245,7 +2275,7 @@ function updateSidebar(){
         msg.textContent = 'จำนวนเครดิตต้องมากกว่า 0';
         return;
       }
-      const pricePerCredit = Number(PRODUCT_SELECTED.price) || 0;
+  const pricePerCredit = Number(getEffectivePrice(PRODUCT_SELECTED)) || 0;
       const total = amount * pricePerCredit;
       
       // Create a modified product object for the cart
@@ -2462,8 +2492,9 @@ function updateSidebar(){
     const requiresSN = document.getElementById('pReqSN')?.checked || false;
     const requiresIMEI = document.getElementById('pReqIMEI')?.checked || false;
     const isCredit = document.getElementById('pTypeCredit')?.checked || false;
-    const singleName = document.getElementById('pName').value.trim();
-    const singlePrice = document.getElementById('pPrice').value.trim();
+  const singleName = document.getElementById('pName').value.trim();
+  const singlePrice = document.getElementById('pPrice').value.trim();
+  const agentPriceRaw = document.getElementById('pAgentPrice')?.value.trim() || '';
     const bulkRaw = document.getElementById('pBulkLines')?.value || '';
     const details = document.getElementById('pDetails')?.value.trim() || '';
 
@@ -2486,6 +2517,7 @@ function updateSidebar(){
           program,
           name: trimmedName,
           price: priceNumber,
+          agentPrice: Number(String(agentPriceRaw || '').replace(/[^\d.]/g, '')) || 0,
           image,
           requiresEmail,
           requiresPassword,
@@ -2643,6 +2675,7 @@ function updateSidebar(){
           <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.program ?? ''}" data-field="program"></td>
           <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.name ?? ''}" data-field="name"></td>
           <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${data.price ?? ''}" data-field="price"></td>
+          <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${data.agentPrice ?? ''}" data-field="agentPrice"></td>
           <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.image ?? ''}" data-field="image"></td>
           <td class="p-2"><input type="checkbox" data-field="requiresEmail" ${data.requiresEmail ? 'checked' : ''}></td>
           <td class="p-2"><input type="checkbox" data-field="requiresPassword" ${data.requiresPassword ? 'checked' : ''}></td>
@@ -2682,7 +2715,7 @@ function updateSidebar(){
           adminEditedProducts.get(id).forEach(field => {
             const element = tr.querySelector(`[data-field="${field}"]`);
             if (!element) return;
-            if (field === 'price') updates[field] = parseInt(element.value) || 0;
+            if (field === 'price' || field === 'agentPrice') updates[field] = parseInt(element.value) || 0;
             else if (field.startsWith('requires')) updates[field] = element.checked;
             else updates[field] = (element.value || '').trim();
           });
@@ -2783,6 +2816,16 @@ function updateSidebar(){
         CURRENT_USER_DOC = { email: (user.email||'').toLowerCase(), credits: 0, isAdmin: false };
       }
       IS_ADMIN = !!CURRENT_USER_DOC?.isAdmin || ADMIN_EMAILS.includes((user.email||'').toLowerCase());
+      // Determine agent role from custom claims (role===2 or agent flag) or from user profile
+      try{
+        const idResult = await getIdTokenResult(user);
+        const claims = idResult?.claims || {};
+        IS_AGENT = (claims.role === 2) || !!claims.agent || !!CURRENT_USER_DOC?.isAgent || (Number(CURRENT_USER_DOC?.role) === 2);
+      }catch(_){
+        IS_AGENT = !!CURRENT_USER_DOC?.isAgent || (Number(CURRENT_USER_DOC?.role) === 2);
+      }
+      // Re-render products after agent status is determined
+      render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
       listenOrdersForUser();
       // Wire up product management after login 
       wireProductManagement();
