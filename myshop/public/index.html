@@ -412,6 +412,13 @@
   async function uploadImageToStorage(file, folder = 'slips') {
     if (!file || !(file instanceof File)) throw new Error('Invalid file');
     if (!file.type.startsWith('image/')) throw new Error('File must be an image');
+
+    // ✅ Limit file size (5MB)
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error('ขนาดไฟล์ใหญ่เกินไป (จำกัด 2MB)');
+    }
+
     if (!CURRENT_USER?.email) throw new Error('กรุณาเข้าสู่ระบบก่อนอัปโหลดรูป');
     
     try {
@@ -785,7 +792,8 @@ function updateSidebar(){
     <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative max-h-[90vh] flex flex-col">
       <button id="closeTopup" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4 text-center">เติมเครดิต</h3>
-      <div class="space-y-4 flex-1 custom-scrollbar overflow-auto">
+      <div class="space-y-4 flex-1 custom-scrollbar overflow-y-auto">
+        
         <!-- Credit amount input -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">จำนวนเครดิตที่ต้องการเติม</label>
@@ -793,15 +801,29 @@ function updateSidebar(){
           <p class="text-xs text-gray-500 mt-1">1 เครดิต = 1 บาท</p>
         </div>
 
-        <!-- File upload -->
+        <!-- File upload (custom Thai button) -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">แนบหลักฐานการโอนเงิน</label>
-          <input type="file" id="topupProof" accept="image/*" class="w-full" />
-          <p class="text-xs text-gray-500 mt-1">รองรับไฟล์รูปภาพ (jpg, png)</p>
+
+          <div class="flex items-center gap-3">
+            <button id="selectProofBtn" type="button"
+              class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+              📎 เลือกรูปภาพ
+            </button>
+            <span id="selectedFileName" class="text-sm text-gray-600">ยังไม่ได้เลือกไฟล์</span>
+          </div>
+
+          <!-- hidden real input -->
+          <input type="file" id="topupProof" accept=".jpg,.jpeg,.png" style="display:none;" />
+
+          <p class="text-xs text-gray-500 mt-1">
+            รองรับไฟล์ JPG, PNG (ขนาดไม่เกิน 2 MB)
+          </p>
         </div>
 
         <!-- Submit button -->
-        <button id="submitTopup" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+        <button id="submitTopup"
+          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md">
           ส่งคำขอเติมเครดิต
         </button>
 
@@ -809,7 +831,7 @@ function updateSidebar(){
         <div id="topupMessage" class="text-sm text-center"></div>
 
         <!-- Bank info -->
-        <div class="rounded-lg p-4 bg-amber-50 border space-y-2">
+        <div class="rounded-lg p-4 bg-amber-50 border space-y-2 text-center">
           <div class="font-medium">ช่องทางการชำระเงิน:</div>
           <div class="bg-white p-3 rounded">
             <div class="font-semibold">🏦 บัญชีธนาคาร กรุงไทย</div>
@@ -818,16 +840,16 @@ function updateSidebar(){
           </div>
           <div class="flex items-center justify-center gap-4 p-2">
             <div class="text-center">
-              <img src="LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded" />
+              <img src="LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded mx-auto" />
               <div class="text-sm mt-1">LINE: @825lhqmj</div>
             </div>
           </div>
         </div>
 
-        <!-- Agent upgrade promotion -->
-        <div class="rounded-lg p-4 bg-indigo-50 border-2 border-indigo-200">
+        <!-- Promotion info -->
+        <div class="rounded-lg p-4 bg-indigo-50 border-2 border-indigo-200 text-center">
           <div class="text-indigo-800 font-semibold mb-2">🌟 สิทธิพิเศษสำหรับลูกค้า</div>
-          <div class="text-indigo-700">
+          <div class="text-indigo-700 leading-relaxed">
             เมื่อสะสมเครดิตครบ 4,500 เครดิต<br/>
             รับสิทธิ์อัพเกรดเป็น ตัวแทน ทันที<br/>
             พร้อมส่วนลดราคาพิเศษ!
@@ -836,14 +858,50 @@ function updateSidebar(){
 
         <!-- Request history -->
         <div id="creditRequestHistory" class="space-y-4 mt-6">
-          <div class="font-medium text-lg">ประวัติคำขอเติมเครดิต</div>
+          <div class="font-medium text-lg text-center">ประวัติคำขอเติมเครดิต</div>
           <div id="creditRequestsList" class="space-y-2">
             <!-- Credit requests will be inserted here -->
           </div>
         </div>
       </div>
-      </div>
-    </div>`;
+    </div>
+  `;
+  // ✅ โค้ดผูกอีเวนต์ เลือกไฟล์ + ตรวจขนาด (อยู่นอก template literal)
+  setTimeout(() => {
+    const fileInput = document.getElementById('topupProof');
+    const selectBtn = document.getElementById('selectProofBtn');
+    const fileNameEl = document.getElementById('selectedFileName');
+
+    if (!fileInput || !selectBtn) return; // กัน null
+
+    // กดปุ่มแล้วเปิด dialog
+    selectBtn.addEventListener('click', () => fileInput.click());
+
+    // เมื่อเลือกไฟล์แล้ว
+    fileInput.addEventListener('change', () => {
+      if (!fileInput.files.length) {
+        fileNameEl.textContent = 'ยังไม่ได้เลือกไฟล์';
+        fileNameEl.classList.add('text-gray-600');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const maxSize = 2 * 1024 * 1024; // 2 MB limit
+
+      if (file.size > maxSize) {
+        alert('ขนาดไฟล์ใหญ่เกินไป (จำกัด 2 MB)');
+        fileInput.value = '';
+        fileNameEl.textContent = 'ยังไม่ได้เลือกไฟล์';
+        fileNameEl.classList.add('text-gray-600');
+        return;
+      }
+
+      // แสดงชื่อไฟล์
+      fileNameEl.textContent = '📄 ' + file.name;
+      fileNameEl.classList.remove('text-gray-600');
+    });
+  }, 0);
+
   document.body.appendChild(topupModal);
   // wire topup modal buttons
   document.getElementById('closeTopup')?.addEventListener('click', ()=>{ 
@@ -2416,7 +2474,9 @@ function updateSidebar(){
     }
   }
 
-function listenCreditRequests() {
+
+  // แทนที่ของเดิมทั้งหมด
+  function listenCreditRequests() {
     console.log('Starting listenCreditRequests');
     try {
       if (CREDIT_REQUESTS_UNSUB) {
@@ -2429,16 +2489,11 @@ function listenCreditRequests() {
         return;
       }
 
-      // Get both admin and user credit request list elements
-
-      // Admin: use admin modal, User: use only the creditRequestsList inside creditRequestHistory in topupModal
+      // หา list ของแต่ละ modal
       let adminListEl = null;
       const adminModal = document.getElementById('adminCreditModal');
-      if (adminModal) {
-        adminListEl = adminModal.querySelector('#creditRequestsList');
-      }
+      if (adminModal) adminListEl = adminModal.querySelector('#creditRequestsList');
 
-      // For users, pick the list inside the topup modal's history section
       let userListEl = null;
       const topupModal = document.getElementById('topupModal');
       if (topupModal) {
@@ -2446,19 +2501,29 @@ function listenCreditRequests() {
         if (historySection) userListEl = historySection.querySelector('#creditRequestsList');
       }
 
-      // Choose list based on IS_ADMIN flag. Do not rely on offsetParent or visibility tests here;
-      // caller (e.g., button handlers) should call listenCreditRequests() when appropriate (modal opened).
-      const listEl = IS_ADMIN ? adminListEl : userListEl;
+      // ✅ เลือกปลายทางตาม modal ที่เปิดอยู่จริง (class .active)
+      const isAdminModalActive = !!adminModal && adminModal.classList.contains('active');
+      const isTopupModalActive = !!topupModal && topupModal.classList.contains('active');
+
+      let listEl = null;
+      if (isAdminModalActive && adminListEl) {
+        listEl = adminListEl;              // แสดงแบบมุมมองแอดมิน
+      } else if (isTopupModalActive && userListEl) {
+        listEl = userListEl;               // แสดงประวัติของ "ฉัน" (แอดมินก็เห็นของตัวเองในหน้านี้)
+      } else {
+        // fallback: ถ้าไม่ได้เปิด modal ใด ให้เลือกตามบริบทที่มีอยู่
+        listEl = userListEl || adminListEl;
+      }
+
       if (!listEl) {
-        console.warn('Credit request list element not found for', IS_ADMIN ? 'admin' : 'user');
+        console.warn('Credit request list element not found for current view');
         return;
       }
-      // Show loading state
+
+      // Loading state
       listEl.innerHTML = '<div class="text-sm text-gray-500">กำลังโหลด...</div>';
 
       const creditRequestsRef = collection(db, 'creditRequests');
-      
-      // Simple query without complex filters - we'll filter client-side
       const queryRef = query(
         creditRequestsRef,
         orderBy('createdAt', 'desc'),
@@ -2472,15 +2537,16 @@ function listenCreditRequests() {
           return;
         }
 
-        // Filter in memory based on user role
-        const docs = snap.docs.filter(doc => {
-          const data = doc.data();
-          if (IS_ADMIN && listEl === adminListEl) {
-            // Admin sees all pending requests
-            return data.status === 'pending';
+        // ✅ กรองตามปลายทาง:
+        // - ถ้าเขียนลง userList (หน้า topupModal): แสดงเฉพาะของ CURRENT_USER ทุกสถานะ
+        // - ถ้าเขียนลง adminList: แสดงเฉพาะ pending ตามเดิม
+        const isUserView = !!userListEl && listEl === userListEl;
+        const docs = snap.docs.filter(d => {
+          const data = d.data();
+          if (isUserView) {
+            return data.userId === CURRENT_USER.uid;  // ประวัติของฉัน (รวม approved/rejected)
           } else {
-            // User and admin (in user view) see their own requests (all statuses)
-            return data.userId === CURRENT_USER.uid;
+            return data.status === 'pending';         // มุมมองแอดมิน (pending)
           }
         });
 
@@ -2489,10 +2555,10 @@ function listenCreditRequests() {
           return;
         }
 
-        docs.forEach((doc) => {
-          const data = doc.data();
+        docs.forEach((docSnap) => {
+          const data = docSnap.data();
           const status = data.status || 'pending';
-          let statusText = 'กำลังตรวจสอบ...';
+          let statusText = 'กำลังตรวจสอบ';
           let statusClass = 'bg-amber-100 text-amber-800 font-medium';
           if (status === 'approved') {
             statusText = 'อนุมัติแล้ว ✓';
@@ -2501,81 +2567,62 @@ function listenCreditRequests() {
             statusText = 'ปฏิเสธ ✗';
             statusClass = 'bg-red-100 text-red-800 font-medium';
           }
-          const createdAt = data.createdAt?.toDate?.() || new Date();
-          const amount = data.amount || 0;
-          const el = document.createElement('div');
-          el.className = 'border rounded-lg p-4 space-y-2';
-          // Admin modal: show approve/reject, User modal: do not show
-          if (IS_ADMIN && listEl === adminListEl) {
-            el.innerHTML = `
+          const createdAt = data.createdAt?.toDate?.() || null;
+          const dt = createdAt
+            ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
+            : '-';
+
+          listEl.insertAdjacentHTML('beforeend', `
+            <div class="p-3 border rounded-md bg-white flex flex-col gap-2">
               <div class="flex items-center justify-between">
-                <div>
-                  <div class="font-medium">${data.userEmail || 'ไม่ระบุอีเมล'}</div>
-                  <div class="text-sm text-gray-500">${createdAt.toLocaleString('th-TH')}</div>
-                </div>
-                <span class="px-2 py-1 rounded text-sm ${statusClass}">${statusText}</span>
+                <div class="font-medium">${data.userEmail || '-'}</div>
+                <span class="px-2 py-0.5 rounded ${statusClass}">${statusText}</span>
               </div>
-              <div class="flex items-center justify-between">
-                <div class="font-medium">จำนวน: ${amount.toLocaleString()} เครดิต</div>
-                ${status === 'pending' ? `
-                  <div class="flex gap-2">
-                    <button data-approve="${doc.id}" class="px-3 py-1 rounded text-sm bg-emerald-600 text-white hover:bg-emerald-700">อนุมัติ</button>
-                    <button data-reject="${doc.id}" class="px-3 py-1 rounded text-sm bg-red-600 text-white hover:bg-red-700">ปฏิเสธ</button>
-                  </div>
-                ` : ''}
+              <div class="text-sm text-slate-600">
+                จำนวน: <span class="font-semibold">${Number(data.amount || 0).toLocaleString('th-TH')}</span> เครดิต
+                · เวลา: ${dt}
               </div>
-              <div>
-                <a href="${data.proofImageUrl}" target="_blank" class="text-sm text-indigo-600 hover:underline">ดูหลักฐานการโอนเงิน</a>
-              </div>
-            `;
-            // Add event listeners for admin actions
-            const approveBtn = el.querySelector(`[data-approve="${doc.id}"]`);
-            const rejectBtn = el.querySelector(`[data-reject="${doc.id}"]`);
-            if (approveBtn) {
-              approveBtn.addEventListener('click', async () => {
-                try {
-                  await confirmCreditRequest(doc.id);
-                } catch (err) {
-                  alert(err.message || 'เกิดข้อผิดพลาด');
-                }
-              });
-            }
-            if (rejectBtn) {
-              rejectBtn.addEventListener('click', async () => {
-                try {
-                  await rejectCreditRequest(doc.id);
-                } catch (err) {
-                  alert(err.message || 'เกิดข้อผิดพลาด');
-                }
-              });
-            }
-          } else {
-            // User view: no approve/reject buttons
-            el.innerHTML = `
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="font-medium">จำนวน: ${amount.toLocaleString()} เครดิต</span>
-                    <span class="px-2 py-1 rounded text-sm ${statusClass}">${statusText}</span>
-                  </div>
-                  <div class="text-sm text-gray-500">${createdAt.toLocaleString('th-TH')}</div>
-                </div>
-                <div class="flex-shrink-0">
-                  <a href="${data.proofImageUrl}" target="_blank" class="text-sm text-indigo-600 hover:underline">ดูหลักฐานการโอนเงิน</a>
-                </div>
-              </div>
-            `;
-          }
-          listEl.appendChild(el);
+              ${data.proofImageUrl ? `
+                <a href="${data.proofImageUrl}" target="_blank" rel="noopener" class="text-sm text-indigo-600 hover:underline">ดูสลิป</a>
+              ` : ''}
+              ${
+                // ปุ่มสำหรับแอดมินเฉพาะในมุมมองแอดมิน และเฉพาะ pending
+                (!isUserView && status === 'pending')
+                  ? `<div class="flex gap-2 pt-2">
+                      <button class="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
+                              data-approve="${docSnap.id}">อนุมัติ</button>
+                      <button class="px-3 py-1 rounded bg-red-600 text-white text-sm"
+                              data-reject="${docSnap.id}">ปฏิเสธ</button>
+                    </div>`
+                  : ''
+              }
+            </div>
+          `);
         });
-      }, (error) => {
-        console.error('Error listening to credit requests:', error);
-        listEl.innerHTML = `<div class="text-sm text-red-500">เกิดข้อผิดพลาด: ${error.message}</div>`;
+
+        // bind ปุ่มอนุมัติ/ปฏิเสธ เฉพาะใน admin view
+        if (listEl === adminListEl) {
+          listEl.querySelectorAll('[data-approve]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              try {
+                await confirmCreditRequest(btn.getAttribute('data-approve'));
+              } catch(e) { alert(e?.message || 'ผิดพลาด'); }
+            });
+          });
+          listEl.querySelectorAll('[data-reject]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              try {
+                await rejectCreditRequest(btn.getAttribute('data-reject'));
+              } catch(e) { alert(e?.message || 'ผิดพลาด'); }
+            });
+          });
+        }
       });
     } catch (err) {
-      console.error('Error listening credit requests:', err);
+      console.error('listenCreditRequests error', err);
     }
   }
+
 
   // Reject a credit request
   async function rejectCreditRequest(requestId) {
