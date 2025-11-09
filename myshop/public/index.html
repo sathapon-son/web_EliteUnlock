@@ -632,7 +632,18 @@ function updateSidebar(){
   const items = [];
   if(CURRENT_USER){
     items.push({ label: `เครดิต: ${currencyTH(CURRENT_USER_DOC?.credits||0)}`, action: null, cls: 'font-semibold text-indigo-300' });
-    items.push({ label: 'เติมเครดิต', action: ()=>{ hideMobileSidebar(); document.getElementById('topupModal') && showModalElement(document.getElementById('topupModal')); } });
+    //items.push({ label: 'เติมเครดิต', action: ()=>{ hideMobileSidebar(); document.getElementById('topupModal') && showModalElement(document.getElementById('topupModal')); } });
+    items.push({ label: 'เติมเครดิต', action: ()=>{ 
+      hideMobileSidebar(); 
+      const m = document.getElementById('topupModal');
+      if (m) {
+        showModalElement(m);
+        updateUserCreditBalance();
+        updateTotalTopupCredits();
+        listenCreditRequests();
+      }
+    } });
+        
     items.push({ label: 'ตะกร้า', action: ()=>{ hideMobileSidebar(); openCartModal(); } });
     items.push({ label: 'ประวัติการสั่งซื้อ', action: ()=>{ hideMobileSidebar(); openHistoryModal(); } });
     if(IS_ADMIN){
@@ -856,6 +867,11 @@ function updateSidebar(){
           </div>
         </div>
 
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center mb-4">
+          <div class="text-emerald-800 font-medium">🏆 เครดิตสะสมทั้งหมด</div>
+          <div id="userTotalTopup" class="text-2xl font-bold text-emerald-700 mt-1">0 เครดิต</div>
+        </div>
+
         <!-- Request history -->
         <div id="creditRequestHistory" class="space-y-4 mt-6">
           <div class="font-medium text-lg text-center">ประวัติคำขอเติมเครดิต</div>
@@ -903,6 +919,26 @@ function updateSidebar(){
   }, 0);
 
   document.body.appendChild(topupModal);
+
+  // ✅ ฟังก์ชันอัปเดตเครดิตสะสมทั้งหมด (ของผู้ใช้ปัจจุบัน)
+  async function updateUserCreditBalance() {
+    if (!CURRENT_USER) return;
+    try {
+      const userDocRef = doc(db, "users", CURRENT_USER.uid);
+      const snap = await getDoc(userDocRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const credits = data.credits || 0;
+        const totalEl = document.getElementById("userTotalTopup");
+        if (totalEl) {
+          totalEl.textContent = `${credits.toLocaleString("th-TH")} เครดิต`;
+        }
+      }
+    } catch (err) {
+      console.error("❌ อัปเดตเครดิตสะสมล้มเหลว:", err);
+    }
+  }
+
   // wire topup modal buttons
   document.getElementById('closeTopup')?.addEventListener('click', ()=>{ 
     const tm = document.getElementById('topupModal'); 
@@ -1670,6 +1706,54 @@ function updateSidebar(){
     // hide detail after short delay
     setTimeout(()=>{ hideProductDetail(); }, 800);
   }
+  // ✅ ฟังก์ชันคำนวณเครดิตสะสมทั้งหมด (แก้ไขแล้ว)
+  async function updateTotalTopupCredits() {
+    if (!CURRENT_USER) {
+      console.log('ไม่มีผู้ใช้ล็อกอิน');
+      return;
+    }
+
+  try {
+    console.log('กำลังคำนวณเครดิตสะสมสำหรับ:', CURRENT_USER.uid);
+    
+    const q = query(
+      collection(db, 'creditRequests'),
+      where('userId', '==', CURRENT_USER.uid),
+      where('status', '==', 'approved')
+    );
+
+    const snap = await getDocs(q);
+    let totalCredits = 0;
+    
+    console.log('พบคำขอเติมเครดิต:', snap.size, 'รายการ');
+    
+    snap.forEach(doc => {
+      const data = doc.data();
+      const amount = Number(data.amount || 0);
+      totalCredits += amount;
+      console.log('คำขอ:', doc.id, 'จำนวน:', amount, 'เครดิต');
+    });
+
+    const totalEl = document.getElementById('userTotalTopup');
+    if (totalEl) {
+      totalEl.textContent = `${totalCredits.toLocaleString('th-TH')} เครดิต`;
+      console.log('อัปเดตเครดิตสะสมแล้ว:', totalCredits, 'เครดิต');
+    } else {
+      console.log('ไม่พบ element userTotalTopup');
+    }
+  } catch (err) {
+    console.error('❌ อัปเดตเครดิตสะสมล้มเหลว:', err);
+    const totalEl = document.getElementById('userTotalTopup');
+    if (totalEl) totalEl.textContent = 'ไม่สามารถโหลดข้อมูล';
+  }
+}
+  // ✅ เรียกใช้งานเมื่อเปิด modal เติมเครดิต
+  document.getElementById('openTopupModal')?.addEventListener('click', () => {
+    openModal('topupModal');
+    updateUserCreditBalance();   // แสดงเครดิตคงเหลือ
+    updateTotalTopupCredits();   // ✅ แสดงเครดิตสะสมทั้งหมด
+  });
+
 
   async function setupFirestoreProducts() {
     const colRef = collection(db, 'products');
@@ -1762,6 +1846,9 @@ function updateSidebar(){
         const tmodal = document.getElementById('topupModal'); 
         if(tmodal) {
           showModalElement(tmodal);
+          // แก้ไขส่วนนี้ - เพิ่มการอัปเดตเครดิตสะสม
+          updateUserCreditBalance();   // แสดงเครดิตคงเหลือ
+          updateTotalTopupCredits();   // ✅ แสดงเครดิตสะสมทั้งหมด
           // Show request history for current user
           const historyEl = document.getElementById('creditRequestHistory');
           if (historyEl) {
@@ -2549,6 +2636,16 @@ function updateSidebar(){
             return data.status === 'pending';         // มุมมองแอดมิน (pending)
           }
         });
+        // ถ้าเป็นมุมมองผู้ใช้ ให้คำนวณยอดสะสมจากรายการอนุมัติ แล้วไปอัปเดตที่หน้าจอ
+        if (!IS_ADMIN && listEl) {
+          const totalApproved = docs.reduce((sum, d) => {
+            const x = d.data();
+            return sum + (x.status === 'approved' ? Number(x.amount || 0) : 0);
+          }, 0);
+          const totalEl = document.getElementById('userTotalTopup');
+          if (totalEl) totalEl.textContent = `${totalApproved.toLocaleString('th-TH')} เครดิต`;
+          updateTotalTopupCredits();
+        }
 
         if (docs.length === 0) {
           listEl.innerHTML = `<div class="text-sm text-gray-500">ไม่พบคำขอเติมเครดิต</div>`;
