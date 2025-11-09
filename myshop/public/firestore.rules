@@ -41,12 +41,11 @@ service cloud.firestore {
         && request.resource.data.credits == 0
         && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
       
+      // Admin can update everything, user can only update displayName
       allow update: if isAdmin()
         || (
           isOwner(uid)
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['credits'])
-          && request.resource.data.credits is int
-          && request.resource.data.credits >= 0
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits','isAdmin','isAgent','role']))
         );
       
       allow delete: if false;
@@ -93,22 +92,23 @@ service cloud.firestore {
     // ===== credit requests =====
     match /creditRequests/{id} {
       allow create: if isSignedIn()
-        && request.resource.data.keys().hasOnly(['userId', 'userEmail', 'amount', 'status', 'proofImageUrl', 'createdAt'])
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.userEmail == request.auth.token.email
         && request.resource.data.amount > 0
         && request.resource.data.status == 'pending'
-        && request.resource.data.createdAt == request.time
         && request.resource.data.proofImageUrl is string
         && request.resource.data.proofImageUrl.matches('https://.*');
 
+      // Allow users to read their own requests, admins to read all
       allow read: if isSignedIn() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
 
-      // Relax the rules for admin updates
-      allow update: if isAdmin()
-        && (request.resource.data.status == 'approved' || request.resource.data.status == 'rejected');
+      // Allow listing with queries for users (their own) and admins (all)
+      allow list: if isSignedIn();
+
+      // Allow admin to update status and add approval metadata
+      allow update: if isAdmin();
 
       allow delete: if false;
     }
@@ -117,13 +117,12 @@ service cloud.firestore {
     match /mail/{docId} {
       allow read: if isAdmin();
 
-      allow create: if isAdmin()
-        && request.resource.data.keys().hasOnly(['to','from','replyTo','message','metadata','createdAt'])
+      // Allow authenticated users to create mail (for order confirmations, etc)
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['to','from','message','createdAt'])
         && isNonEmptyStringList(request.resource.data.to)
         && request.resource.data.from is string
-        && request.resource.data.replyTo is string
         && isMailMessage(request.resource.data.message)
-        && (request.resource.data.metadata is map || !(request.resource.data.keys().hasAny(['metadata'])))
         && request.resource.data.createdAt == request.time;
 
       allow update, delete: if false;

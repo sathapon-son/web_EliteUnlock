@@ -3,5 +3,5 @@ cd /d "%~dp0"
 echo ============================
 echo Deploying Firebase Project...
 echo ============================
-firebase deploy --only hosting
+firebase deploy --only functions
 pause

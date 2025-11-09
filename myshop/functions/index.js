@@ -32,21 +32,24 @@ exports.order = onRequest(
         console.error("Missing LINE secrets");
         return res.status(500).json({ ok: false, error: "Server not configured with LINE secrets" });
       }
+
       let text;
-      // Check if this is a credit request by checking both type and amount
-      if (type === 'credit' && amount) {
+      
+      // Check if this is a credit request
+      // Check multiple conditions: explicit type='credit' OR amount field exists OR product field is missing
+      if (type === 'credit' || (amount && !product)) {
         const userEmail = email || name || '-';
         const amt = Number(amount) || 0;
         text = [
-          "� มีคำสั่งซื้อใหม่",
+          "🪙 มีคำขอเติมเครดิตใหม่",
           `👤 ลูกค้า: ${userEmail}`,
-          `� สินค้า: เติมเครดิต ${amt} เครดิต`,
-          `🔢 จำนวน: -`,
-          `💰 ยอดรวม: ${amt}`,
-          `📝 หมายเหตุ: คำขอเติมเครดิต รอตรวจสอบ`
+          `💰 จำนวน: ${amt.toLocaleString()} เครดิต`,
+          `🔗 หลักฐาน: ${proofImageUrl || 'ไม่มี'}`,
+          `⏳ สถานะ: รอตรวจสอบ`
         ].join('\n');
-        console.log('Credit request LINE notification:', { userEmail, amt });
+        console.log('Credit request LINE notification:', { userEmail, amt, proofImageUrl });
       } else {
+        // Regular order
         text = [
           "🛒 มีคำสั่งซื้อใหม่",
           `👤 ลูกค้า: ${name || "-"}`,
