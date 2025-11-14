@@ -147,6 +147,28 @@
       background-color: #cbd5e1; border: 2px solid #f1f5f9; border-radius: 20px;
     }
     #adminCreditModal .single-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+
+    /* Program filter dropdown - handle long text */
+    #programFilter {
+      max-width: 100%;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    #programFilter option {
+      padding: 8px 10px;
+      line-height: 1.6;
+      background: white;
+      color: #1e293b;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -176,10 +198,10 @@
             <p class="text-slate-600 mt-1">
               คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
             </p>
-<p class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
-font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
-  🏷️ ลดราคา ถึง 21/11/68
-</p>
+            <p class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
+            font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
+              🏷️ ลดราคา ถึง 21/11/68
+            </p>
           </div>
           <div class="flex flex-wrap gap-2">
             <span class="badge bg-emerald-50 text-emerald-700">✔ รับประกันเปิดใช้งาน</span>
@@ -217,25 +239,37 @@ font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
       </div>
     </section>
 
-    <!-- Search -->
+    <!-- Search & Program Filter -->
     <section class="mb-4">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="relative w-full md:w-96">
-          <!-- Hidden dummy fields: browsers will often autofill credentials into the first username/password inputs they find.
-               These off-screen inputs are present to absorb autofill so the visible search input isn't populated. -->
-          <div style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
-            <input type="text" name="fake_username" autocomplete="username" tabindex="-1">
-            <input type="password" name="fake_password" autocomplete="current-password" tabindex="-1">
+        <div class="flex flex-col md:flex-row gap-3 w-full">
+          <!-- Program Dropdown Filter -->
+          <div class="relative flex-1 md:flex-none md:max-w-xs">
+            <select id="programFilter" class="appearance-none w-full p-3 pr-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 text-sm whitespace-normal overflow-hidden text-ellipsis">
+              <option value="">📦 ทุกโปรแกรม</option>
+            </select>
+            <svg class="w-4 h-4 text-slate-600 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
           </div>
+          <!-- Search Input -->
+          <div class="relative w-full md:w-80">
+            <!-- Hidden dummy fields: browsers will often autofill credentials into the first username/password inputs they find.
+                 These off-screen inputs are present to absorb autofill so the visible search input isn't populated. -->
+            <div style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
+              <input type="text" name="fake_username" autocomplete="username" tabindex="-1">
+              <input type="password" name="fake_password" autocomplete="current-password" tabindex="-1">
+            </div>
 
-          <!-- autocomplete="search" and a non-username name help prevent Chrome autofill from treating this as a username field -->
-          <input id="searchInput" type="search" name="search_query" inputmode="search" autocomplete="search" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="ค้นหา" placeholder="ตัวอย่าง: (เช่น Unlocktool, 6 เดือน, 1 ปี)" class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
-          <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z"/>
-          </svg>
+            <!-- autocomplete="search" and a non-username name help prevent Chrome autofill from treating this as a username field -->
+            <input id="searchInput" type="search" name="search_query" inputmode="search" autocomplete="search" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="ค้นหา" placeholder="ตัวอย่าง: (เช่น Unlocktool, AMT, TSM)" class="w-full p-3 pl-10 rounded-lg border bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            <svg class="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.3-4.3M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+            </svg>
+          </div>
         </div>
-        <div class="flex items-center gap-2 self-start">
-          <span class="text-sm text-slate-500 hidden md:inline">มุมมอง:</span>
+        <div class="flex items-center gap-2 self-start whitespace-nowrap">
+          <span class="text-sm text-slate-500 hidden md:inline whitespace-nowrap">มุมมอง:</span>
           <button id="viewListBtn" class="px-3 py-2 rounded-md border border-slate-200 text-sm bg-white shadow-sm">รายชื่อ</button>
           <button id="viewTableBtn" class="px-3 py-2 rounded-md border border-slate-200 text-sm bg-white shadow-sm">ตาราง</button>
         </div>
@@ -370,6 +404,55 @@ font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
     if(savedView && Object.values(VIEW_MODES).includes(savedView)) PRODUCT_VIEW_MODE = savedView;
   }catch(_){ PRODUCT_VIEW_MODE = VIEW_MODES.LIST; }
 
+  // Program Filter State
+  const PROGRAM_FILTER_KEY = 'selectedProgram';
+  // Do not persist selected program across page reloads; always default to all programs
+  let SELECTED_PROGRAM = '';
+
+  function updateProgramDropdown() {
+    const filterEl = document.getElementById('programFilter');
+    if (!filterEl || !FS_PRODUCTS.length) return;
+    
+    // Get unique programs sorted A-Z
+    const programs = Array.from(new Set(FS_PRODUCTS.map(p => p.program || 'อื่น ๆ')))
+      .sort((a, b) => a.localeCompare(b, 'th'));
+    
+    // Check if there are any discounted products
+    const hasDiscounted = FS_PRODUCTS.some(p => (p.pack || '').includes('ลดราคา') || (p.program || '').includes('ลดราคา'));
+    
+    // Build options (keep current value)
+    const currentValue = filterEl.value;
+    filterEl.innerHTML = '<option value="">📦 ทุกโปรแกรม</option>';
+    
+    // Add discount option if there are discounted products
+    if(hasDiscounted) {
+      const discOpt = document.createElement('option');
+      discOpt.value = '__DISCOUNT__';
+      discOpt.textContent = '🏷️ลดราคา';
+      filterEl.appendChild(discOpt);
+    }
+    
+    programs.forEach(prog => {
+      const opt = document.createElement('option');
+      opt.value = prog;
+      // Truncate long program names to ~50 characters
+      const displayName = prog.length > 50 ? prog.substring(0, 47) + '...' : prog;
+      opt.textContent = displayName;
+      opt.title = prog; // Show full name on hover
+      filterEl.appendChild(opt);
+    });
+    
+    // Restore selected program (if still exists)
+    if(SELECTED_PROGRAM && (programs.includes(SELECTED_PROGRAM) || SELECTED_PROGRAM === '__DISCOUNT__')){
+      filterEl.value = SELECTED_PROGRAM;
+    } else if(currentValue && (programs.includes(currentValue) || currentValue === '__DISCOUNT__')){
+      filterEl.value = currentValue;
+    } else {
+      filterEl.value = '';
+      SELECTED_PROGRAM = '';
+    }
+  }
+
   function updateViewToggleUI(){
     const listBtn = document.getElementById('viewListBtn');
     const tableBtn = document.getElementById('viewTableBtn');
@@ -399,7 +482,26 @@ font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
     PRODUCT_VIEW_MODE = mode;
     try{ localStorage.setItem(PRODUCT_VIEW_KEY, mode); }catch(_){ }
     updateViewToggleUI();
-    render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
+    const filtered = filterProductsByProgram(FS_PRODUCTS, SELECTED_PROGRAM);
+    render(groupByProgram(filtered), searchEl?.value || "");
+  }
+
+  function filterProductsByProgram(products, program) {
+    if(!program) return products;
+    // Handle discount filter
+    if(program === '__DISCOUNT__') {
+      return products.filter(p => (p.pack || '').includes('ลดราคา') || (p.program || '').includes('ลดราคา'));
+    }
+    return products.filter(p => (p.program || 'อื่น ๆ') === program);
+  }
+
+  function onProgramFilterChange() {
+    const filterEl = document.getElementById('programFilter');
+    if(!filterEl) return;
+    SELECTED_PROGRAM = filterEl.value || '';
+    const filtered = filterProductsByProgram(FS_PRODUCTS, SELECTED_PROGRAM);
+    // Program filter works independently - resets search
+    render(groupByProgram(filtered), "");
   }
 
   // ----- Firebase Configuration -----
@@ -2119,6 +2221,7 @@ if (cartListEl && cartListEl.children.length === 0) {
           return 'normal';
         })()
   })).filter(x => (Number(x.price) || 0) > 0 || (Number(x.agentPrice) || 0) > 0);
+      updateProgramDropdown();
       render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
     });
   }
@@ -3599,7 +3702,12 @@ if (cartListEl && cartListEl.children.length === 0) {
   });
 
   // ----- Events -----
-  searchEl.addEventListener("input", ()=>render(groupByProgram(FS_PRODUCTS), searchEl.value));
+  searchEl.addEventListener("input", ()=>{
+    // Search works independently - not affected by program filter
+    render(groupByProgram(FS_PRODUCTS), searchEl.value);
+  });
+  
+  document.getElementById('programFilter')?.addEventListener('change', onProgramFilterChange);
 
   document.getElementById('registerBtn').addEventListener('click', openRegModal);
   document.getElementById('loginBtn').addEventListener('click', openLoginModal);
