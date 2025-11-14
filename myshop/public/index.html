@@ -347,7 +347,7 @@
   const ACTIVITY_STORAGE_KEY = 'lastActivityTime';
   let ACTIVITY_TIMEOUT = null;
   let LAST_ACTIVITY = Date.now();
-  const TIMEOUT_DURATION =  60 * 60 * 1000; // 60 minutes
+  const TIMEOUT_DURATION =   60 * 60 * 1000; // 60 minutes
 
   const SECURITY_QUESTIONS = [
     { value: "first_pet", label: "สัตว์เลี้ยงตัวแรกของคุณชื่ออะไร?" },
@@ -3056,6 +3056,8 @@ if (cartListEl && cartListEl.children.length === 0) {
     if(snap.empty) throw new Error('ไม่พบผู้ใช้อีเมลนี้');
     const d = snap.docs[0];
     await updateDoc(doc(db,'users',d.id),{ credits: increment(Number(amount)||0) });
+    // ตรวจสอบยอดสะสมและอัพเกรดตัวแทนถ้าครบ
+    try{ await checkAndUpgradeAgent(d.id); }catch(e){ console.warn('auto-upgrade after addCreditsByEmail failed', e); }
   }
 
   async function submitCreditRequest(amount, proofImageUrl) {
@@ -3115,7 +3117,11 @@ if (cartListEl && cartListEl.children.length === 0) {
       await updateDoc(userRef, {
         credits: increment(data.amount)
       });
-
+      
+      // หลังจากเพิ่มเครดิตแล้ว ตรวจสอบยอดสะสมเพื่ออัพเกรดเป็นตัวแทนอัตโนมัติ
+      try{
+        await checkAndUpgradeAgent(data.userId);
+      }catch(e){ console.warn('auto-upgrade after confirmCreditRequest failed', e); }
       // Send confirmation email to user
       await addDoc(collection(db, 'mail'), {
         to: [data.userEmail],
@@ -3138,6 +3144,63 @@ if (cartListEl && cartListEl.children.length === 0) {
     } catch (err) {
       console.error('Error confirming credit request:', err);
       throw err;
+    }
+  }
+
+  // ตรวจสอบยอดสะสมของผู้ใช้ และอัพเกรดเป็นตัวแทนถ้ายอดสะสมครบเงื่อนไข
+  async function checkAndUpgradeAgent(userId) {
+    try {
+      if (!userId) return false;
+      // รวมยอดเครดิตที่อนุมัติทั้งหมด (creditRequests.status == 'approved')
+      const qref = query(
+        collection(db, 'creditRequests'),
+        where('userId', '==', userId),
+        where('status', '==', 'approved')
+      );
+      const snap = await getDocs(qref);
+      let total = 0;
+      snap.forEach(s => { const d = s.data(); total += Number(d.amount || 0); });
+      console.log('checkAndUpgradeAgent:', userId, 'totalApprovedCredits=', total);
+      const THRESHOLD = 4500;
+      if (total >= THRESHOLD) {
+        const uref = doc(db, 'users', userId);
+        try {
+          await updateDoc(uref, { isAgent: true, agentActivatedAt: serverTimestamp() });
+        } catch(e){ console.warn('Failed to mark user isAgent in profile', e); }
+
+        // If current client user is the one upgraded, update client state immediately
+        if (CURRENT_USER && CURRENT_USER.uid === userId) {
+          CURRENT_USER_DOC = CURRENT_USER_DOC || {};
+          CURRENT_USER_DOC.isAgent = true;
+          IS_AGENT = true;
+          updateHeaderAuth();
+          render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
+        }
+
+        // Queue a polite notification email (non-blocking)
+        try{
+          // try to read user's email from profile
+          const userSnap = await getDoc(uref).catch(()=>null);
+          const targetEmail = (userSnap && userSnap.exists()) ? (userSnap.data().email || '') : '';
+          await addDoc(collection(db,'mail'),{
+            to: targetEmail ? [targetEmail] : [],
+            from: 'Elite Unlock <noreply@eliteunlock.com>',
+            message: {
+              subject: 'ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน',
+              text: `ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ ${THRESHOLD} เครดิต\nยินดีด้วย คุณได้รับสิทธิ์อัพเกรดเป็นตัวแทนแล้ว สามารถใช้ราคาตัวแทนเมื่อสั่งซื้อสินค้าได้ทันที\n\nหากต้องการความช่วยเหลือ ติดต่อ LINE: @825lhqmj`,
+              html: `<div style="font-family:sans-serif"><h3>ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน</h3><p>ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ <strong>${THRESHOLD} เครดิต</strong>.</p><p>คุณจะได้รับราคาตัวแทนเมื่อสั่งซื้อสินค้าโดยอัตโนมัติ หากมีคำถาม กรุณาติดต่อ LINE: @825lhqmj</p></div>`
+            },
+            metadata: { userId, triggeredBy: 'auto-upgrade' },
+            createdAt: serverTimestamp()
+          });
+        }catch(e){ console.warn('Unable to queue upgrade email', e); }
+
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('checkAndUpgradeAgent error', e);
+      return false;
     }
   }
 
@@ -4253,6 +4316,53 @@ if (cartListEl && cartListEl.children.length === 0) {
     }
 
   // ----- Auth state -----
+  // Handle session expiration: clear client state, logout and reload once
+  async function handleSessionExpired() {
+    try {
+      // Attempt to clear in-memory state used by the app
+      CART = [];
+      try { saveCart(); } catch(_) {}
+      CURRENT_USER = null;
+      CURRENT_USER_DOC = null;
+      IS_ADMIN = false;
+      IS_AGENT = false;
+      // Stop any running listeners/monitors
+      try { stopActivityMonitoring(); } catch(_) {}
+      try { if (USER_ORDERS_UNSUB) { USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB = null; } } catch(_) {}
+      try { if (ADMIN_ORDERS_UNSUB) { ADMIN_ORDERS_UNSUB(); ADMIN_ORDERS_UNSUB = null; } } catch(_) {}
+      // Clear storages to remove persisted session-like data (cart, prefs, tokens)
+      try { localStorage.clear(); sessionStorage.clear(); } catch(_) {}
+    } catch (err) {
+      console.warn('handleSessionExpired cleanup error', err);
+    }
+
+    try {
+      // Try to log out from Firebase/auth backend
+      await performLogout();
+    } catch (err) {
+      console.warn('performLogout failed during session-expire handling', err);
+    }
+
+    try {
+      // Prevent reload loops: reload only once per session-expire event
+      const key = 'sessionExpiredReloaded';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        // Give user a short notice then reload so the app initializes cleanly
+        //alert('เซสชันหมดอายุแล้ว เนื่องจากไม่มีการใช้งาน กรุณาเข้าสู่ระบบใหม่\\n(หน้าจะรีเฟรชให้อัตโนมัติ)');
+        window.location.reload();
+        return;
+      } else {
+        // Already reloaded once — clear the flag and show message without looping
+        sessionStorage.removeItem(key);
+        //alert('เซสชันหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่');
+      }
+    } catch (err) {
+      console.warn('handleSessionExpired reload error', err);
+      // Fallback: final alert
+      //try { alert('เซสชันหมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่'); } catch(_) {}
+    }
+  }
   // Set up auth state change listener
   onAuthStateChanged(auth, async (user)=>{
     CURRENT_USER = user||null;
@@ -4276,8 +4386,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       // ✅ Check for inactivity timeout when page reloads or user logs in
       if (checkInactivityTimeout()) {
         console.log('User session expired due to inactivity');
-        await performLogout();
-        alert('เซสชันหมดอายุแล้ว เนื่องจากไม่มีการใช้งาน กรุณาเข้าสู่ระบบใหม่');
+        await handleSessionExpired();
         return;
       }
       

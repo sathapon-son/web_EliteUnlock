@@ -1,4 +1,4 @@
-rules_version = '2';
+rules_version = '2'; 
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
@@ -13,7 +13,7 @@ service cloud.firestore {
       return isSignedIn() && (
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true) ||
-        request.auth.token.email.lower() in ['admin@eliteunlock.com']  // Add admin email here
+        request.auth.token.email.lower() in ['admin@eliteunlock.com']
       );
     }
 
@@ -41,8 +41,14 @@ service cloud.firestore {
         && request.resource.data.credits == 0
         && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
       
-      // Admin can update everything, user can only update displayName
+      // อนุญาตให้ user อัพเดต credits ของตัวเองได้ (สำหรับการซื้อสินค้า)
       allow update: if isAdmin()
+        || (
+          isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['credits'])
+          && request.resource.data.credits is int
+          && request.resource.data.credits <= resource.data.credits  // ลดได้อย่างเดียว ห้ามเพิ่ม
+        )
         || (
           isOwner(uid)
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits','isAdmin','isAgent','role']))
@@ -57,17 +63,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // ===== orders =====
+    // ===== orders ===== 
+    // แก้ไข: ให้ทุกคนที่ sign in แล้วสามารถสั่งซื้อได้
     match /orders/{id} {
+      // อนุญาตให้สร้าง order ได้ถ้า sign in แล้ว
       allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.keys().hasAll(['userId','userEmail','status','product','createdAt'])
-        && request.resource.data.status == 'pending';
+        && request.resource.data.userId == request.auth.uid;
       
+      // อ่านได้ถ้าเป็นเจ้าของ order หรือเป็น admin
       allow read: if isSignedIn() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
       
+      // แก้ไขได้เฉพาะ admin
       allow update: if isAdmin();
       allow delete: if false;
     }
@@ -83,7 +91,7 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // ===== config (optional) =====
+    // ===== config =====
     match /config/{doc} {
       allow read: if true;
       allow write: if isAdmin();
@@ -99,17 +107,12 @@ service cloud.firestore {
         && request.resource.data.proofImageUrl is string
         && request.resource.data.proofImageUrl.matches('https://.*');
 
-      // Allow users to read their own requests, admins to read all
       allow read: if isSignedIn() && (
         resource.data.userId == request.auth.uid || isAdmin()
       );
 
-      // Allow listing with queries for users (their own) and admins (all)
       allow list: if isSignedIn();
-
-      // Allow admin to update status and add approval metadata
       allow update: if isAdmin();
-
       allow delete: if false;
     }
 
@@ -117,7 +120,6 @@ service cloud.firestore {
     match /mail/{docId} {
       allow read: if isAdmin();
 
-      // Allow authenticated users to create mail (for order confirmations, etc)
       allow create: if isSignedIn()
         && request.resource.data.keys().hasAll(['to','from','message','createdAt'])
         && isNonEmptyStringList(request.resource.data.to)

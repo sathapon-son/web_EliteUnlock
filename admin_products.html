@@ -45,6 +45,7 @@
               <th class="p-2">ราคา</th>
               <th class="p-2">image</th>
               <th class="p-2">รายละเอียด</th>
+              <th class="p-2">วางขาย?</th>
               <th class="p-2">email?</th>
               <th class="p-2">password?</th>
               <th class="p-2">username?</th>
@@ -64,7 +65,7 @@
       </div>
     </div>
 
-    <div class="mt-6 text-xs text-slate-500">CSV headers supported: โปรแกรม, แพ็กเกจ, ราคา, image, details, requiresemail, requiresusername, requirespassword, requiressn, requireimei</div>
+    <div class="mt-6 text-xs text-slate-500">CSV headers supported: โปรแกรม, แพ็กเกจ, ราคา, image, details, isActive/วางขาย (หมาย 1/yes/true ถ้าจะวางขาย), requiresemail, requiresusername, requirespassword, requiressn, requireimei</div>
   </main>
 
   <div id="loginModal" class="modal" aria-hidden="true">
@@ -112,6 +113,7 @@ const HEADERS = {
   requirespassword:["requirespassword","requires_password","password_required","ต้องใส่รหัส","ต้องใส่password","รหัสผ่านต้องใช้"],
   image:["image","img","รูป","รูปภาพ","imageurl"],
   details:["details","detail","รายละเอียด","description"],
+  isactive:["isactive","is_active","active","isonsale","is_on_sale","วางขาย","sale"],
   requiresemail:["requiresemail","requires_email","email_required","ต้องใส่อีเมล","กรอกอีเมล"],
   requiresusername:["requiresusername","username_required","ต้องใส่username","ต้องใส่ผู้ใช้","user_required"],
   requiressn:["requiressn","sn_required","serial_required","ต้องใส่sn","ต้องใส่serial"],
@@ -164,6 +166,7 @@ function rowsToItems(rows){
       pack: r[map.pack]??"",
       price: toNumber(r[map.price]??0),
       image: map.image!=null? norm(r[map.image]): "",
+      isActive: map.isactive!=null ? /^(1|true|yes|y)$/i.test(String(r[map.isactive])) : false,
       requiresEmail: map.requiresemail!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresemail])) : false,
       requiresUsername: map.requiresusername!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresusername])) : false,
       requiresSN: map.requiressn!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiressn])) : false,
@@ -224,6 +227,7 @@ function renderProductsTable(items){
       <td class="p-2 align-top"><input data-id-price="${p.id}" type="number" class="w-full border rounded p-1 text-sm" value="${Number(p.price||0)}" /></td>
       <td class="p-2 align-top"><input data-id-img="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.image||p.imageUrl||'')}" /></td>
       <td class="p-2 align-top"><input data-id-details="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.details||'')}" /></td>
+      <td class="p-2 align-top text-center"><input type="checkbox" data-id-active="${p.id}" ${p.isActive? 'checked':''} title="วางขาย (แสดงในหน้าแสดงสินค้า)" /></td>
       <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqemail="${p.id}" ${p.requiresEmail? 'checked':''} /></td>
       <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqpass="${p.id}" ${p.requiresPassword? 'checked':''} /></td>
       <td class="p-2 align-top text-center"><input type="checkbox" data-id-requser="${p.id}" ${p.requiresUsername? 'checked':''} /></td>
@@ -265,6 +269,7 @@ async function saveRow(id){
   const name = document.querySelector(`[data-id-name="${id}"]`).value.trim();
   const price = Number(document.querySelector(`[data-id-price="${id}"]`).value||0);
   const image = document.querySelector(`[data-id-img="${id}"]`).value.trim();
+  const isActive = !!document.querySelector(`[data-id-active="${id}"]`).checked;
   const requiresEmail = !!document.querySelector(`[data-id-reqemail="${id}"]`).checked;
   const requiresPassword = !!document.querySelector(`[data-id-reqpass="${id}"]`).checked;
   const requiresUsername = !!document.querySelector(`[data-id-requser="${id}"]`).checked;
@@ -280,6 +285,7 @@ async function saveRow(id){
       price: Number(price)||0,
       image: norm(image||''),
       details: norm(details||''),
+      isActive: !!isActive,
       requiresEmail: !!requiresEmail,
       requiresPassword: !!requiresPassword,
       requiresUsername: !!requiresUsername,
@@ -343,6 +349,7 @@ btnImportCSV.addEventListener('click', async ()=>{
             price: Number(it.price)||0,
             image: norm(it.image||''),
             details: norm(it.details||''),
+            isActive: !!it.isActive,
             requiresEmail: !!it.requiresEmail,
             requiresPassword: !!it.requiresPassword,
             requiresUsername: !!it.requiresUsername,
@@ -362,6 +369,7 @@ btnImportCSV.addEventListener('click', async ()=>{
             price: Number(it.price)||0,
             image: norm(it.image||''),
             details: norm(it.details||''),
+            isActive: !!it.isActive,
             requiresEmail: !!it.requiresEmail,
             requiresPassword: !!it.requiresPassword,
             requiresUsername: !!it.requiresUsername,
