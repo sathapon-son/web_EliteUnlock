@@ -44,6 +44,7 @@
               <th class="p-2">แพ็กเกจ / ชื่อ</th>
               <th class="p-2">ราคา</th>
               <th class="p-2">image</th>
+              <th class="p-2">รายละเอียด</th>
               <th class="p-2">email?</th>
               <th class="p-2">password?</th>
               <th class="p-2">username?</th>
@@ -63,7 +64,7 @@
       </div>
     </div>
 
-    <div class="mt-6 text-xs text-slate-500">CSV headers supported: โปรแกรม, แพ็กเกจ, ราคา, image, requiresemail, requiresusername, requirespassword, requiressn, requireimei</div>
+    <div class="mt-6 text-xs text-slate-500">CSV headers supported: โปรแกรม, แพ็กเกจ, ราคา, image, details, requiresemail, requiresusername, requirespassword, requiressn, requireimei</div>
   </main>
 
   <div id="loginModal" class="modal" aria-hidden="true">
@@ -110,6 +111,7 @@ const HEADERS = {
   price:["price","cost","ราคา"],
   requirespassword:["requirespassword","requires_password","password_required","ต้องใส่รหัส","ต้องใส่password","รหัสผ่านต้องใช้"],
   image:["image","img","รูป","รูปภาพ","imageurl"],
+  details:["details","detail","รายละเอียด","description"],
   requiresemail:["requiresemail","requires_email","email_required","ต้องใส่อีเมล","กรอกอีเมล"],
   requiresusername:["requiresusername","username_required","ต้องใส่username","ต้องใส่ผู้ใช้","user_required"],
   requiressn:["requiressn","sn_required","serial_required","ต้องใส่sn","ต้องใส่serial"],
@@ -166,6 +168,7 @@ function rowsToItems(rows){
       requiresUsername: map.requiresusername!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiresusername])) : false,
       requiresSN: map.requiressn!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requiressn])) : false,
       requiresIMEI: map.requireimei!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requireimei])) : false,
+      details: map.details!=null ? norm(r[map.details]) : '',
       requiresPassword: map.requirespassword!=null ? /^(1|true|yes|y)$/i.test(String(r[map.requirespassword])) : false
     }))
     .filter(x=>norm(x.program)&&norm(x.pack)&&x.price>0);
@@ -220,6 +223,7 @@ function renderProductsTable(items){
       <td class="p-2 align-top"><input data-id-name="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.name||p.pack||'')}" /></td>
       <td class="p-2 align-top"><input data-id-price="${p.id}" type="number" class="w-full border rounded p-1 text-sm" value="${Number(p.price||0)}" /></td>
       <td class="p-2 align-top"><input data-id-img="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.image||p.imageUrl||'')}" /></td>
+      <td class="p-2 align-top"><input data-id-details="${p.id}" class="w-full border rounded p-1 text-sm" value="${escapeHtml(p.details||'')}" /></td>
       <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqemail="${p.id}" ${p.requiresEmail? 'checked':''} /></td>
       <td class="p-2 align-top text-center"><input type="checkbox" data-id-reqpass="${p.id}" ${p.requiresPassword? 'checked':''} /></td>
       <td class="p-2 align-top text-center"><input type="checkbox" data-id-requser="${p.id}" ${p.requiresUsername? 'checked':''} /></td>
@@ -266,6 +270,7 @@ async function saveRow(id){
   const requiresUsername = !!document.querySelector(`[data-id-requser="${id}"]`).checked;
   const requiresSN = !!document.querySelector(`[data-id-reqsn="${id}"]`).checked;
   const requiresIMEI = !!document.querySelector(`[data-id-reqimei="${id}"]`).checked;
+  const details = document.querySelector(`[data-id-details="${id}"]`).value.trim();
   const msgEl = document.querySelector(`[data-row-msg="${id}"]`);
   msgEl.textContent = 'Saving...';
   try{
@@ -274,6 +279,7 @@ async function saveRow(id){
       name: norm(name),
       price: Number(price)||0,
       image: norm(image||''),
+      details: norm(details||''),
       requiresEmail: !!requiresEmail,
       requiresPassword: !!requiresPassword,
       requiresUsername: !!requiresUsername,
@@ -336,6 +342,7 @@ btnImportCSV.addEventListener('click', async ()=>{
             name: norm(it.pack),
             price: Number(it.price)||0,
             image: norm(it.image||''),
+            details: norm(it.details||''),
             requiresEmail: !!it.requiresEmail,
             requiresPassword: !!it.requiresPassword,
             requiresUsername: !!it.requiresUsername,
@@ -354,6 +361,7 @@ btnImportCSV.addEventListener('click', async ()=>{
             name: norm(it.pack),
             price: Number(it.price)||0,
             image: norm(it.image||''),
+            details: norm(it.details||''),
             requiresEmail: !!it.requiresEmail,
             requiresPassword: !!it.requiresPassword,
             requiresUsername: !!it.requiresUsername,

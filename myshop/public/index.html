@@ -25,6 +25,44 @@
     .card-hover:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,.08)}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
     .modal.active{display:flex}
+
+    /* Make Login / Register / Forgot modals scrollable when their content
+       is taller than the viewport. We target the inner white dialog box so
+       header/footer stay visible and body content scrolls. */
+    #regModal .relative > .bg-white,
+    #loginModal .relative > .bg-white,
+    #forgotModal .relative > .bg-white {
+      max-height: calc(85vh - 2rem);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: .75rem; /* allow space for scrollbar */
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
+    }
+
+    /* Ensure containers used as flex children can shrink and allow scrolling */
+    #regModal .relative, #loginModal .relative, #forgotModal .relative { min-height: 0; }
+
+    /* Thin custom scrollbar for these auth modals (WebKit + Firefox) */
+    #regModal .relative > .bg-white::-webkit-scrollbar,
+    #loginModal .relative > .bg-white::-webkit-scrollbar,
+    #forgotModal .relative > .bg-white::-webkit-scrollbar { width: 8px; height: 8px; }
+    #regModal .relative > .bg-white::-webkit-scrollbar-track,
+    #loginModal .relative > .bg-white::-webkit-scrollbar-track,
+    #forgotModal .relative > .bg-white::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 6px; }
+    #regModal .relative > .bg-white::-webkit-scrollbar-thumb,
+    #loginModal .relative > .bg-white::-webkit-scrollbar-thumb,
+    #forgotModal .relative > .bg-white::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1; border: 2px solid #f1f5f9; border-radius: 20px;
+    }
+    #regModal .relative > .bg-white::-webkit-scrollbar-thumb:hover,
+    #loginModal .relative > .bg-white::-webkit-scrollbar-thumb:hover,
+    #forgotModal .relative > .bg-white::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+
+    /* Firefox scrollbar color */
+    #regModal .relative > .bg-white,
+    #loginModal .relative > .bg-white,
+    #forgotModal .relative > .bg-white { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
     .badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .7rem;border-radius:.6rem;font-size:.8rem}
     #adminOrdersModal .orders-scroll{max-height:70vh;overflow-y:auto;padding-right:.75rem;}
     /* Make product detail modal scrollable when content exceeds viewport */
@@ -138,6 +176,10 @@
             <p class="text-slate-600 mt-1">
               คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
             </p>
+<p class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
+font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
+  🏷️ ลดราคา ถึง 21/11/68
+</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <span class="badge bg-emerald-50 text-emerald-700">✔ รับประกันเปิดใช้งาน</span>
@@ -266,6 +308,12 @@
   let CART = [];
   let PENDING_RESET_CODE = null;
   let PENDING_RESET_EMAIL = "";
+
+  // ----- Activity Timeout Variables -----
+  const ACTIVITY_STORAGE_KEY = 'lastActivityTime';
+  let ACTIVITY_TIMEOUT = null;
+  let LAST_ACTIVITY = Date.now();
+  const TIMEOUT_DURATION =  60 * 60 * 1000; // 60 minutes
 
   const SECURITY_QUESTIONS = [
     { value: "first_pet", label: "สัตว์เลี้ยงตัวแรกของคุณชื่ออะไร?" },
@@ -673,58 +721,252 @@ function updateSidebar(){
   });
 }
 
-  // Register Modal
-  const regModal = document.createElement('div');
-  regModal.className = 'modal'; regModal.id = 'regModal'; regModal.setAttribute('aria-hidden','true');
-  regModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-      <button id="closeReg" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">สมัครสมาชิก</h3>
-      <div class="space-y-3">
-        <input id="authEmailR" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
-        <input id="authPassR" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
-        <input id="authPass2R" type="password" placeholder="ยืนยันรหัสผ่าน" class="w-full border rounded p-2" />
-        <select id="authQuestionR" class="w-full border rounded p-2">
-          <option value="">เลือกคำถามเพื่อความปลอดภัย</option>
+// ✅ Register Modal
+const regModal = document.createElement('div');
+regModal.className = 'modal fixed inset-0 z-50 hidden items-center justify-center';
+regModal.id = 'regModal';
+regModal.setAttribute('aria-hidden','true');
+regModal.setAttribute('role','dialog');
+regModal.setAttribute('aria-modal','true');
+
+regModal.innerHTML = `
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+
+  <!-- Dialog -->
+  <div class="relative mx-4 w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200">
+      <!-- Header -->
+      <div class="relative p-6 border-b border-slate-100">
+        <div class="flex items-center justify-center gap-2">
+          <div class="h-10 w-10 grid place-items-center rounded-xl bg-emerald-50 text-2xl">📝</div>
+          <h3 class="text-xl font-bold text-slate-800">สมัครสมาชิก</h3>
+        </div>
+        <button id="closeReg"
+                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Close">✖</button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+        <label class="block text-sm font-medium text-slate-700 mb-1">📧 อีเมล</label>
+        <input id="authEmailR" type="email" placeholder="name@example.com"
+               class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+
+        <label class="block text-sm font-medium text-slate-700 mt-2 mb-1">🔒 รหัสผ่าน</label>
+        <div class="relative">
+          <input id="authPassR" type="password" placeholder="อย่างน้อย 8 ตัวอักษร"
+                 class="w-full border border-slate-300 rounded-lg p-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+          <button type="button" id="togglePassR"
+                  class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-slate-700"
+                  tabindex="-1" aria-label="Toggle password">👁️</button>
+        </div>
+
+        <label class="block text-sm font-medium text-slate-700 mt-2 mb-1">✅ ยืนยันรหัสผ่าน</label>
+        <div class="relative">
+          <input id="authPass2R" type="password" placeholder="พิมพ์รหัสผ่านอีกครั้ง"
+                 class="w-full border border-slate-300 rounded-lg p-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+          <button type="button" id="togglePass2R"
+                  class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-slate-700"
+                  tabindex="-1" aria-label="Toggle confirm password">👁️</button>
+        </div>
+
+        <label class="block text-sm font-medium text-slate-700 mt-2 mb-1">🛡️ คำถามเพื่อความปลอดภัย</label>
+        <select id="authQuestionR"
+                class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+          <option value="">— เลือกคำถาม —</option>
           ${SECURITY_OPTIONS_HTML}
         </select>
-        <input id="authAnswerR" type="text" placeholder="คำตอบ" class="w-full border rounded p-2" />
-        <button id="doRegister" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">สมัครสมาชิก</button>
-        <div id="authMsgR" class="text-sm text-red-600"></div>
-      </div>
-    </div>`;
-  document.body.appendChild(regModal);
 
-  // Login Modal
-  const loginModal = document.createElement('div');
-  loginModal.className = 'modal'; loginModal.id = 'loginModal'; loginModal.setAttribute('aria-hidden','true');
-  loginModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-      <button id="closeLogin" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">ลงชื่อเข้าใช้</h3>
-      <div class="space-y-3">
-        <input id="authEmailL" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
-        <input id="authPassL" type="password" placeholder="รหัสผ่าน" class="w-full border rounded p-2" />
-        <button id="doLogin" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md">เข้าสู่ระบบ</button>
-        <button id="openForgot" type="button" class="text-sm text-indigo-600 hover:underline">ลืมรหัสผ่าน?</button>
-        <div id="authMsgL" class="text-sm text-red-600"></div>
-      </div>
-    </div>`;
-  document.body.appendChild(loginModal);
+        <label class="block text-sm font-medium text-slate-700 mt-2 mb-1">✍️ คำตอบ</label>
+        <input id="authAnswerR" type="text" placeholder="ระบุคำตอบของคุณ"
+               class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
 
-  // Forgot Password Modal
-  const forgotModal = document.createElement('div');
-  forgotModal.className = 'modal'; forgotModal.id = 'forgotModal'; forgotModal.setAttribute('aria-hidden','true');
-  forgotModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-      <button id="closeForgot" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">ลืมรหัสผ่าน</h3>
-      <div class="space-y-4 text-center text-sm text-slate-600">
-        <p>กรุณาติดต่อ <span class="font-semibold text-slate-800">LINE @825lhqmj</span> เพื่อให้เจ้าหน้าที่ช่วยรีเซ็ตรหัสผ่านให้คุณ</p>
-        <a href="https://line.me/R/ti/p/@825lhqmj" target="_blank" rel="noopener" class="inline-flex items-center justify-center bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md transition">เปิด LINE</a>
+        <div id="authMsgR" class="text-sm min-h-5 text-red-600"></div>
+
+        <button id="doRegister"
+                class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-medium shadow hover:bg-emerald-700 active:bg-emerald-800 transition">
+          ✨ สมัครสมาชิก
+        </button>
+
       </div>
-    </div>`;
-  document.body.appendChild(forgotModal);
+    </div>
+  </div>
+`;
+
+document.body.appendChild(regModal);
+
+// 🧠 Toggle Password Visibility
+const q = (sel) => regModal.querySelector(sel);
+const toggle = (inputEl, btnEl) => {
+  if (!inputEl || !btnEl) return;
+  btnEl.addEventListener('click', () => {
+    const isPwd = inputEl.type === 'password';
+    inputEl.type = isPwd ? 'text' : 'password';
+    btnEl.textContent = isPwd ? '🙈' : '👁️';
+  });
+};
+
+toggle(q('#authPassR'),  q('#togglePassR'));
+toggle(q('#authPass2R'), q('#togglePass2R'));
+
+
+// ✅ Login Modal
+const loginModal = document.createElement('div');
+loginModal.className = 'modal fixed inset-0 z-50 hidden items-center justify-center';
+loginModal.id = 'loginModal';
+loginModal.setAttribute('aria-hidden','true');
+loginModal.setAttribute('role','dialog');
+loginModal.setAttribute('aria-modal','true');
+
+loginModal.innerHTML = `
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+
+  <!-- Dialog -->
+  <div class="relative mx-4 w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200">
+      <!-- Header -->
+      <div class="relative p-6 border-b border-slate-100">
+        <div class="flex items-center justify-center gap-2">
+          <div class="h-10 w-10 grid place-items-center rounded-xl bg-indigo-50 text-2xl">🔐</div>
+          <h3 class="text-xl font-bold text-slate-800">ลงชื่อเข้าใช้</h3>
+        </div>
+        <button id="closeLogin"
+                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Close">✖</button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4">
+        <label class="block text-sm font-medium text-slate-700 mb-1">📧 อีเมล</label>
+        <input id="authEmailL" type="email" placeholder="name@example.com"
+               class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+
+        <label class="block text-sm font-medium text-slate-700 mt-2 mb-1">🔑 รหัสผ่าน</label>
+        <div class="relative">
+          <input id="authPassL" type="password" placeholder="กรอกรหัสผ่าน"
+                 class="w-full border border-slate-300 rounded-lg p-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+          <button type="button" id="togglePassL"
+                  class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-slate-700"
+                  tabindex="-1" aria-label="Toggle password">👁️</button>
+        </div>
+
+        <div id="authMsgL" class="text-sm min-h-5 text-red-600"></div>
+
+        <button id="doLogin"
+                class="w-full bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium shadow hover:bg-indigo-700 active:bg-indigo-800 transition">
+          🚀 เข้าสู่ระบบ
+        </button>
+
+        <button id="openForgot" type="button"
+                class="block w-full text-sm text-center text-indigo-600 hover:underline mt-2">
+          ❓ ลืมรหัสผ่าน?
+        </button>
+
+      </div>
+    </div>
+  </div>
+`;
+
+document.body.appendChild(loginModal);
+
+// 🧠 Toggle Password Visibility
+const get = (sel) => loginModal.querySelector(sel);
+const toggleView = (inputEl, btnEl) => {
+  if (!inputEl || !btnEl) return;
+  btnEl.addEventListener('click', () => {
+    const isPwd = inputEl.type === 'password';
+    inputEl.type = isPwd ? 'text' : 'password';
+    btnEl.textContent = isPwd ? '🙈' : '👁️';
+  });
+};
+
+toggleView(get('#authPassL'), get('#togglePassL'));
+
+
+// ✅ Forgot Password Modal
+const forgotModal = document.createElement('div');
+forgotModal.className = 'modal fixed inset-0 z-50 hidden items-center justify-center';
+forgotModal.id = 'forgotModal';
+forgotModal.setAttribute('aria-hidden','true');
+forgotModal.setAttribute('role','dialog');
+forgotModal.setAttribute('aria-modal','true');
+
+forgotModal.innerHTML = `
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+
+  <!-- Dialog -->
+  <div class="relative mx-4 w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200">
+      <!-- Header -->
+      <div class="relative p-6 border-b border-slate-100">
+        <div class="flex items-center justify-center gap-2">
+          <div class="h-10 w-10 grid place-items-center rounded-xl bg-emerald-50 text-2xl">🆘</div>
+          <h3 class="text-xl font-bold text-slate-800">ลืมรหัสผ่าน</h3>
+        </div>
+        <button id="closeForgot"
+                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Close">✖</button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 space-y-4 text-sm text-slate-700">
+        <p class="text-center">
+          โปรดติดต่อเจ้าหน้าที่ผ่าน <span class="font-semibold text-slate-900">LINE @825lhqmj</span>
+          เพื่อให้ช่วยรีเซ็ตรหัสผ่านให้คุณ 🙏
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a href="https://line.me/R/ti/p/@825lhqmj"
+             target="_blank" rel="noopener"
+             class="flex-1 inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2.5 rounded-lg font-medium transition">
+            💬 เปิด LINE
+          </a>
+          <button id="copyLineId"
+                  class="flex-1 inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg font-medium transition">
+            📋 คัดลอก LINE ID
+          </button>
+        </div>
+
+        <div id="authMsgF" class="text-center text-xs text-slate-500">
+          รองรับทุกวัน 07:30–23:00 น. ⏰
+        </div>
+      </div>
+    </div>
+  </div>
+`;
+
+document.body.appendChild(forgotModal);
+
+// 🧠 Copy LINE ID helper
+(() => {
+  const btn = forgotModal.querySelector('#copyLineId');
+  if (btn && navigator.clipboard) {
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText('@825lhqmj');
+        const msg = forgotModal.querySelector('#authMsgF');
+        if (msg) {
+          msg.textContent = 'คัดลอก LINE ID แล้ว ✔️ วางในแอป LINE ได้เลย';
+          msg.className = 'text-center text-xs text-emerald-600';
+          setTimeout(() => {
+            msg.textContent = 'รองรับทุกวัน 07:30–23:00 น. ⏰';
+            msg.className = 'text-center text-xs text-slate-500';
+          }, 2500);
+        }
+      } catch (_) {
+        const msg = forgotModal.querySelector('#authMsgF');
+        if (msg) {
+          msg.textContent = 'คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง: @825lhqmj';
+          msg.className = 'text-center text-xs text-red-600';
+        }
+      }
+    });
+  }
+})();
+
 
   // Reset Password Modal
   const resetPasswordModal = document.createElement('div');
@@ -755,9 +997,25 @@ function updateSidebar(){
         <label class="text-sm">กรอกอีเมลสำหรับสินค้านี้</label>
         <input id="orderEmailInput" type="email" placeholder="อีเมลสำหรับใช้งานสินค้า" class="w-full border rounded p-2" />
       </div>
+      <div id="orderUsernameBlock" class="space-y-2 hidden">
+        <label class="text-sm">กรอก Username สำหรับสินค้านี้</label>
+        <input id="orderUsernameInput" type="text" placeholder="Username สำหรับใช้งาน" class="w-full border rounded p-2" />
+      </div>
+      <div id="orderSNBlock" class="space-y-2 hidden">
+        <label class="text-sm">กรอก SN / Serial สำหรับสินค้านี้</label>
+        <input id="orderSNInput" type="text" placeholder="SN / Serial" class="w-full border rounded p-2" />
+      </div>
+      <div id="orderIMEIBlock" class="space-y-2 hidden">
+        <label class="text-sm">กรอก IMEI สำหรับสินค้านี้</label>
+        <input id="orderIMEIInput" type="text" placeholder="IMEI" class="w-full border rounded p-2" />
+      </div>
       <div id="orderPasswordBlock" class="space-y-2 hidden">
         <label class="text-sm">รหัสผ่านสำหรับสินค้านี้</label>
         <input id="orderPasswordInput" type="password" placeholder="รหัสผ่านสำหรับสินค้านี้" class="w-full border rounded p-2" />
+      </div>
+      <div id="orderDetailsBlock" class="space-y-2 hidden">
+        <label class="text-sm">รายละเอียดสำหรับการสั่งซื้อ</label>
+        <textarea id="orderDetailsInput" rows="3" placeholder="กรุณากรอกรายละเอียดก่อนสั่งซื้อ" class="w-full border rounded p-2"></textarea>
       </div>
       <div class="flex gap-2 mt-4">
         <button id="confirmOrder" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md">ยืนยันสั่งซื้อ</button>
@@ -1000,21 +1258,84 @@ function updateSidebar(){
     }
   });
 
-  // Cart Modal
-  const cartModal = document.createElement('div');
-  cartModal.className = 'modal'; cartModal.id = 'cartModal'; cartModal.setAttribute('aria-hidden','true');
-  cartModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full p-6 relative">
-      <button id="closeCart" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
-      <h3 class="text-xl font-bold mb-4 text-center">ตะกร้าสินค้า</h3>
-      <div id="cartList" class="space-y-3 max-h-[60vh] overflow-auto text-sm"></div>
-      <div class="flex items-center justify-between mt-4">
-        <div class="text-lg font-semibold">รวมทั้งหมด: <span id="cartTotal">0</span> เครดิต</div>
-        <button id="continueShopping" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md">ยืนยันการสั่งซื้อ</button>
+// ✅ Cart Modal
+const cartModal = document.createElement('div');
+cartModal.className = 'modal fixed inset-0 z-50 hidden items-center justify-center';
+cartModal.id = 'cartModal';
+cartModal.setAttribute('aria-hidden','true');
+cartModal.setAttribute('role','dialog');
+cartModal.setAttribute('aria-modal','true');
+
+cartModal.innerHTML = `
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+
+  <!-- Dialog -->
+  <div class="relative mx-4 w-full max-w-2xl">
+    <div class="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200">
+      <!-- Header -->
+      <div class="relative p-6 border-b border-slate-100">
+        <div class="flex items-center justify-center gap-2">
+          <div class="h-10 w-10 grid place-items-center rounded-xl bg-indigo-50 text-2xl">🛒</div>
+          <h3 class="text-xl font-bold text-slate-800">ตะกร้าสินค้า</h3>
+        </div>
+        <button id="closeCart"
+                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Close">✖</button>
       </div>
-      <div id="cartMsg" class="mt-2 text-sm"></div>
-    </div>`;
-  document.body.appendChild(cartModal);
+
+      <!-- Body -->
+      <div class="p-6">
+        <!-- รายการสินค้า -->
+        <div id="cartList"
+             class="space-y-3 max-h-[60vh] overflow-auto text-sm pr-1">
+          <!-- เติมรายการจากสคริปต์ของคุณ -->
+          <!-- ตัวอย่างสไตล์รายการที่แนะนำ:
+          <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/60">
+            <div class="min-w-0">
+              <div class="font-medium text-slate-800 truncate">ชื่อสินค้า</div>
+              <div class="text-xs text-slate-500">แพ็ก / รายละเอียด</div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button class="h-8 w-8 grid place-items-center rounded-lg border hover:bg-slate-100">−</button>
+              <span class="w-8 text-center">1</span>
+              <button class="h-8 w-8 grid place-items-center rounded-lg border hover:bg-slate-100">＋</button>
+              <button class="ml-2 h-8 px-3 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100">🗑️</button>
+            </div>
+          </div>
+          -->
+        </div>
+
+        <!-- สรุปยอด -->
+        <div class="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="text-lg font-semibold text-slate-800">
+            🧾 รวมทั้งหมด: <span id="cartTotal">0</span> เครดิต
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="continueShopping"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 font-medium shadow transition">
+              ✅ ยืนยันการสั่งซื้อ
+            </button>
+          </div>
+        </div>
+
+        <div id="cartMsg" class="mt-3 text-sm text-slate-600 min-h-5"></div>
+      </div>
+    </div>
+  </div>
+`;
+
+document.body.appendChild(cartModal);
+
+// (ออปชัน) ใส่ข้อความว่างเมื่อไม่มีสินค้าในตะกร้า
+const cartListEl = cartModal.querySelector('#cartList');
+if (cartListEl && cartListEl.children.length === 0) {
+  const empty = document.createElement('div');
+  empty.className = 'p-6 text-center text-slate-500';
+  empty.innerHTML = 'ตะกร้ายังว่างเปล่า 🧺<br><span class="text-xs">เลือกสินค้าที่ต้องการแล้วกลับมาตรวจสอบที่นี่</span>';
+  cartListEl.appendChild(empty);
+}
+
 
   // Product Detail Modal (Buy Now)
   const productModal = document.createElement('div');
@@ -1149,6 +1470,7 @@ function updateSidebar(){
               <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> ต้องการ Username</label>
               <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> ต้องการ SN</label>
               <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> ต้องการ IMEI</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqDetails" type="checkbox" /> ต้องการรายละเอียดจากลูกค้า</label>
               <label class="inline-flex items-center gap-2"><input id="pTypeCredit" type="checkbox" /> เป็นสินค้าประเภทเครดิต</label>
               <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มสินค้า</button>
             </div>
@@ -1254,6 +1576,13 @@ function updateSidebar(){
     const n=Number(String(v).replace(/[^\d.]/g,""));
     return isNaN(n)?norm(v):n.toLocaleString("th-TH");
   };
+
+  // Convert newlines to <br> while preserving already-escaped HTML
+  function nl2br(str){
+    if(!str && str !== 0) return '';
+    // Normalize CRLF and LF then replace with <br>
+    return String(str).replace(/\r\n|\r|\n/g, '<br>');
+  }
 
   // Agent pricing helpers
   function getEffectivePrice(p){
@@ -1627,6 +1956,11 @@ function updateSidebar(){
     if(p.requiresSN) addField('detailSN','SN / Serial Number','text');
     if(p.requiresIMEI) addField('detailIMEI','IMEI','text');
     if(p.requiresPassword) addField('detailPassword','รหัสผ่าน','password');
+    if(p.requiresDetails){
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `<label class="text-sm">รายละเอียดสำหรับการสั่งซื้อ</label><textarea id="detailAdditional" rows="3" placeholder="กรุณากรอกรายละเอียดที่ต้องการให้ผู้ให้บริการทราบ" class="border rounded p-2 w-full"></textarea>`;
+      fields.appendChild(wrap);
+    }
     document.getElementById('detailMsg').textContent = '';
     panel.classList.remove('hidden');
     // scroll into view
@@ -1663,7 +1997,8 @@ function updateSidebar(){
       usernameForProduct: document.getElementById('detailUsername')?.value?.trim()||'',
       snForProduct: document.getElementById('detailSN')?.value?.trim()||'',
       imeiForProduct: document.getElementById('detailIMEI')?.value?.trim()||'',
-      passwordForProduct: document.getElementById('detailPassword')?.value?.trim()||''
+      passwordForProduct: document.getElementById('detailPassword')?.value?.trim()||'',
+      additionalDetails: document.getElementById('detailAdditional')?.value?.trim()||''
     };
 
     // Handle credit products
@@ -1695,7 +2030,8 @@ function updateSidebar(){
     if(p.requiresUsername && !details.usernameForProduct){ msgEl.textContent = 'กรุณากรอก Username สำหรับสินค้านี้'; return; }
     if(p.requiresSN && !details.snForProduct){ msgEl.textContent = 'กรุณากรอก SN/Serial สำหรับสินค้านี้'; return; }
     if(p.requiresIMEI && !details.imeiForProduct){ msgEl.textContent = 'กรุณากรอก IMEI สำหรับสินค้านี้'; return; }
-  if(p.requiresPassword && !details.passwordForProduct){ msgEl.textContent = 'กรุณากรอก รหัสผ่านสำหรับสินค้านี้'; return; }
+    if(p.requiresPassword && !details.passwordForProduct){ msgEl.textContent = 'กรุณากรอก รหัสผ่านสำหรับสินค้านี้'; return; }
+    if(p.requiresDetails && !details.additionalDetails){ msgEl.textContent = 'กรุณากรอกรายละเอียดสำหรับสินค้านี้'; return; }
     // Add to cart (will open login modal if user not logged in)
     addToCart(p, details);
     msgEl.classList.remove('text-red-600'); msgEl.classList.add('text-emerald-700');
@@ -1770,6 +2106,7 @@ function updateSidebar(){
         requiresSN: !!d.data().requiresSN,
         requiresIMEI: !!d.data().requiresIMEI,
         requiresPassword: !!d.data().requiresPassword,
+        requiresDetails: !!d.data().requiresDetails,
         details: d.data().details || '',
         // include type so UI can render credit-specific inputs (expects 'credit' or 'normal')
         // Fallbacks: read explicit `type`, then `isCredit` boolean, then heuristics (program/name contains 'เติมเครดิต')
@@ -1787,7 +2124,123 @@ function updateSidebar(){
   }
 
   async function performLogout(){
-    try{ await signOut(auth); } finally { CURRENT_USER=null; CURRENT_USER_DOC=null; IS_ADMIN=false; updateHeaderAuth(); sanitizeSearchPrefill(); }
+    try{ await signOut(auth); } finally { 
+      CURRENT_USER=null; 
+      CURRENT_USER_DOC=null; 
+      IS_ADMIN=false; 
+      updateHeaderAuth(); 
+      sanitizeSearchPrefill();
+      stopActivityMonitoring(); // ⭐ เพิ่มบรรทัดนี้
+    }
+  }
+  // ----- Activity Monitoring Functions -----
+  function resetActivityTimer() {
+    // Skip timeout for admin users
+    if (IS_ADMIN) {
+      console.log('Admin user - timeout disabled');
+      return false;
+    }
+    
+    LAST_ACTIVITY = Date.now();
+    
+    // Save activity time to localStorage so it persists across page reloads
+    try {
+      localStorage.setItem(ACTIVITY_STORAGE_KEY, LAST_ACTIVITY.toString());
+    } catch (e) {
+      console.warn('Failed to save activity time to localStorage:', e);
+    }
+    
+    if (ACTIVITY_TIMEOUT) {
+      clearTimeout(ACTIVITY_TIMEOUT);
+    }
+    
+    if (!CURRENT_USER) return;
+    
+    ACTIVITY_TIMEOUT = setTimeout(async () => {
+      const timeSinceActivity = Date.now() - LAST_ACTIVITY;
+      
+      if (timeSinceActivity >= TIMEOUT_DURATION && CURRENT_USER) {
+        console.log('Session timeout: logging out due to inactivity');
+        await performLogout();
+      }
+    }, TIMEOUT_DURATION);
+  }
+  
+  // Check if user has been inactive since last session
+  function checkInactivityTimeout() {
+    // Skip for admin users
+    if (IS_ADMIN) {
+      console.log('Admin user - timeout check disabled');
+      return false;
+    }
+    
+    if (!CURRENT_USER) return false;
+    
+    try {
+      const lastActivityStr = localStorage.getItem(ACTIVITY_STORAGE_KEY);
+      
+      // ✅ ถ้าไม่มีข้อมูลเดิม แสดงว่าเพิ่ง login ใหม่ -> ไม่ควร timeout
+      if (!lastActivityStr) {
+        console.log('No previous activity found - fresh login, skipping timeout check');
+        return false;
+      }
+      
+      const lastActivityTime = parseInt(lastActivityStr, 10);
+      if (isNaN(lastActivityTime)) {
+        console.log('Invalid activity timestamp, skipping timeout check');
+        return false;
+      }
+      
+      const timeSinceLastActivity = Date.now() - lastActivityTime;
+      
+      // ✅ ถ้าเวลาผ่านไปน้อยกว่า 5 วินาที แสดงว่าเพิ่ง login -> skip
+      if (timeSinceLastActivity < 5000) {
+        console.log('Recent activity detected, skipping timeout check');
+        return false;
+      }
+      
+      if (timeSinceLastActivity >= TIMEOUT_DURATION) {
+        console.log('Inactivity timeout detected after page reload. Time elapsed:', timeSinceLastActivity, 'ms');
+        return true; // Timeout detected
+      }
+    } catch (e) {
+      console.warn('Error checking inactivity timeout:', e);
+    }
+    
+    return false;
+  }
+
+  function startActivityMonitoring() {
+    // Skip for admin users
+    if (IS_ADMIN) {
+      console.log('Admin user - activity monitoring disabled');
+      return; // Don't set up activity monitoring for admins
+    }
+    
+    resetActivityTimer();
+    
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    let throttleTimer = null;
+    const throttledReset = () => {
+      if (!throttleTimer) {
+        resetActivityTimer();
+        throttleTimer = setTimeout(() => {
+          throttleTimer = null;
+        }, 1000);
+      }
+    };
+    
+    events.forEach(event => {
+      document.addEventListener(event, throttledReset, { passive: true });
+    });
+  }
+
+  function stopActivityMonitoring() {
+    if (ACTIVITY_TIMEOUT) {
+      clearTimeout(ACTIVITY_TIMEOUT);
+      ACTIVITY_TIMEOUT = null;
+    }
   }
 
   async function logoutWithConfirm(){
@@ -2106,6 +2559,14 @@ function updateSidebar(){
     document.getElementById('orderEmailInput').value = '';
     document.getElementById('orderPasswordBlock').classList.toggle('hidden', !product.requiresPassword);
     document.getElementById('orderPasswordInput').value = '';
+    document.getElementById('orderUsernameBlock').classList.toggle('hidden', !product.requiresUsername);
+    document.getElementById('orderUsernameInput').value = '';
+    document.getElementById('orderSNBlock').classList.toggle('hidden', !product.requiresSN);
+    document.getElementById('orderSNInput').value = '';
+    document.getElementById('orderIMEIBlock').classList.toggle('hidden', !product.requiresIMEI);
+    document.getElementById('orderIMEIInput').value = '';
+    document.getElementById('orderDetailsBlock').classList.toggle('hidden', !product.requiresDetails);
+    document.getElementById('orderDetailsInput').value = '';
     document.getElementById('orderMsg').textContent='';
     showModalElement(orderModal);
   }
@@ -2136,6 +2597,10 @@ function updateSidebar(){
     const price = Number(PENDING_ORDER.price||0);
     const emailForProduct = document.getElementById('orderEmailInput').value.trim();
     const passwordForProduct = document.getElementById('orderPasswordInput')?.value?.trim()||'';
+    const usernameForProduct = document.getElementById('orderUsernameInput')?.value?.trim()||'';
+    const snForProduct = document.getElementById('orderSNInput')?.value?.trim()||'';
+    const imeiForProduct = document.getElementById('orderIMEIInput')?.value?.trim()||'';
+    const additionalDetails = document.getElementById('orderDetailsInput')?.value?.trim()||'';
     if(PENDING_ORDER.requiresEmail && !emailForProduct){
       document.getElementById('orderMsg').textContent = 'กรุณากรอกอีเมลสำหรับสินค้านี้';
       return;
@@ -2144,6 +2609,10 @@ function updateSidebar(){
       document.getElementById('orderMsg').textContent = 'กรุณากรอกรหัสผ่านสำหรับสินค้านี้';
       return;
     }
+    if(PENDING_ORDER.requiresUsername && !usernameForProduct){ document.getElementById('orderMsg').textContent = 'กรุณากรอก Username สำหรับสินค้านี้'; return; }
+    if(PENDING_ORDER.requiresSN && !snForProduct){ document.getElementById('orderMsg').textContent = 'กรุณากรอก SN/Serial สำหรับสินค้านี้'; return; }
+    if(PENDING_ORDER.requiresIMEI && !imeiForProduct){ document.getElementById('orderMsg').textContent = 'กรุณากรอก IMEI สำหรับสิน้านี้'; return; }
+    if(PENDING_ORDER.requiresDetails && !additionalDetails){ document.getElementById('orderMsg').textContent = 'กรุณากรอกรายละเอียดสำหรับสินค้านี้'; return; }
     if(bal < price){
       document.getElementById('orderMsg').textContent = 'เครดิตไม่เพียงพอ';
       return;
@@ -2162,6 +2631,10 @@ function updateSidebar(){
         source: PENDING_ORDER.source||'firestore'
       },
       emailForProduct: emailForProduct||'',
+      usernameForProduct: usernameForProduct||'',
+      snForProduct: snForProduct||'',
+      imeiForProduct: imeiForProduct||'',
+      additionalDetails: additionalDetails||'',
       passwordForProduct: passwordForProduct||'',
       createdAt: serverTimestamp()
     });
@@ -2170,7 +2643,11 @@ function updateSidebar(){
       orderId: orderRef.id,
       program: PENDING_ORDER.program,
       email: emailForProduct || CURRENT_USER?.email || '',
-      password: passwordForProduct
+      username: usernameForProduct || '',
+      sn: snForProduct || '',
+      imei: imeiForProduct || '',
+      password: passwordForProduct,
+      additional: additionalDetails || ''
     });
     notifyLineOrder({
       name: lineName,
@@ -2287,7 +2764,7 @@ function updateSidebar(){
           <td class="p-2 align-top"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
           <td class="p-2 align-top">${escapeHtml(ts)}</td>
           <td class="p-2 align-top">${noteHtml}</td>
-          <td class="p-2 align-top"><div class="text-sm">${escapeHtml(reply)}</div></td>
+          <td class="p-2 align-top"><div class="text-sm">${nl2br(escapeHtml(reply))}</div></td>
           <td class="p-2 align-top">${manageHtml}</td>
         `;
         tbody.appendChild(tr);
@@ -2777,6 +3254,7 @@ function updateSidebar(){
       requiresUsername: !!p.requiresUsername,
       requiresSN: !!p.requiresSN,
       requiresIMEI: !!p.requiresIMEI,
+      requiresDetails: !!p.requiresDetails,
       details: norm(p.details||''),
       // preserve explicit `type` when provided (admin UI sets `type`),
       // otherwise fall back to legacy `isCredit` boolean
@@ -2799,11 +3277,13 @@ function updateSidebar(){
       requiresUsername: !!p.requiresUsername,
       requiresSN: !!p.requiresSN,
       requiresIMEI: !!p.requiresIMEI,
+      requiresDetails: !!p.requiresDetails,
       emailForProduct: details.emailForProduct||'',
       usernameForProduct: details.usernameForProduct||'',
       snForProduct: details.snForProduct||'',
       imeiForProduct: details.imeiForProduct||'',
       passwordForProduct: details.passwordForProduct||''
+      ,additionalDetails: details.additionalDetails||''
     };
     CART.push(item);
     saveCart();
@@ -2876,6 +3356,12 @@ function updateSidebar(){
     if(p.requiresSN) addField('pdSN','SN / Serial Number');
     if(p.requiresIMEI) addField('pdIMEI','IMEI');
     if(p.requiresPassword) addField('pdPassword','รหัสผ่าน','password');
+    if(p.requiresDetails){
+      const wrap = document.createElement('div');
+      wrap.className = 'mt-2';
+      wrap.innerHTML = `<label class="text-sm">รายละเอียดสำหรับผู้ให้บริการ (กรุณากรอกรายละเอียดก่อนสั่งซื้อ)</label><textarea id="pdDetails" rows="3" class="w-full border rounded p-2 text-sm" placeholder="กรอกรายละเอียดเช่น อีเมล, Username, SN, คำอธิบายเพิ่มเติม"></textarea>`;
+      fields.appendChild(wrap);
+    }
     document.getElementById('pdMsg').textContent='';
     showModalElement(productModal);
   }
@@ -2902,6 +3388,7 @@ function updateSidebar(){
           ${it.requiresSN? `<div class="mt-2"><input data-sn-index="${idx}" type="text" value="${it.snForProduct||''}" placeholder="SN / Serial" class="w-full border rounded p-2 text-sm" /></div>`:''}
           ${it.requiresIMEI? `<div class="mt-2"><input data-imei-index="${idx}" type="text" value="${it.imeiForProduct||''}" placeholder="IMEI" class="w-full border rounded p-2 text-sm" /></div>`:''}
           ${it.requiresPassword? `<div class="mt-2"><input data-password-index="${idx}" type="password" value="${it.passwordForProduct||''}" placeholder="รหัสผ่านสำหรับสินค้านี้" class="w-full border rounded p-2 text-sm" /></div>`:''}
+          ${it.requiresDetails? `<div class="mt-2"><textarea data-details-index="${idx}" rows="3" placeholder="รายละเอียดสำหรับสินค้านี้" class="w-full border rounded p-2 text-sm">${it.additionalDetails||''}</textarea></div>` : ''}
         </div>
         <button data-remove-index="${idx}" class="text-red-600 text-sm">ลบ</button>`;
       list.appendChild(row);
@@ -2949,17 +3436,30 @@ function updateSidebar(){
         saveCart();
       });
     });
+    list.querySelectorAll('[data-details-index]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const i = Number(e.currentTarget.getAttribute('data-details-index'));
+        CART[i].additionalDetails = e.currentTarget.value;
+        saveCart();
+      });
+    });
   }
 
   // ปุ่มยืนยันการสั่งซื้อจากตะกร้า: ตรวจสอบการล็อกอิน, ฟิลด์ที่ต้องกรอก, เครดิต แล้วสร้างคำสั่งซื้อ
   async function confirmCartOrders(){
     const msg = document.getElementById('cartMsg'); msg.textContent=''; msg.className='mt-2 text-sm';
     if(!CURRENT_USER){
-      // require login; after login return user to the cart so they can explicitly confirm
+      // หลังล็อกอินเสร็จ ให้เปิดตะกร้ากลับมา
       AFTER_LOGIN_ACTION = { action: 'openCart' };
+
+      // ปิดตะกร้าก่อน เพื่อไม่ให้ทับโมดัลล็อกอิน
+      hideModalElement(cartModal);
+
+      // แล้วค่อยเปิดหน้าล็อกอิน
       openLoginModal();
       return;
     }
+
     if(!CART.length){ msg.classList.add('text-slate-500'); msg.textContent = 'ตะกร้าว่าง'; return; }
     // validate required fields for each item
     for(let i=0;i<CART.length;i++){
@@ -2969,17 +3469,19 @@ function updateSidebar(){
       if(it.requiresSN && !it.snForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก SN/Serial สำหรับ: ${it.name}`; return; }
       if(it.requiresIMEI && !it.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก IMEI สำหรับ: ${it.name}`; return; }
       if(it.requiresPassword && !it.passwordForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก รหัสผ่านสำหรับ: ${it.name}`; return; }
+      if(it.requiresDetails && !it.additionalDetails){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอกรายละเอียดสำหรับ: ${it.name}`; return; }
     }
     const total = CART.reduce((s,it)=> s + Number(it.price||0), 0);
     const lineOrders = CART.map(it => ({
       product: it.name,
       program: it.program,
       price: Number(it.price)||0,
-      email: it.emailForProduct || CURRENT_USER?.email || '',
-      username: it.usernameForProduct || '',
-      sn: it.snForProduct || '',
-      imei: it.imeiForProduct || '',
-      password: it.passwordForProduct || ''
+          email: it.emailForProduct || CURRENT_USER?.email || '',
+          username: it.usernameForProduct || '',
+          sn: it.snForProduct || '',
+          imei: it.imeiForProduct || '',
+          password: it.passwordForProduct || '',
+          additional: it.additionalDetails || ''
     }));
     const lineName = CURRENT_USER?.email || CURRENT_USER_DOC?.email || 'customer';
     try{
@@ -3015,6 +3517,7 @@ function updateSidebar(){
             usernameForProduct: it.usernameForProduct||'',
             snForProduct: it.snForProduct||'',
             imeiForProduct: it.imeiForProduct||'',
+            additionalDetails: it.additionalDetails||'',
             passwordForProduct: it.passwordForProduct||'',
             createdAt: serverTimestamp()
           });
@@ -3050,7 +3553,8 @@ function updateSidebar(){
       usernameForProduct: document.getElementById('pdUsername')?.value?.trim()||'',
       snForProduct: document.getElementById('pdSN')?.value?.trim()||'',
       imeiForProduct: document.getElementById('pdIMEI')?.value?.trim()||'',
-      passwordForProduct: document.getElementById('pdPassword')?.value?.trim()||''
+      passwordForProduct: document.getElementById('pdPassword')?.value?.trim()||'',
+      additionalDetails: document.getElementById('pdDetails')?.value?.trim()||''
     };
     
     // Handle credit products
@@ -3089,6 +3593,7 @@ function updateSidebar(){
     if(PRODUCT_SELECTED.requiresSN && !details.snForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก SN/Serial'; return; }
     if(PRODUCT_SELECTED.requiresIMEI && !details.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก IMEI'; return; }
     if(PRODUCT_SELECTED.requiresPassword && !details.passwordForProduct){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอก รหัสผ่าน'; return; }
+    if(PRODUCT_SELECTED.requiresDetails && !details.additionalDetails){ msg.classList.add('text-red-600'); msg.textContent='กรุณากรอกรายละเอียดก่อนสั่งซื้อ'; return; }
     addToCart(PRODUCT_SELECTED, details);
     closeProductModal();
   });
@@ -3238,7 +3743,7 @@ function updateSidebar(){
         <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
         <td class="p-2 align-top">${escapeHtml(ts)}</td>
         <td class="p-2 align-top">${noteHtml}</td>
-        <td class="p-2 align-top">${escapeHtml(reply)}</td>
+  <td class="p-2 align-top">${nl2br(escapeHtml(reply))}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -3283,6 +3788,7 @@ function updateSidebar(){
     const requiresUsername = document.getElementById('pReqUsername')?.checked || false;
     const requiresSN = document.getElementById('pReqSN')?.checked || false;
     const requiresIMEI = document.getElementById('pReqIMEI')?.checked || false;
+    const requiresDetails = document.getElementById('pReqDetails')?.checked || false;
     const isCredit = document.getElementById('pTypeCredit')?.checked || false;
   const singleName = document.getElementById('pName').value.trim();
   const singlePrice = document.getElementById('pPrice').value.trim();
@@ -3316,6 +3822,7 @@ function updateSidebar(){
           requiresUsername,
           requiresSN,
           requiresIMEI,
+          requiresDetails,
           details,
           type: isCredit ? 'credit' : 'normal'
         });
@@ -3657,15 +4164,26 @@ function updateSidebar(){
       }catch(_){
         IS_AGENT = !!CURRENT_USER_DOC?.isAgent || (Number(CURRENT_USER_DOC?.role) === 2);
       }
+      
+      // ✅ Check for inactivity timeout when page reloads or user logs in
+      if (checkInactivityTimeout()) {
+        console.log('User session expired due to inactivity');
+        await performLogout();
+        alert('เซสชันหมดอายุแล้ว เนื่องจากไม่มีการใช้งาน กรุณาเข้าสู่ระบบใหม่');
+        return;
+      }
+      
       // Re-render products after agent status is determined
       render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
       listenOrdersForUser();
       // Wire up product management after login 
       wireProductManagement();
+      startActivityMonitoring();
     }else{
       CURRENT_USER_DOC = null; IS_ADMIN = false;
       if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
       if(ADMIN_ORDERS_UNSUB){ ADMIN_ORDERS_UNSUB(); ADMIN_ORDERS_UNSUB = null; }
+      stopActivityMonitoring();
     }
     // load cart for current context (merge guest -> user when applicable)
     try{ loadCart(); } catch(e) { CART = []; }
