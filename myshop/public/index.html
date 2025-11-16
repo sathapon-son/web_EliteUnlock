@@ -2946,111 +2946,234 @@ if (cartListEl && cartListEl.children.length === 0) {
     });
   }
 
-  async function queueOrderMail({ orderId, status, data = {}, reply = '' }){
-    const customerEmail = ((data.userEmail || '')).trim();
-    const productEmail = ((data.emailForProduct || '')).trim();
-    const targetEmail = (status === 'rejected')
-      ? (customerEmail || productEmail)
-      : (productEmail || customerEmail);
-    if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
+async function queueOrderMail({ orderId, status, data = {}, reply = '' }){
+  const customerEmail = ((data.userEmail || '')).trim();
+  const productEmail = ((data.emailForProduct || '')).trim();
+  const targetEmail = (status === 'rejected')
+    ? (customerEmail || productEmail)
+    : (productEmail || customerEmail);
+  if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
 
-    const productName = data.product?.name || data.product?.program || data.pack || data.name || 'สินค้า';
-    const qtyRaw = Number(data.quantity ?? data.qty ?? 1);
-    const quantity = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
-    const price = Number(data.product?.price ?? data.price ?? 0);
-    const totalText = currencyTH(price);
-    const statusSuccess = status === 'accepted';
+  const productName = data.product?.name || data.product?.program || data.pack || data.name || 'สินค้า';
+  const qtyRaw = Number(data.quantity ?? data.qty ?? 1);
+  const quantity = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+  const price = Number(data.product?.price ?? data.price ?? 0);
+  const totalText = currencyTH(price);
+  const statusSuccess = status === 'accepted';
 
-    const detailLines = [
-      `หมายเลขคำสั่งซื้อ: ${String(orderId || '').trim() || '-'}`,
-      `สินค้า: ${productName}`,
-      `จำนวน: ${quantity}`,
-      `ยอดรวม: ${totalText} บาท`
-    ];
+  // ✅ เก็บข้อมูลเป็น object เพื่อ render แยก
+  const details = {
+    orderId: String(orderId || '').trim() || '-',
+    product: productName,
+    quantity: quantity,
+    total: totalText,
+    productEmail: productEmail && productEmail.toLowerCase() !== targetEmail.toLowerCase() ? productEmail : null,
+    username: data.usernameForProduct || null,
+    password: data.passwordForProduct || null,
+    sn: data.sn || data.snForProduct || null,
+    imei: data.imei || data.imeiForProduct || null,
+    notes: [],
+    adminReply: null
+  };
 
-    if(productEmail && productEmail.toLowerCase() !== targetEmail.toLowerCase()){
-      detailLines.push(`อีเมลสำหรับสินค้า: ${productEmail}`);
-    }
-    if(data.usernameForProduct) detailLines.push(`Username: ${data.usernameForProduct}`);
-    if(data.passwordForProduct) detailLines.push(`Password: ${data.passwordForProduct}`);
-    if(data.sn || data.snForProduct) detailLines.push(`SN: ${data.sn || data.snForProduct}`);
-    if(data.imei || data.imeiForProduct) detailLines.push(`IMEI: ${data.imei || data.imeiForProduct}`);
+  // รวม notes
+  const noteCandidates = [data.note, data.orderNote, data.message, data.resultMessage, data.adminMessage];
+  const extraNotes = Array.from(new Set(noteCandidates.map(v => (v ?? '').toString().trim()).filter(Boolean)));
+  if(extraNotes.length) details.notes = extraNotes;
 
-    const noteCandidates = [data.note, data.orderNote, data.message, data.resultMessage, data.adminMessage];
-    const extraNotes = Array.from(new Set(noteCandidates.map(v => (v ?? '').toString().trim()).filter(Boolean)));
-    if(extraNotes.length){
-      detailLines.push(`หมายเหตุ: ${extraNotes.join(' | ')}`);
-    }
-
-    // Handle admin reply with line breaks support
+  // Admin reply
   if(reply){
     const replyLines = reply.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if(replyLines.length > 0){
-      detailLines.push(`ข้อความจากผู้ดูแล:`);
-      // แยกแต่ละบรรทัดเป็นรายการย่อย (ไม่มี bullet หน้า)
-      replyLines.forEach(line => {
-        detailLines.push(`  ${line}`); // เยื้อง 2 ช่อง
-      });
-    }
+    if(replyLines.length > 0) details.adminReply = replyLines;
   }
-    const detailText = detailLines.map((line, idx) => {
-      // ถ้าเป็นบรรทัดที่เยื้อง (ข้อความจากแอดมิน) ไม่ต้องใส่ bullet
-      if(line.startsWith('  ')) {
-        return line; // คืนค่าตามเดิม (มีการเยื้องอยู่แล้ว)
-      }
-      return `- ${line}`; // บรรทัดปกติใส่ bullet
-    }).join('\n');
 
-    const headerText = statusSuccess
-      ? `ขอบคุณที่สั่งซื้อกับ Elite Unlock\nยอดรวม ${totalText} บาท ชำระเรียบร้อยแล้ว`
-      : `ขออภัย คำสั่งซื้อของคุณไม่สามารถดำเนินการได้\nยอดรวม ${totalText} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`;
-    
-    const textBody = `${headerText}\n\nรายละเอียดคำสั่งซื้อ\n${detailText}\n\n— Elite Unlock https://eliteunlock.shop/\nTel: 062-607-2670\nLine: @825lhqmj`;
-
-    // ✅ สร้าง HTML Version (ใช้ <br> และ styling)
-    const headingStatus = statusSuccess ? 'สำเร็จ' : 'ไม่สำเร็จ';
-    
-    const htmlList = detailLines.map((line, idx) => {
-      // ถ้าเป็นหัวข้อ "ข้อความจากผู้ดูแล:"
-      if(line === 'ข้อความจากผู้ดูแล:'){
-        return `<li><strong>${escapeHtml(line)}</strong></li>`;
-      }
-      // ถ้าเป็นบรรทัดย่อยของข้อความแอดมิน (เยื้อง)
-      if(line.startsWith('  ')){
-        // ใช้ <div> แทน <li> และใส่ style เยื้อง + ขึ้นบรรทัดใหม่
-        return `<div style="margin-left:20px; white-space:pre-wrap;">${escapeHtml(line.trim())}</div>`;
-      }
-      // บรรทัดปกติ
-      return `<li>${escapeHtml(line)}</li>`;
-    }).join('');
-
-    const htmlBody = `<div style="font-family:sans-serif">
-    <h3>ใบยืนยันคำสั่งซื้อ ${headingStatus}</h3>
-    <p>${statusSuccess ? `ยอดรวม ${escapeHtml(totalText)} บาท ชำระเรียบร้อยแล้ว` : `ยอดรวม ${escapeHtml(totalText)} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`}</p>
-    <h4 style="margin-top:16px;">รายละเอียดคำสั่งซื้อ</h4>
-    <ul style="padding-left:20px;margin:8px 0;">${htmlList}</ul>
-    <p style="margin-top:16px;">Elite Unlock<br>Tel: 062-607-2670<br>Line: @825lhqmj</p>
-  </div>`;
-
-    await addDoc(collection(db,'mail'),{
-      to: [targetEmail],
-      from: 'Elite Unlock <eliteunlockshop@gmail.com>',
-      replyTo: 'eliteunlockshop@gmail.com',
-      message: {
-        subject: statusSuccess ? 'คำสั่งซื้อ สินค้า สำเร็จ' : 'คำสั่งซื้อ สินค้า ไม่สำเร็จ',
-        text: textBody,
-        html: htmlBody
-      },
-      metadata: {
-        orderId: String(orderId || ''),
-        status,
-        productName,
-        total: price,
-        queuedBy: 'admin-action'
-      },
-      createdAt: serverTimestamp()
-    });
+  // ✅ TEXT VERSION (สำหรับ email client ที่ไม่รองรับ HTML)
+  const headerText = statusSuccess
+    ? `ขอบคุณที่สั่งซื้อกับ Elite Unlock\nยอดรวม ${totalText} บาท ชำระเรียบร้อยแล้ว`
+    : `ขออภัย คำสั่งซื้อของคุณไม่สามารถดำเนินการได้\nยอดรวม ${totalText} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`;
+  
+  let textBody = `${headerText}\n\n━━━━━━━━━━━━━━━━━━━━━━\nรายละเอียดคำสั่งซื้อ\n━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  textBody += `หมายเลขคำสั่งซื้อ: ${details.orderId}\n`;
+  textBody += `สินค้า: ${details.product}\n`;
+  textBody += `ยอดรวม: ${details.total} บาท\n`;
+  
+  if(details.productEmail) textBody += `\nอีเมลสำหรับสินค้า: ${details.productEmail}\n`;
+  if(details.username) textBody += `Username: ${details.username}\n`;
+  if(details.password) textBody += `Password: ${details.password}\n`;
+  if(details.sn) textBody += `SN: ${details.sn}\n`;
+  if(details.imei) textBody += `IMEI: ${details.imei}\n`;
+  if(details.notes.length) textBody += `\nหมายเหตุ: ${details.notes.join(' | ')}\n`;
+  
+  if(details.adminReply){
+    textBody += `\nข้อความจากผู้ดูแล:\n${details.adminReply.map(line => `  ${line}`).join('\n')}\n`;
   }
+  
+  textBody += `\n━━━━━━━━━━━━━━━━━━━━━━\n— Elite Unlock\nhttps://eliteunlock.shop/\nTel: 062-607-2670\nLine: @825lhqmj`;
+
+  // ✅ HTML VERSION (สวยงาม พร้อม styling)
+  const headingStatus = statusSuccess ? 'สำเร็จ' : 'ไม่สำเร็จ';
+  const statusColor = statusSuccess ? '#10b981' : '#ef4444';
+  const statusBg = statusSuccess ? '#d1fae5' : '#fee2e2';
+  
+  let detailsHtml = '';
+  
+  // หมายเลขคำสั่งซื้อ
+  detailsHtml += `
+    <div style="margin-bottom:12px;">
+      <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📋 หมายเลขคำสั่งซื้อ</div>
+      <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.orderId)}</div>
+    </div>`;
+  
+  // สินค้า
+  detailsHtml += `
+    <div style="margin-bottom:12px;">
+      <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">🛍️ สินค้า</div>
+      <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.product)}</div>
+    </div>`;
+  
+  // จำนวนและยอดรวม
+  detailsHtml += `
+    <div style="display:flex; gap:24px; margin-bottom:12px;">
+      <div style="flex:1;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📦 จำนวน</div>
+        <div style="color:#1e293b; font-size:14px;">${details.quantity}</div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">💰 ยอดรวม</div>
+        <div style="color:#1e293b; font-size:14px; font-weight:600;">${escapeHtml(details.total)} บาท</div>
+      </div>
+    </div>`;
+  
+  // ข้อมูลเพิ่มเติม
+  if(details.productEmail){
+    detailsHtml += `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📧 อีเมลสำหรับสินค้า</div>
+        <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.productEmail)}</div>
+      </div>`;
+  }
+  
+  if(details.username){
+    detailsHtml += `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">👤 Username</div>
+        <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.username)}</div>
+      </div>`;
+  }
+  
+  if(details.password){
+    detailsHtml += `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">🔑 Password</div>
+        <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.password)}</div>
+      </div>`;
+  }
+  
+  if(details.sn){
+    detailsHtml += `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">🔢 SN</div>
+        <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.sn)}</div>
+      </div>`;
+  }
+  
+  if(details.imei){
+    detailsHtml += `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📱 IMEI</div>
+        <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.imei)}</div>
+      </div>`;
+  }
+  
+  if(details.notes.length){
+    detailsHtml += `
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📝 หมายเหตุ</div>
+        <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.notes.join(' | '))}</div>
+      </div>`;
+  }
+  
+  // ข้อความจากผู้ดูแล
+  if(details.adminReply){
+    const replyHtml = details.adminReply.map(line => escapeHtml(line)).join('<br>');
+    detailsHtml += `
+      <div style="margin-top:16px; padding:16px; background:#f1f5f9; border-left:4px solid #6366f1; border-radius:8px;">
+        <div style="font-weight:600; color:#4f46e5; font-size:14px; margin-bottom:8px;">💬 ข้อความจากผู้ดูแล</div>
+        <div style="color:#1e293b; font-size:14px; line-height:1.6;">${replyHtml}</div>
+      </div>`;
+  }
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background:#f8fafc;">
+  <div style="max-width:600px; margin:0 auto; background:#ffffff;">
+    
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding:32px 24px; text-align:center;">
+      <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700;">Elite Unlock</h1>
+      <p style="margin:8px 0 0 0; color:#e0e7ff; font-size:14px;">โปรแกรมปลดล็อคมือถือ</p>
+    </div>
+    
+    <!-- Status Badge -->
+    <div style="padding:24px 24px 0 24px;">
+      <div style="background:${statusBg}; border:2px solid ${statusColor}; border-radius:12px; padding:16px; text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:${statusColor}; margin-bottom:4px;">
+          ${statusSuccess ? '✅ คำสั่งซื้อสำเร็จ' : '❌ คำสั่งซื้อไม่สำเร็จ'}
+        </div>
+        <div style="font-size:14px; color:#475569;">
+          ${statusSuccess 
+            ? `ยอดรวม ${escapeHtml(totalText)} บาท ชำระเรียบร้อยแล้ว` 
+            : `ยอดรวม ${escapeHtml(totalText)} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Details -->
+    <div style="padding:24px;">
+      <h2 style="margin:0 0 20px 0; font-size:18px; font-weight:700; color:#1e293b; border-bottom:2px solid #e2e8f0; padding-bottom:12px;">
+        📋 รายละเอียดคำสั่งซื้อ
+      </h2>
+      ${detailsHtml}
+    </div>
+    
+    <!-- Footer -->
+    <div style="background:#f1f5f9; padding:24px; text-align:center; border-top:1px solid #e2e8f0;">
+      <div style="font-weight:600; color:#1e293b; font-size:16px; margin-bottom:8px;">Elite Unlock</div>
+      <div style="color:#64748b; font-size:14px; line-height:1.6;">
+        🌐 <a href="https://eliteunlock.shop/" style="color:#6366f1; text-decoration:none;">eliteunlock.shop</a><br>
+        📞 Tel: 062-607-2670<br>
+        💬 Line: @825lhqmj
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>`;
+
+  await addDoc(collection(db,'mail'),{
+    to: [targetEmail],
+    from: 'Elite Unlock <eliteunlockshop@gmail.com>',
+    replyTo: 'eliteunlockshop@gmail.com',
+    message: {
+      subject: statusSuccess ? '✅ คำสั่งซื้อสินค้าสำเร็จ - Elite Unlock' : '❌ คำสั่งซื้อสินค้าไม่สำเร็จ - Elite Unlock',
+      text: textBody,
+      html: htmlBody
+    },
+    metadata: {
+      orderId: String(orderId || ''),
+      status,
+      productName,
+      total: price,
+      queuedBy: 'admin-action'
+    },
+    createdAt: serverTimestamp()
+  });
+}
 
   async function adminAcceptOrder(orderId, data, reply){
     const orderData = { ...(data || {}) };
@@ -3159,58 +3282,175 @@ if (cartListEl && cartListEl.children.length === 0) {
     }
   }
 
-  async function confirmCreditRequest(requestId) {
-    try {
-      if (!IS_ADMIN) throw new Error('Unauthorized');
-      
-      const requestRef = doc(db, 'creditRequests', requestId);
-      const requestSnap = await getDoc(requestRef);
-      if (!requestSnap.exists()) throw new Error('ไม่พบคำขอเติมเครดิต');
+async function confirmCreditRequest(requestId) {
+  try {
+    if (!IS_ADMIN) throw new Error('Unauthorized');
     
-      const data = requestSnap.data();
-      if (data.status !== 'pending') throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว');
+    const requestRef = doc(db, 'creditRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists()) throw new Error('ไม่พบคำขอเติมเครดิต');
+  
+    const data = requestSnap.data();
+    if (data.status !== 'pending') throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว');
 
-      // Update credit request status
-      await updateDoc(requestRef, {
-        status: 'approved',
-        approvedAt: serverTimestamp(),
-        approvedBy: CURRENT_USER.email
-      });
+    // Update credit request status
+    await updateDoc(requestRef, {
+      status: 'approved',
+      approvedAt: serverTimestamp(),
+      approvedBy: CURRENT_USER.email
+    });
 
-      // Add credits to user
-      const userRef = doc(db, 'users', data.userId);
-      await updateDoc(userRef, {
-        credits: increment(data.amount)
-      });
+    // Add credits to user
+    const userRef = doc(db, 'users', data.userId);
+    await updateDoc(userRef, {
+      credits: increment(data.amount)
+    });
+    
+    // หลังจากเพิ่มเครดิตแล้ว ตรวจสอบยอดสะสมเพื่ออัพเกรดเป็นตัวแทนอัตโนมัติ
+    try{
+      await checkAndUpgradeAgent(data.userId);
+    }catch(e){ console.warn('auto-upgrade after confirmCreditRequest failed', e); }
+
+    // ✅ Send confirmation email with beautiful design
+    const amount = Number(data.amount || 0);
+    const amountText = amount.toLocaleString('th-TH');
+    
+    // Text version
+    const textBody = `ยินดีด้วย! เติมเครดิตสำเร็จ
+
+━━━━━━━━━━━━━━━━━━━━━━
+รายละเอียดการเติมเครดิต
+━━━━━━━━━━━━━━━━━━━━━━
+
+จำนวนเครดิต: ${amountText} เครดิต
+สถานะ: เติมเครดิตสำเร็จ ✓
+วันที่: ${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}
+
+เครดิตได้ถูกเพิ่มเข้าบัญชีของคุณเรียบร้อยแล้ว
+คุณสามารถใช้เครดิตสั่งซื้อสินค้าได้ทันที
+
+━━━━━━━━━━━━━━━━━━━━━━
+— Elite Unlock
+https://eliteunlock.shop/
+Tel: 062-607-2670
+Line: @825lhqmj`;
+
+    // HTML version
+    const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background:#f8fafc;">
+  <div style="max-width:600px; margin:0 auto; background:#ffffff;">
+    
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg, #10b981 0%, #059669 100%); padding:32px 24px; text-align:center;">
+      <div style="font-size:48px; margin-bottom:8px;">💰</div>
+      <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700;">เติมเครดิตสำเร็จ</h1>
+      <p style="margin:8px 0 0 0; color:#d1fae5; font-size:14px;">Elite Unlock</p>
+    </div>
+    
+    <!-- Success Badge -->
+    <div style="padding:24px 24px 0 24px;">
+      <div style="background:#d1fae5; border:2px solid #10b981; border-radius:12px; padding:20px; text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:#047857; margin-bottom:8px;">
+          ✅ ทำรายการสำเร็จ
+        </div>
+        <div style="font-size:32px; font-weight:800; color:#059669; margin:12px 0;">
+          ${escapeHtml(amountText)} <span style="font-size:20px;">เครดิต</span>
+        </div>
+        <div style="font-size:14px; color:#065f46;">
+          เครดิตได้ถูกเพิ่มเข้าบัญชีของคุณแล้ว
+        </div>
+      </div>
+    </div>
+    
+    <!-- Details -->
+    <div style="padding:24px;">
+      <h2 style="margin:0 0 20px 0; font-size:18px; font-weight:700; color:#1e293b; border-bottom:2px solid #e2e8f0; padding-bottom:12px;">
+        📋 รายละเอียดการเติมเครดิต
+      </h2>
       
-      // หลังจากเพิ่มเครดิตแล้ว ตรวจสอบยอดสะสมเพื่ออัพเกรดเป็นตัวแทนอัตโนมัติ
-      try{
-        await checkAndUpgradeAgent(data.userId);
-      }catch(e){ console.warn('auto-upgrade after confirmCreditRequest failed', e); }
-      // Send confirmation email to user
-      await addDoc(collection(db, 'mail'), {
-        to: [data.userEmail],
-        from: 'Elite Unlock <noreply@eliteunlock.com>',
-        message: {
-          subject: 'เติมเครดิตสำเร็จ',
-          html: `
-            <div>
-              <h3>เติมเครดิตสำเร็จ</h3>
-              <p>เติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว</p>
-              <p>หากมีข้อสงสัยกรุณาติดต่อ Elite Unlock Tel: 062-607-2670 LINE: @825lhqmj</p>
-            </div>
-          `,
-          text: `เติมเครดิตสำเร็จ\n\nเติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว\n\nหากมีข้อสงสัยกรุณาติดต่อ Elite Unlock Tel: 062-607-2670 LINE: @825lhqmj`
-        },
-        createdAt: serverTimestamp()
-      });
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">💳 จำนวนเครดิต</div>
+        <div style="color:#1e293b; font-size:16px; font-weight:700;">${escapeHtml(amountText)} เครดิต</div>
+      </div>
+      
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">✅ สถานะ</div>
+        <div style="color:#059669; font-size:14px; font-weight:600;">เติมเครดิตสำเร็จ</div>
+      </div>
+      
+      <div style="margin-bottom:16px;">
+        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📅 วันที่ทำรายการ</div>
+        <div style="color:#1e293b; font-size:14px;">${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}</div>
+      </div>
+      
+      <!-- Info Box -->
+      <div style="margin-top:24px; padding:16px; background:#eff6ff; border-left:4px solid #3b82f6; border-radius:8px;">
+        <div style="font-weight:600; color:#1e40af; font-size:14px; margin-bottom:8px;">ℹ️ สิ่งที่คุณสามารถทำได้</div>
+        <div style="color:#1e293b; font-size:14px; line-height:1.6;">
+          • ใช้เครดิตสั่งซื้อสินค้าได้ทันที<br>
+          • ตรวจสอบยอดเครดิตในหน้าบัญชีของคุณ<br>
+          • ดูประวัติการทำรายการได้ทุกเมื่อ
+        </div>
+      </div>
+      
+      ${amount >= 4500 ? `
+      <!-- Agent Upgrade Notice -->
+      <div style="margin-top:16px; padding:16px; background:#fef3c7; border-left:4px solid #f59e0b; border-radius:8px;">
+        <div style="font-weight:600; color:#92400e; font-size:14px; margin-bottom:8px;">🌟 สิทธิพิเศษ</div>
+        <div style="color:#78350f; font-size:14px; line-height:1.6;">
+          ยินดีด้วย! คุณมีสิทธิ์อัพเกรดเป็น <strong>ตัวแทน</strong><br>
+          เมื่อยอดสะสมครบ 4,500 เครดิต จะได้รับราคาพิเศษ
+        </div>
+      </div>` : ''}
+    </div>
+    
+    <!-- Footer -->
+    <div style="background:#f1f5f9; padding:24px; text-align:center; border-top:1px solid #e2e8f0;">
+      <div style="font-weight:600; color:#1e293b; font-size:16px; margin-bottom:8px;">Elite Unlock</div>
+      <div style="color:#64748b; font-size:14px; line-height:1.6;">
+        🌐 <a href="https://eliteunlock.shop/" style="color:#6366f1; text-decoration:none;">eliteunlock.shop</a><br>
+        📞 Tel: 062-607-2670<br>
+        💬 Line: @825lhqmj
+      </div>
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0; color:#94a3b8; font-size:12px;">
+        หากมีข้อสงสัย กรุณาติดต่อเราผ่านช่องทางด้านบน
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>`;
 
-      return true;
-    } catch (err) {
-      console.error('Error confirming credit request:', err);
-      throw err;
-    }
+    await addDoc(collection(db, 'mail'), {
+      to: [data.userEmail],
+      from: 'Elite Unlock <eliteunlockshop@gmail.com>',
+      replyTo: 'eliteunlockshop@gmail.com',
+      message: {
+        subject: '💰 เติมเครดิตสำเร็จ - Elite Unlock',
+        text: textBody,
+        html: htmlBody
+      },
+      metadata: {
+        type: 'credit_approved',
+        requestId: requestId,
+        amount: amount,
+        userId: data.userId
+      },
+      createdAt: serverTimestamp()
+    });
+
+    return true;
+  } catch (err) {
+    console.error('Error confirming credit request:', err);
+    throw err;
   }
+}
 
 // ตรวจสอบยอดสะสมของผู้ใช้ และอัพเกรดเป็นตัวแทนถ้ายอดสะสมครบเงื่อนไข
   async function checkAndUpgradeAgent(userId) {
@@ -3269,23 +3509,183 @@ if (cartListEl && cartListEl.children.length === 0) {
           render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
         }
 
-        // Queue a polite notification email (non-blocking)
-        try{
-          const targetEmail = userData.email || '';
-          if (targetEmail) {
-            await addDoc(collection(db,'mail'),{
-              to: [targetEmail],
-              from: 'Elite Unlock <noreply@eliteunlock.com>',
-              message: {
-                subject: 'ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน',
-                text: `ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ ${THRESHOLD} เครดิต\nยินดีด้วย คุณได้รับสิทธิ์อัพเกรดเป็นตัวแทนแล้ว สามารถใช้ราคาตัวแทนเมื่อสั่งซื้อสินค้าได้ทันที\n\nหากต้องการความช่วยเหลือ ติดต่อ LINE: @825lhqmj`,
-                html: `<div style="font-family:sans-serif"><h3>ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน</h3><p>ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ <strong>${THRESHOLD} เครดิต</strong>.</p><p>คุณจะได้รับราคาตัวแทนเมื่อสั่งซื้อสินค้าโดยอัตโนมัติ หากมีคำถาม กรุณาติดต่อ LINE: @825lhqmj</p></div>`
-              },
-              metadata: { userId, triggeredBy: 'auto-upgrade' },
-              createdAt: serverTimestamp()
-            });
-          }
-        }catch(e){ console.warn('Unable to queue upgrade email', e); }
+              // Queue a polite notification email (non-blocking)
+              try{
+                const targetEmail = userData.email || '';
+                if (targetEmail) {
+                  const totalText = total.toLocaleString('th-TH');
+                  
+                  // Text version
+                  const textBody = `ยินดีด้วย! คุณได้รับการอัพเกรดเป็นตัวแทน
+
+              ━━━━━━━━━━━━━━━━━━━━━━
+              สิทธิพิเศษตัวแทน
+              ━━━━━━━━━━━━━━━━━━━━━━
+
+              ยอดสะสมเติมเครดิต: ${totalText} เครดิต
+              สถานะ: ตัวแทน (Agent) ✓
+              วันที่อัพเกรด: ${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}
+
+              สิทธิประโยชน์ที่คุณได้รับ:
+              ✓ ราคาพิเศษสำหรับตัวแทน
+              ✓ ส่วนลดเมื่อสั่งซื้อสินค้าทุกรายการ
+              ✓ ดูแลเป็นพิเศษจากทีมงาน
+              ✓ ข้อเสนอพิเศษก่อนใคร
+
+              ราคาตัวแทนจะถูกใช้โดยอัตโนมัติเมื่อคุณสั่งซื้อสินค้า
+
+              ━━━━━━━━━━━━━━━━━━━━━━
+              — Elite Unlock
+              https://eliteunlock.shop/
+              Tel: 062-607-2670
+              Line: @825lhqmj`;
+
+                  // HTML version
+                  const htmlBody = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              </head>
+              <body style="margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background:#f8fafc;">
+                <div style="max-width:600px; margin:0 auto; background:#ffffff;">
+                  
+                  <!-- Header with celebration -->
+                  <div style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding:32px 24px; text-align:center; position:relative; overflow:hidden;">
+                    <div style="font-size:64px; margin-bottom:8px;">🎉</div>
+                    <h1 style="margin:0; color:#ffffff; font-size:28px; font-weight:800;">ยินดีด้วย!</h1>
+                    <p style="margin:8px 0 0 0; color:#fef3c7; font-size:16px; font-weight:600;">คุณได้รับการอัพเกรดเป็นตัวแทน</p>
+                  </div>
+                  
+                  <!-- Achievement Badge -->
+                  <div style="padding:24px 24px 0 24px;">
+                    <div style="background:linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border:3px solid #f59e0b; border-radius:16px; padding:24px; text-align:center; box-shadow:0 4px 12px rgba(245, 158, 11, 0.2);">
+                      <div style="font-size:48px; margin-bottom:8px;">👑</div>
+                      <div style="font-size:24px; font-weight:800; color:#92400e; margin-bottom:8px;">
+                        สถานะ: ตัวแทน
+                      </div>
+                      <div style="display:inline-block; background:#ffffff; padding:12px 24px; border-radius:24px; margin-top:8px;">
+                        <div style="font-size:14px; color:#78350f; font-weight:600;">ยอดสะสมเติมเครดิต</div>
+                        <div style="font-size:28px; font-weight:800; color:#d97706; margin-top:4px;">
+                          ${escapeHtml(totalText)} <span style="font-size:16px;">เครดิต</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Benefits -->
+                  <div style="padding:24px;">
+                    <h2 style="margin:0 0 20px 0; font-size:20px; font-weight:700; color:#1e293b; border-bottom:2px solid #e2e8f0; padding-bottom:12px;">
+                      🌟 สิทธิประโยชน์ที่คุณได้รับ
+                    </h2>
+                    
+                    <div style="background:#f0fdf4; border-left:4px solid #10b981; border-radius:8px; padding:16px; margin-bottom:12px;">
+                      <div style="display:flex; align-items:start; gap:12px;">
+                        <div style="font-size:24px; flex-shrink:0;">💰</div>
+                        <div>
+                          <div style="font-weight:700; color:#065f46; font-size:15px; margin-bottom:4px;">ราคาพิเศษสำหรับตัวแทน</div>
+                          <div style="color:#047857; font-size:14px; line-height:1.5;">
+                            ราคาถูกกว่าลูกค้าทั่วไป ประหยัดมากขึ้นทุกครั้งที่สั่งซื้อ
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style="background:#eff6ff; border-left:4px solid #3b82f6; border-radius:8px; padding:16px; margin-bottom:12px;">
+                      <div style="display:flex; align-items:start; gap:12px;">
+                        <div style="font-size:24px; flex-shrink:0;">🎁</div>
+                        <div>
+                          <div style="font-weight:700; color:#1e40af; font-size:15px; margin-bottom:4px;">ส่วนลดอัตโนมัติ</div>
+                          <div style="color:#1e3a8a; font-size:14px; line-height:1.5;">
+                            ระบบจะใช้ราคาตัวแทนให้โดยอัตโนมัติเมื่อสั่งซื้อสินค้า
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style="background:#fef3f2; border-left:4px solid #ef4444; border-radius:8px; padding:16px; margin-bottom:12px;">
+                      <div style="display:flex; align-items:start; gap:12px;">
+                        <div style="font-size:24px; flex-shrink:0;">💎</div>
+                        <div>
+                          <div style="font-weight:700; color:#991b1b; font-size:15px; margin-bottom:4px;">ดูแลเป็นพิเศษ</div>
+                          <div style="color:#b91c1c; font-size:14px; line-height:1.5;">
+                            รับการดูแลพิเศษและข้อเสนอเอксклюзิвก่อนใคร
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style="background:#f5f3ff; border-left:4px solid #8b5cf6; border-radius:8px; padding:16px;">
+                      <div style="display:flex; align-items:start; gap:12px;">
+                        <div style="font-size:24px; flex-shrink:0;">⚡</div>
+                        <div>
+                          <div style="font-weight:700; color:#5b21b6; font-size:15px; margin-bottom:4px;">ใช้งานได้ทันที</div>
+                          <div style="color:#6b21a8; font-size:14px; line-height:1.5;">
+                            สิทธิ์ตัวแทนมีผลทันที สั่งซื้อเลยเพื่อรับราคาพิเศษ
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- How to use -->
+                    <div style="margin-top:24px; padding:20px; background:#fafafa; border-radius:12px; border:2px dashed #d1d5db;">
+                      <div style="font-weight:700; color:#374151; font-size:15px; margin-bottom:12px; text-align:center;">
+                        📌 วิธีใช้สิทธิ์
+                      </div>
+                      <div style="color:#6b7280; font-size:14px; line-height:1.8;">
+                        1️⃣ เข้าสู่ระบบด้วยบัญชีนี้<br>
+                        2️⃣ เลือกสินค้าที่ต้องการสั่งซื้อ<br>
+                        3️⃣ ระบบจะแสดงราคาตัวแทนโดยอัตโนมัติ<br>
+                        4️⃣ สั่งซื้อได้เลย! ไม่ต้องทำอะไรเพิ่ม
+                      </div>
+                    </div>
+                    
+                    <!-- Thank you note -->
+                    <div style="margin-top:24px; padding:20px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:12px; text-align:center;">
+                      <div style="color:#ffffff; font-size:16px; font-weight:600; line-height:1.6;">
+                        ขอบคุณที่ไว้วางใจและใช้บริการ<br>
+                        <span style="font-size:20px;">💜</span> Elite Unlock
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Footer -->
+                  <div style="background:#f1f5f9; padding:24px; text-align:center; border-top:1px solid #e2e8f0;">
+                    <div style="font-weight:600; color:#1e293b; font-size:16px; margin-bottom:8px;">Elite Unlock</div>
+                    <div style="color:#64748b; font-size:14px; line-height:1.6;">
+                      🌐 <a href="https://eliteunlock.shop/" style="color:#6366f1; text-decoration:none;">eliteunlock.shop</a><br>
+                      📞 Tel: 062-607-2670<br>
+                      💬 Line: @825lhqmj
+                    </div>
+                    <div style="margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0; color:#94a3b8; font-size:12px;">
+                      วันที่อัพเกรด: ${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}
+                    </div>
+                  </div>
+                  
+                </div>
+              </body>
+              </html>`;
+
+                  await addDoc(collection(db,'mail'),{
+                    to: [targetEmail],
+                    from: 'Elite Unlock <eliteunlockshop@gmail.com>',
+                    replyTo: 'eliteunlockshop@gmail.com',
+                    message: {
+                      subject: '🎉 ยินดีด้วย! คุณได้รับการอัพเกรดเป็นตัวแทน - Elite Unlock',
+                      text: textBody,
+                      html: htmlBody
+                    },
+                    metadata: { 
+                      userId, 
+                      triggeredBy: 'auto-upgrade',
+                      totalCredits: total,
+                      threshold: THRESHOLD
+                    },
+                    createdAt: serverTimestamp()
+                  });
+                }
+              }catch(e){ console.warn('Unable to queue upgrade email', e); }
 
         return true;
       }
