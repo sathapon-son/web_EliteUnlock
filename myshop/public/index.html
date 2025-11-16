@@ -347,7 +347,7 @@
   const ACTIVITY_STORAGE_KEY = 'lastActivityTime';
   let ACTIVITY_TIMEOUT = null;
   let LAST_ACTIVITY = Date.now();
-  const TIMEOUT_DURATION =   60 * 60 * 1000; // 60 minutes
+  const TIMEOUT_DURATION =   45 * 60 * 1000; // 45 minutes
 
   const SECURITY_QUESTIONS = [
     { value: "first_pet", label: "สัตว์เลี้ยงตัวแรกของคุณชื่ออะไร?" },
@@ -487,13 +487,36 @@
   }
 
   function filterProductsByProgram(products, program) {
-    if(!program) return products;
-    // Handle discount filter
-    if(program === '__DISCOUNT__') {
-      return products.filter(p => (p.pack || '').includes('ลดราคา') || (p.program || '').includes('ลดราคา'));
+    if (!program) return products;
+
+    // กรณีเลือกเฉพาะของลดราคา
+    if (program === '__DISCOUNT__') {
+      return products.filter(p =>
+        (p.pack || '').includes('ลดราคา') ||
+        (p.program || '').includes('ลดราคา')
+      );
     }
-    return products.filter(p => (p.program || 'อื่น ๆ') === program);
+
+    const normalizedProgram = program.toLowerCase();
+
+    return products.filter(p => {
+      const prog = (p.program || 'อื่น ๆ');
+      const packText = (p.pack || '').toLowerCase();
+
+      // ตรงโปรแกรมเดิมอยู่แล้ว ก็แสดงตามปกติ
+      if (prog === program) return true;
+
+      // ✅ กรณีพิเศษ: ถ้าเป็นกลุ่ม Digital Tool Rent (เช่า)
+      // แต่ข้อความใน pack พูดถึงโปรแกรมที่เลือก (เช่น Android Multi Tool (AMT))
+      // ให้ดึงมาแสดงด้วย
+      if (prog === 'Digital Tool Rent (เช่า)' && packText.includes(normalizedProgram)) {
+        return true;
+      }
+
+      return false;
+    });
   }
+
 
   function onProgramFilterChange() {
     const filterEl = document.getElementById('programFilter');
@@ -2285,20 +2308,26 @@ if (cartListEl && cartListEl.children.length === 0) {
       // ✅ ถ้าไม่มีข้อมูลเดิม แสดงว่าเพิ่ง login ใหม่ -> ไม่ควร timeout
       if (!lastActivityStr) {
         console.log('No previous activity found - fresh login, skipping timeout check');
+        // บันทึก timestamp ปัจจุบันสำหรับ session ใหม่
+        resetActivityTimer();
         return false;
       }
       
       const lastActivityTime = parseInt(lastActivityStr, 10);
       if (isNaN(lastActivityTime)) {
         console.log('Invalid activity timestamp, skipping timeout check');
+        // บันทึก timestamp ใหม่
+        resetActivityTimer();
         return false;
       }
       
       const timeSinceLastActivity = Date.now() - lastActivityTime;
       
-      // ✅ ถ้าเวลาผ่านไปน้อยกว่า 5 วินาที แสดงว่าเพิ่ง login -> skip
-      if (timeSinceLastActivity < 5000) {
-        console.log('Recent activity detected, skipping timeout check');
+      // ✅ ถ้าเวลาผ่านไปน้อยกว่า 10 วินาที แสดงว่าเพิ่ง login -> skip
+      if (timeSinceLastActivity < 10000) {
+        console.log('Recent activity detected (< 10s), skipping timeout check');
+        // อัปเดต timestamp
+        resetActivityTimer();
         return false;
       }
       
@@ -2306,12 +2335,18 @@ if (cartListEl && cartListEl.children.length === 0) {
         console.log('Inactivity timeout detected after page reload. Time elapsed:', timeSinceLastActivity, 'ms');
         return true; // Timeout detected
       }
+      
+      // ไม่ timeout แต่ควรอัปเดต timestamp
+      resetActivityTimer();
     } catch (e) {
       console.warn('Error checking inactivity timeout:', e);
+      // กรณีเกิด error ให้ reset timer
+      try { resetActivityTimer(); } catch(_) {}
     }
     
     return false;
   }
+
 
   function startActivityMonitoring() {
     // Skip for admin users
@@ -2946,26 +2981,56 @@ if (cartListEl && cartListEl.children.length === 0) {
     if(extraNotes.length){
       detailLines.push(`หมายเหตุ: ${extraNotes.join(' | ')}`);
     }
-    if(reply){
-      detailLines.push(`ข้อความจากผู้ดูแล: ${reply}`);
-    }
 
-    const detailText = detailLines.map(line => `- ${line}`).join('\n');
+    // Handle admin reply with line breaks support
+  if(reply){
+    const replyLines = reply.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if(replyLines.length > 0){
+      detailLines.push(`ข้อความจากผู้ดูแล:`);
+      // แยกแต่ละบรรทัดเป็นรายการย่อย (ไม่มี bullet หน้า)
+      replyLines.forEach(line => {
+        detailLines.push(`  ${line}`); // เยื้อง 2 ช่อง
+      });
+    }
+  }
+    const detailText = detailLines.map((line, idx) => {
+      // ถ้าเป็นบรรทัดที่เยื้อง (ข้อความจากแอดมิน) ไม่ต้องใส่ bullet
+      if(line.startsWith('  ')) {
+        return line; // คืนค่าตามเดิม (มีการเยื้องอยู่แล้ว)
+      }
+      return `- ${line}`; // บรรทัดปกติใส่ bullet
+    }).join('\n');
+
     const headerText = statusSuccess
       ? `ขอบคุณที่สั่งซื้อกับ Elite Unlock\nยอดรวม ${totalText} บาท ชำระเรียบร้อยแล้ว`
       : `ขออภัย คำสั่งซื้อของคุณไม่สามารถดำเนินการได้\nยอดรวม ${totalText} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`;
+    
     const textBody = `${headerText}\n\nรายละเอียดคำสั่งซื้อ\n${detailText}\n\n— Elite Unlock https://eliteunlock.shop/\nTel: 062-607-2670\nLine: @825lhqmj`;
 
+    // ✅ สร้าง HTML Version (ใช้ <br> และ styling)
     const headingStatus = statusSuccess ? 'สำเร็จ' : 'ไม่สำเร็จ';
-    const htmlList = detailLines.map(line => `<li>${escapeHtml(line)}</li>`).join('');
+    
+    const htmlList = detailLines.map((line, idx) => {
+      // ถ้าเป็นหัวข้อ "ข้อความจากผู้ดูแล:"
+      if(line === 'ข้อความจากผู้ดูแล:'){
+        return `<li><strong>${escapeHtml(line)}</strong></li>`;
+      }
+      // ถ้าเป็นบรรทัดย่อยของข้อความแอดมิน (เยื้อง)
+      if(line.startsWith('  ')){
+        // ใช้ <div> แทน <li> และใส่ style เยื้อง + ขึ้นบรรทัดใหม่
+        return `<div style="margin-left:20px; white-space:pre-wrap;">${escapeHtml(line.trim())}</div>`;
+      }
+      // บรรทัดปกติ
+      return `<li>${escapeHtml(line)}</li>`;
+    }).join('');
+
     const htmlBody = `<div style="font-family:sans-serif">
-  <h3>ใบยืนยันคำสั่งซื้อ ${headingStatus}</h3>
-  <p>${statusSuccess ? `ยอดรวม ${escapeHtml(totalText)} บาท ชำระเรียบร้อยแล้ว` : `ยอดรวม ${escapeHtml(totalText)} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`}</p>
-  <h4 style="margin-top:16px;">รายละเอียดคำสั่งซื้อ</h4>
-  <ul style="padding-left:20px;margin:8px 0;">${htmlList}</ul>
-  <hr style="margin:16px 0;" />
-  <p>Elite Unlock<br>Tel: 062-607-2670<br>Line: @825lhqmj</p>
-</div>`;
+    <h3>ใบยืนยันคำสั่งซื้อ ${headingStatus}</h3>
+    <p>${statusSuccess ? `ยอดรวม ${escapeHtml(totalText)} บาท ชำระเรียบร้อยแล้ว` : `ยอดรวม ${escapeHtml(totalText)} บาท ได้รับการคืนเครดิตเรียบร้อยแล้ว`}</p>
+    <h4 style="margin-top:16px;">รายละเอียดคำสั่งซื้อ</h4>
+    <ul style="padding-left:20px;margin:8px 0;">${htmlList}</ul>
+    <p style="margin-top:16px;">Elite Unlock<br>Tel: 062-607-2670<br>Line: @825lhqmj</p>
+  </div>`;
 
     await addDoc(collection(db,'mail'),{
       to: [targetEmail],
@@ -3132,10 +3197,10 @@ if (cartListEl && cartListEl.children.length === 0) {
             <div>
               <h3>เติมเครดิตสำเร็จ</h3>
               <p>เติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว</p>
-              <p>หากมีข้อสงสัยกรุณาติดต่อ LINE: @825lhqmj</p>
+              <p>หากมีข้อสงสัยกรุณาติดต่อ Elite Unlock Tel: 062-607-2670 LINE: @825lhqmj</p>
             </div>
           `,
-          text: `เติมเครดิตสำเร็จ\n\nเติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว\n\nหากมีข้อสงสัยกรุณาติดต่อ LINE: @825lhqmj`
+          text: `เติมเครดิตสำเร็จ\n\nเติมเครดิตจำนวน ${data.amount} เครดิต เข้าบัญชีของคุณเรียบร้อยแล้ว\n\nหากมีข้อสงสัยกรุณาติดต่อ Elite Unlock Tel: 062-607-2670 LINE: @825lhqmj`
         },
         createdAt: serverTimestamp()
       });
@@ -3147,10 +3212,27 @@ if (cartListEl && cartListEl.children.length === 0) {
     }
   }
 
-  // ตรวจสอบยอดสะสมของผู้ใช้ และอัพเกรดเป็นตัวแทนถ้ายอดสะสมครบเงื่อนไข
+// ตรวจสอบยอดสะสมของผู้ใช้ และอัพเกรดเป็นตัวแทนถ้ายอดสะสมครบเงื่อนไข
   async function checkAndUpgradeAgent(userId) {
     try {
       if (!userId) return false;
+      
+      // ✅ ตรวจสอบสถานะปัจจุบันก่อน - ถ้าเป็นตัวแทนอยู่แล้วไม่ต้องทำอะไร
+      const uref = doc(db, 'users', userId);
+      const userSnap = await getDoc(uref);
+      if (!userSnap.exists()) {
+        console.log('checkAndUpgradeAgent: User document not found');
+        return false;
+      }
+      
+      const userData = userSnap.data();
+      const isAlreadyAgent = userData.isAgent === true && (userData.role === 2 || Number(userData.role) === 2);
+      
+      if (isAlreadyAgent) {
+        console.log('checkAndUpgradeAgent:', userId, 'already an agent, skipping upgrade');
+        return false;
+      }
+      
       // รวมยอดเครดิตที่อนุมัติทั้งหมด (creditRequests.status == 'approved')
       const qref = query(
         collection(db, 'creditRequests'),
@@ -3161,17 +3243,27 @@ if (cartListEl && cartListEl.children.length === 0) {
       let total = 0;
       snap.forEach(s => { const d = s.data(); total += Number(d.amount || 0); });
       console.log('checkAndUpgradeAgent:', userId, 'totalApprovedCredits=', total);
+      
       const THRESHOLD = 4500;
       if (total >= THRESHOLD) {
-        const uref = doc(db, 'users', userId);
         try {
-          await updateDoc(uref, { isAgent: true, agentActivatedAt: serverTimestamp() });
-        } catch(e){ console.warn('Failed to mark user isAgent in profile', e); }
+          // ✅ เปลี่ยนเป็นตัวแทน: isAgent = true และ role = 2
+          await updateDoc(uref, { 
+            isAgent: true, 
+            role: 2,
+            agentActivatedAt: serverTimestamp() 
+          });
+          console.log('✅ Upgraded user to agent:', userId);
+        } catch(e){ 
+          console.warn('Failed to mark user isAgent in profile', e); 
+          return false;
+        }
 
         // If current client user is the one upgraded, update client state immediately
         if (CURRENT_USER && CURRENT_USER.uid === userId) {
           CURRENT_USER_DOC = CURRENT_USER_DOC || {};
           CURRENT_USER_DOC.isAgent = true;
+          CURRENT_USER_DOC.role = 2;
           IS_AGENT = true;
           updateHeaderAuth();
           render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
@@ -3179,20 +3271,20 @@ if (cartListEl && cartListEl.children.length === 0) {
 
         // Queue a polite notification email (non-blocking)
         try{
-          // try to read user's email from profile
-          const userSnap = await getDoc(uref).catch(()=>null);
-          const targetEmail = (userSnap && userSnap.exists()) ? (userSnap.data().email || '') : '';
-          await addDoc(collection(db,'mail'),{
-            to: targetEmail ? [targetEmail] : [],
-            from: 'Elite Unlock <noreply@eliteunlock.com>',
-            message: {
-              subject: 'ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน',
-              text: `ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ ${THRESHOLD} เครดิต\nยินดีด้วย คุณได้รับสิทธิ์อัพเกรดเป็นตัวแทนแล้ว สามารถใช้ราคาตัวแทนเมื่อสั่งซื้อสินค้าได้ทันที\n\nหากต้องการความช่วยเหลือ ติดต่อ LINE: @825lhqmj`,
-              html: `<div style="font-family:sans-serif"><h3>ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน</h3><p>ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ <strong>${THRESHOLD} เครดิต</strong>.</p><p>คุณจะได้รับราคาตัวแทนเมื่อสั่งซื้อสินค้าโดยอัตโนมัติ หากมีคำถาม กรุณาติดต่อ LINE: @825lhqmj</p></div>`
-            },
-            metadata: { userId, triggeredBy: 'auto-upgrade' },
-            createdAt: serverTimestamp()
-          });
+          const targetEmail = userData.email || '';
+          if (targetEmail) {
+            await addDoc(collection(db,'mail'),{
+              to: [targetEmail],
+              from: 'Elite Unlock <noreply@eliteunlock.com>',
+              message: {
+                subject: 'ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน',
+                text: `ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ ${THRESHOLD} เครดิต\nยินดีด้วย คุณได้รับสิทธิ์อัพเกรดเป็นตัวแทนแล้ว สามารถใช้ราคาตัวแทนเมื่อสั่งซื้อสินค้าได้ทันที\n\nหากต้องการความช่วยเหลือ ติดต่อ LINE: @825lhqmj`,
+                html: `<div style="font-family:sans-serif"><h3>ยินดีด้วย — คุณได้รับการอัพเกรดเป็นตัวแทน</h3><p>ระบบตรวจพบว่ายอดสะสมเติมเครดิตของคุณครบ <strong>${THRESHOLD} เครดิต</strong>.</p><p>คุณจะได้รับราคาตัวแทนเมื่อสั่งซื้อสินค้าโดยอัตโนมัติ หากมีคำถาม กรุณาติดต่อ LINE: @825lhqmj</p></div>`
+              },
+              metadata: { userId, triggeredBy: 'auto-upgrade' },
+              createdAt: serverTimestamp()
+            });
+          }
         }catch(e){ console.warn('Unable to queue upgrade email', e); }
 
         return true;
