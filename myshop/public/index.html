@@ -2386,6 +2386,49 @@ if (cartListEl && cartListEl.children.length === 0) {
     await performLogout();
   }
 
+  // ✅ ฟังก์ชันตั้ง listener เพื่ออัปเดต balanceInfo แบบ real-time
+  let BALANCE_LISTENER_UNSUB = null;
+  function setupBalanceListener() {
+    if (!CURRENT_USER) {
+      if (BALANCE_LISTENER_UNSUB) {
+        BALANCE_LISTENER_UNSUB();
+        BALANCE_LISTENER_UNSUB = null;
+      }
+      return;
+    }
+
+    // ยกเลิก listener เก่า (ถ้ามี)
+    if (BALANCE_LISTENER_UNSUB) {
+      BALANCE_LISTENER_UNSUB();
+      BALANCE_LISTENER_UNSUB = null;
+    }
+
+    // ตั้ง listener ใหม่ที่ฟังการเปลี่ยนแปลงของเครดิต
+    try {
+      BALANCE_LISTENER_UNSUB = onSnapshot(
+        doc(db, 'users', CURRENT_USER.uid),
+        (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            CURRENT_USER_DOC = data;
+            const bal = data.credits || 0;
+            
+            // อัปเดต balanceInfo ที่ header
+            const balanceEl = document.getElementById('balanceInfo');
+            if (balanceEl) {
+              balanceEl.textContent = `เครดิต: ${currencyTH(bal)}`;
+            }
+          }
+        },
+        (err) => {
+          console.warn('Balance listener error:', err?.message || err);
+        }
+      );
+    } catch (err) {
+      console.error('Failed to setup balance listener:', err);
+    }
+  }
+
   function updateHeaderAuth(){
     // Rebuild header actions every time to avoid stale elements and duplicated listeners.
     // We'll clear the container and recreate the buttons, then attach listeners.
@@ -4879,6 +4922,9 @@ Line: @825lhqmj`;
         return;
       }
       
+      // ✅ ตั้ง listener สำหรับอัปเดต balanceInfo แบบ real-time
+      setupBalanceListener();
+      
       // Re-render products after agent status is determined
       render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
       listenOrdersForUser();
@@ -4887,6 +4933,8 @@ Line: @825lhqmj`;
       startActivityMonitoring();
     }else{
       CURRENT_USER_DOC = null; IS_ADMIN = false;
+      // ✅ ยกเลิก balance listener เมื่อ logout
+      if(BALANCE_LISTENER_UNSUB){ BALANCE_LISTENER_UNSUB(); BALANCE_LISTENER_UNSUB=null; }
       if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }
       if(ADMIN_ORDERS_UNSUB){ ADMIN_ORDERS_UNSUB(); ADMIN_ORDERS_UNSUB = null; }
       stopActivityMonitoring();
