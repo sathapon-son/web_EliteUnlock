@@ -3031,19 +3031,16 @@ async function queueOrderMail({ orderId, status, data = {}, reply = '' }){
       <div style="color:#1e293b; font-size:14px;">${escapeHtml(details.product)}</div>
     </div>`;
   
-  // จำนวนและยอดรวม
+  // เฉพาะยอดรวม
   detailsHtml += `
-    <div style="display:flex; gap:24px; margin-bottom:12px;">
-      <div style="flex:1;">
-        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">📦 จำนวน</div>
-        <div style="color:#1e293b; font-size:14px;">${details.quantity}</div>
+    <div style="margin-bottom:12px;">
+      <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">💰 ยอดรวม</div>
+      <div style="color:#1e293b; font-size:14px; font-weight:600;">
+        ${escapeHtml(details.total)} บาท
       </div>
-      <div style="flex:1;">
-        <div style="font-weight:600; color:#475569; font-size:13px; margin-bottom:4px;">💰 ยอดรวม</div>
-        <div style="color:#1e293b; font-size:14px; font-weight:600;">${escapeHtml(details.total)} บาท</div>
-      </div>
-    </div>`;
-  
+    </div>
+  `;
+
   // ข้อมูลเพิ่มเติม
   if(details.productEmail){
     detailsHtml += `
