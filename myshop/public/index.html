@@ -1556,38 +1556,67 @@ if (cartListEl && cartListEl.children.length === 0) {
   // close handler
   document.getElementById('closeAdminOrders')?.addEventListener('click', ()=>{ const ordersModal = document.getElementById('adminOrdersModal'); if(ordersModal) hideModalElement(ordersModal); });
 
-  // Admin Credit Modal (open from header)
+// Admin Credit Modal (open from header)
   const adminCreditModal = document.createElement('div');
   adminCreditModal.className = 'modal'; adminCreditModal.id = 'adminCreditModal'; adminCreditModal.setAttribute('aria-hidden','true');
   adminCreditModal.innerHTML = `
-    <div class="bg-white rounded-xl shadow-lg max-w-4xl w-full p-6 relative flex flex-col h-[90vh] min-h-0">
+    <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative flex flex-col h-[90vh] min-h-0">
       <button id="closeAdminCredit" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4">จัดการเครดิต</h3>
       
-      <!-- ✅ ห่อสองคอลัมน์ด้วย single-scroll (สกรอลล์รวม) -->
       <div class="flex-1 min-h-0">
         <div class="single-scroll h-full">
-          <div class="flex flex-col md:flex-row gap-6">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <!-- ซ้าย: เอา overflow ออก ใส่ min-h-0 -->
-            <div class="flex-1 flex flex-col min-w-0 min-h-0">
+            <!-- คอลัมน์ 1: เพิ่ม/ลดเครดิต + Top Users -->
+            <div class="flex flex-col gap-6 min-h-0">
+              <!-- เพิ่ม/ลดเครดิตโดยตรง -->
               <div class="bg-white rounded-lg border p-4">
                 <h4 class="font-semibold mb-3">เพิ่ม/ลดเครดิตโดยตรง</h4>
                 <div class="space-y-3">
                   <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
-                  <input id="creditAmount" type="number" placeholder="จำนวนเครดิต (+เพิ่ม/-ลด)" class="w-full border rounded p-2" />
+                  <input id="creditAmount" type="number" placeholder="จำนวนเครดิต" class="w-full border rounded p-2" />
                   <button id="addCreditBtn" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">อัปเดตเครดิต</button>
                   <div id="creditMsg" class="text-sm"></div>
                 </div>
               </div>
+
+              <!-- เครดิตสะสม Top 30 -->
+              <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
+                <h4 class="font-semibold mb-3">🏆 เครดิตสะสม Top 30</h4>
+                <div class="overflow-y-auto custom-scrollbar flex-1" style="max-height: 400px;">
+                  <table class="w-full text-sm">
+                    <thead class="sticky top-0 bg-white border-b">
+                      <tr class="text-left">
+                        <th class="p-2">อันดับ</th>
+                        <th class="p-2">อีเมล</th>
+                        <th class="p-2 text-right">เครดิต/สะสม</th>
+                      </tr>
+                    </thead>
+                    <tbody id="topUsersList" class="text-slate-700">
+                      <tr><td colspan="3" class="p-4 text-center text-slate-400">กำลังโหลด...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
-            <!-- ขวา: เอา overflow ออก ใส่ min-h-0 -->
-            <div class="flex-1 flex flex-col min-w-0 min-h-0">
-              <div class="bg-white rounded-lg border p-4">
+            <!-- คอลัมน์ 2: คำขอเติมเครดิต -->
+            <div class="flex flex-col min-h-0">
+              <div class="bg-white rounded-lg border p-4 flex flex-col h-full">
                 <h4 class="font-semibold mb-3">คำขอเติมเครดิต</h4>
-                <div class="space-y-4" id="creditRequestsList">
-                  <!-- ... รายการคำขอ ... -->
+                <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4" id="creditRequestsList">
+                  <!-- รายการคำขอที่รอดำเนินการ -->
+                </div>
+              </div>
+            </div>
+
+            <!-- คอลัมน์ 3: ประวัติคำขอ 20 รายการย้อนหลัง -->
+            <div class="flex flex-col min-h-0">
+              <div class="bg-white rounded-lg border p-4 flex flex-col h-full">
+                <h4 class="font-semibold mb-3">📋 ประวัติคำขอ (20 รายการล่าสุด)</h4>
+                <div class="overflow-y-auto custom-scrollbar flex-1 space-y-3" id="creditHistoryList">
+                  <div class="text-sm text-slate-400 text-center">กำลังโหลด...</div>
                 </div>
               </div>
             </div>
@@ -2533,7 +2562,22 @@ if (cartListEl && cartListEl.children.length === 0) {
         const openAdminCreditBtnEl = document.getElementById('openAdminCreditBtn');
         const openAdminProductBtnEl = document.getElementById('openAdminProductBtn');
         if(adminOrdersBtnEl){ adminOrdersBtnEl.addEventListener('click', ()=>{ try{ const saved = getSavedAdminFilter(); if(saved) applyFilterToUI(saved); else applyFilterToUI(['pending','accepted','rejected']); }catch{} const ordersModal = document.getElementById('adminOrdersModal'); showModalElement(ordersModal); listenOrdersForAdmin(); }); }
-        if(openAdminCreditBtnEl){ openAdminCreditBtnEl.addEventListener('click', ()=>{ const creditModal = document.getElementById('adminCreditModal'); showModalElement(creditModal); }); }
+        if(openAdminCreditBtnEl){ 
+          openAdminCreditBtnEl.addEventListener('click', async ()=>{ 
+            const creditModal = document.getElementById('adminCreditModal'); 
+            showModalElement(creditModal);
+            // Load admin credit modal data
+            try {
+              await Promise.all([
+                loadTopUsersList(),
+                loadCreditRequestHistory(),
+                listenCreditRequests()
+              ]);
+            } catch (err) {
+              console.error('Error loading admin credit modal data:', err);
+            }
+          }); 
+        }
         if(openAdminProductBtnEl){ openAdminProductBtnEl.addEventListener('click', ()=>{ const productModalEl = document.getElementById('adminProductModal'); showModalElement(productModalEl); }); }
       }
       updateCartCount();
@@ -3772,6 +3816,154 @@ Line: @825lhqmj`;
 
 
   // แทนที่ของเดิมทั้งหมด
+  // ✅ Get top 20 users by accumulated credits (total from all approved credit requests)
+  async function loadTopUsersList() {
+    try {
+      const topUsersList = document.getElementById('topUsersList');
+      if (!topUsersList) return;
+      
+      topUsersList.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">กำลังโหลด...</td></tr>';
+      
+      // Get all users with current credits
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const userCredits = new Map(); // { email: { current, accumulated } }
+      
+      usersSnap.forEach(userDoc => {
+        const data = userDoc.data();
+        const email = data.email || 'unknown';
+        const currentCredits = Number(data.credits || 0);
+        userCredits.set(email, {
+          current: currentCredits,
+          accumulated: 0 // Will be calculated from credit requests
+        });
+      });
+      
+      // Get all approved credit requests and sum by email
+      const creditsSnap = await getDocs(
+        query(
+          collection(db, 'creditRequests'),
+          where('status', '==', 'approved')
+        )
+      );
+      
+      creditsSnap.forEach(doc => {
+        const data = doc.data();
+        const email = data.userEmail || 'unknown';
+        const amount = Number(data.amount || 0);
+        
+        if (userCredits.has(email)) {
+          const user = userCredits.get(email);
+          user.accumulated += amount;
+        } else {
+          // User may not exist in users collection yet, create entry
+          userCredits.set(email, {
+            current: 0,
+            accumulated: amount
+          });
+        }
+      });
+      
+      // Filter to only users with accumulated credits, sort by accumulated (descending)
+      const excludedUsernames = ['eliteunlock', 'butterflysaterra', 'tyvanforuse'];
+      const sorted = Array.from(userCredits.entries())
+        .filter(([email, data]) => {
+          const username = email.split('@')[0].toLowerCase();
+          return data.accumulated > 0 && !excludedUsernames.includes(username);
+        })
+        .sort((a, b) => b[1].accumulated - a[1].accumulated)
+        .slice(0, 30);
+      
+      if (sorted.length === 0) {
+        topUsersList.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">ไม่มีข้อมูลผู้ใช้</td></tr>';
+        return;
+      }
+      
+      topUsersList.innerHTML = '';
+      sorted.forEach((entry, idx) => {
+        const [email, creditsData] = entry;
+        const { current, accumulated } = creditsData;
+        const emailUsername = email.split('@')[0]; // Extract username from email
+        const row = document.createElement('tr');
+        row.className = 'border-b';
+        row.innerHTML = `
+          <td class="p-2 text-center font-medium">${idx + 1}</td>
+          <td class="p-2 truncate">${escapeHtml(emailUsername)}</td>
+          <td class="p-2 text-right font-semibold">${current.toLocaleString('th-TH')} / ${accumulated.toLocaleString('th-TH')}</td>
+        `;
+        topUsersList.appendChild(row);
+      });
+    } catch (err) {
+      console.error('Error loading top users:', err);
+      const el = document.getElementById('topUsersList');
+      if (el) el.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-600">เกิดข้อผิดพลาด</td></tr>';
+    }
+  }
+
+  // ✅ Load credit request history (20 recent requests)
+  async function loadCreditRequestHistory() {
+    try {
+      const historyList = document.getElementById('creditHistoryList');
+      if (!historyList) return;
+      
+      historyList.innerHTML = '<div class="text-sm text-slate-400">กำลังโหลด...</div>';
+      
+      const q = query(
+        collection(db, 'creditRequests'),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+      
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        historyList.innerHTML = '<div class="text-sm text-slate-400">ไม่มีประวัติคำขอเติมเครดิต</div>';
+        return;
+      }
+      
+      historyList.innerHTML = '';
+      snap.forEach(doc => {
+        const data = doc.data();
+        const status = data.status || 'pending';
+        let statusBadge = '⏳ รอตรวจสอบ';
+        let statusColor = 'bg-amber-100 text-amber-800';
+        
+        if (status === 'approved') {
+          statusBadge = '✅ อนุมัติแล้ว';
+          statusColor = 'bg-emerald-100 text-emerald-800';
+        } else if (status === 'rejected') {
+          statusBadge = '❌ ปฏิเสธ';
+          statusColor = 'bg-red-100 text-red-800';
+        }
+        
+        const createdAt = data.createdAt?.toDate?.() || null;
+        const dt = createdAt 
+          ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
+          : '-';
+        
+        const item = document.createElement('div');
+        item.className = 'p-3 border rounded-lg bg-white';
+        item.innerHTML = `
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="font-medium text-sm truncate">${escapeHtml(data.userEmail || '-')}</div>
+            <span class="px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${statusColor}">${statusBadge}</span>
+          </div>
+          <div class="text-xs text-slate-600">
+            <div>จำนวน: ${Number(data.amount || 0).toLocaleString('th-TH')} เครดิต</div>
+            <div>วันที่: ${dt}</div>
+          </div>
+          ${data.proofImageUrl ? `
+            <a href="${escapeHtml(data.proofImageUrl)}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">📋 ดูสลิป</a>
+          ` : ''}
+        `;
+        historyList.appendChild(item);
+      });
+    } catch (err) {
+      console.error('Error loading credit history:', err);
+      const el = document.getElementById('creditHistoryList');
+      if (el) el.innerHTML = '<div class="text-sm text-red-600">เกิดข้อผิดพลาด</div>';
+    }
+  }
+
   function listenCreditRequests() {
     console.log('Starting listenCreditRequests');
     try {
