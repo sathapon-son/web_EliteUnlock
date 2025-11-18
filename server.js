@@ -14,6 +14,16 @@ const app = express();
 app.use(express.json());
 app.use(cors({ origin: "*" })); // เปิดให้ทุก origin เข้าถึงได้ (ทดสอบง่าย)
 
+// ✅ Set cache control headers for HTML files (no cache)
+app.use((req, res, next) => {
+  if (req.url.endsWith('.html') || req.url === '/') {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
+
 // ✅ เสิร์ฟไฟล์ในโฟลเดอร์เดียวกับ server.js (index.html จะเปิดจาก http://localhost:8080)
 app.use(express.static(__dirname));
 

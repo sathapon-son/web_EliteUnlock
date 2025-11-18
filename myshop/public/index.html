@@ -20,6 +20,9 @@
 
   <script src="https://cdn.tailwindcss.com?v=3.3.5"></script>
   <!-- หากใช้งานจริง ควรติดตั้ง Tailwind ผ่าน npm และ build แทนการใช้ CDN -->
+  <meta name="cache-control" content="no-cache, no-store, must-revalidate, max-age=0" />
+  <meta name="pragma" content="no-cache" />
+  <meta name="expires" content="0" />
   <style>
     .card-hover{transition:.25s ease}
     .card-hover:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,.08)}
@@ -820,10 +823,45 @@ function updateSidebar(){
     items.push({ label: 'ตะกร้า', action: ()=>{ hideMobileSidebar(); openCartModal(); } });
     items.push({ label: 'ประวัติการสั่งซื้อ', action: ()=>{ hideMobileSidebar(); openHistoryModal(); } });
     if(IS_ADMIN){
-      items.push({ label: 'คำสั่งซื้อ (Admin)', action: ()=>{ hideMobileSidebar(); const ordersModal = document.getElementById('adminOrdersModal'); if(ordersModal){ const saved = getSavedAdminFilter(); if(saved) applyFilterToUI(saved); else applyFilterToUI(['pending','accepted','rejected']); showModalElement(ordersModal); listenOrdersForAdmin(); } } });
-      items.push({ label: 'เติมเครดิตลูกค้า', action: ()=>{ hideMobileSidebar(); showModalElement(document.getElementById('adminCreditModal')); } });
-      items.push({ label: 'เพิ่มสินค้า', action: ()=>{ hideMobileSidebar(); showModalElement(document.getElementById('adminProductModal')); } });
+      items.push({ label: 'คำสั่งซื้อ (Admin)', action: ()=>{ 
+        hideMobileSidebar(); 
+        const ordersModal = document.getElementById('adminOrdersModal'); 
+        if(ordersModal){ 
+          const saved = getSavedAdminFilter(); 
+          if(saved) applyFilterToUI(saved); 
+          else applyFilterToUI(['pending','accepted','rejected']); 
+          showModalElement(ordersModal); 
+          listenOrdersForAdmin(); 
+        } 
+      }});
+
+      // ✅ แก้ตรงนี้
+      items.push({ 
+        label: 'เติมเครดิตลูกค้า', 
+        action: async ()=>{ 
+          hideMobileSidebar(); 
+          const creditModal = document.getElementById('adminCreditModal'); 
+          if (creditModal) {
+            showModalElement(creditModal);
+            try {
+              await Promise.all([
+                loadTopUsersList(),        // โหลดเครดิตสะสม Top 30
+                loadCreditRequestHistory(),// โหลดประวัติคำขอ 20 รายการล่าสุด
+                listenCreditRequests()     // Live update รายการคำขอ
+              ]);
+            } catch (err) {
+              console.error('Error loading admin credit modal data (mobile):', err);
+            }
+          }
+        } 
+      });
+
+      items.push({ label: 'เพิ่มสินค้า', action: ()=>{ 
+        hideMobileSidebar(); 
+        showModalElement(document.getElementById('adminProductModal')); 
+      }});
     }
+
     items.push({ label: 'ออกจากระบบ', action: async ()=>{ hideMobileSidebar(); await logoutWithConfirm(); } });
   } else {
     items.push({ label: 'สมัครสมาชิก', action: ()=>{ hideMobileSidebar(); openRegModal(); } });
@@ -1566,58 +1604,51 @@ if (cartListEl && cartListEl.children.length === 0) {
       
       <div class="flex-1 min-h-0">
         <div class="single-scroll h-full">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <!-- คอลัมน์ 1: เพิ่ม/ลดเครดิต + Top Users -->
-            <div class="flex flex-col gap-6 min-h-0">
-              <!-- เพิ่ม/ลดเครดิตโดยตรง -->
-              <div class="bg-white rounded-lg border p-4">
-                <h4 class="font-semibold mb-3">เพิ่ม/ลดเครดิตโดยตรง</h4>
-                <div class="space-y-3">
-                  <input id="creditEmail" type="email" placeholder="อีเมลลูกค้า" class="w-full border rounded p-2" />
-                  <input id="creditAmount" type="number" placeholder="จำนวนเครดิต" class="w-full border rounded p-2" />
-                  <button id="addCreditBtn" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">อัปเดตเครดิต</button>
-                  <div id="creditMsg" class="text-sm"></div>
-                </div>
-              </div>
-
-              <!-- เครดิตสะสม Top 30 -->
-              <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
-                <h4 class="font-semibold mb-3">🏆 เครดิตสะสม Top 30</h4>
-                <div class="overflow-y-auto custom-scrollbar flex-1" style="max-height: 400px;">
-                  <table class="w-full text-sm">
-                    <thead class="sticky top-0 bg-white border-b">
-                      <tr class="text-left">
-                        <th class="p-2">อันดับ</th>
-                        <th class="p-2">อีเมล</th>
-                        <th class="p-2 text-right">เครดิต/สะสม</th>
-                      </tr>
-                    </thead>
-                    <tbody id="topUsersList" class="text-slate-700">
-                      <tr><td colspan="3" class="p-4 text-center text-slate-400">กำลังโหลด...</td></tr>
-                    </tbody>
-                  </table>
-                </div>
+            <!-- หัวข้อที่ 1: เพิ่ม/ลดเครดิต -->
+            <div class="bg-white rounded-lg border p-4">
+              <h4 class="font-semibold mb-3">เพิ่ม/ลดเครดิต</h4>
+              <div class="space-y-3">
+                <input id="creditEmail" type="email" placeholder="อีเมล" class="w-full border rounded p-2" />
+                <input id="creditAmount" type="number" placeholder="จำนวนเครดิต" class="w-full border rounded p-2" />
+                <button id="addCreditBtn" class="w-full bg-emerald-600 text-white px-4 py-2 rounded-md">อัปเดตเครดิต</button>
+                <div id="creditMsg" class="text-sm"></div>
               </div>
             </div>
 
-            <!-- คอลัมน์ 2: คำขอเติมเครดิต -->
-            <div class="flex flex-col min-h-0">
-              <div class="bg-white rounded-lg border p-4 flex flex-col h-full">
-                <h4 class="font-semibold mb-3">คำขอเติมเครดิต</h4>
-                <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4" id="creditRequestsList">
-                  <!-- รายการคำขอที่รอดำเนินการ -->
-                </div>
+            <!-- หัวข้อที่ 2: คำขอเติมเครดิต -->
+            <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
+              <h4 class="font-semibold mb-3">คำขอเติมเครดิต</h4>
+              <div class="overflow-y-auto custom-scrollbar flex-1 space-y-4" id="creditRequestsList">
+                <!-- รายการคำขอที่รอดำเนินการ -->
               </div>
             </div>
 
-            <!-- คอลัมน์ 3: ประวัติคำขอ 20 รายการย้อนหลัง -->
-            <div class="flex flex-col min-h-0">
-              <div class="bg-white rounded-lg border p-4 flex flex-col h-full">
-                <h4 class="font-semibold mb-3">📋 ประวัติคำขอ (20 รายการล่าสุด)</h4>
-                <div class="overflow-y-auto custom-scrollbar flex-1 space-y-3" id="creditHistoryList">
-                  <div class="text-sm text-slate-400 text-center">กำลังโหลด...</div>
-                </div>
+            <!-- หัวข้อที่ 3: เครดิตสะสม Top 30 -->
+            <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
+              <h4 class="font-semibold mb-3">🏆 เครดิตสะสม Top 30</h4>
+              <div class="overflow-y-auto custom-scrollbar flex-1" style="max-height: 400px;">
+                <table class="w-full text-sm">
+                  <thead class="sticky top-0 bg-white border-b">
+                    <tr class="text-left">
+                      <th class="p-2">อันดับ</th>
+                      <th class="p-2">อีเมล</th>
+                      <th class="p-2 text-right">เครดิต/สะสม</th>
+                    </tr>
+                  </thead>
+                  <tbody id="topUsersList" class="text-slate-700">
+                    <tr><td colspan="3" class="p-4 text-center text-slate-400">กำลังโหลด...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- หัวข้อที่ 4: ประวัติคำขอ 20 รายการล่าสุด -->
+            <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
+              <h4 class="font-semibold mb-3">📋 ประวัติคำขอ (20 รายการล่าสุด)</h4>
+              <div class="overflow-y-auto custom-scrollbar flex-1 space-y-3" id="creditHistoryList">
+                <div class="text-sm text-slate-400 text-center">กำลังโหลด...</div>
               </div>
             </div>
 
