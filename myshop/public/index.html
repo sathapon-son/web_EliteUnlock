@@ -172,12 +172,116 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+
+    /* ✅ Banner ViewPager - Fixed Position Center */
+    #bannerViewPager {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60vw;
+      max-width: 900px;
+      min-height: 300px;
+      overflow: hidden;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      animation: slideInDown 0.5s ease-out;
+      z-index: 100;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #bannerViewPager.hidden {
+      display: none !important;
+    }
+
+    #bannerViewPager img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    .banner-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1e293b;
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: all 0.2s ease;
+      z-index: 50;
+    }
+
+    .banner-close-btn:hover {
+      background: rgba(255, 255, 255, 1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transform: scale(1.1);
+    }
+
+    .banner-hide-option {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      z-index: 50;
+    }
+
+    .banner-hide-option:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Overlay background when banner visible */
+    body.banner-visible::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 35;
+      backdrop-filter: blur(2px);
+    }
   </style>
 </head>
 
 <body class="bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 antialiased">
+  <!-- ✅ Banner ViewPager - Fixed Position -->
+  <section id="bannerViewPager" class="hidden">
+    <img id="bannerImage" src="" alt="Banner" />
+    <button id="bannerCloseBtn" class="banner-close-btn" aria-label="ปิด Banner">×</button>
+    <button id="bannerHideToday" class="banner-hide-option">ไม่แสดงอีกในวันนี้</button>
+  </section>
+
   <!-- Header -->
-  <header class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+  <header class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between" id="mainHeader">
     <div class="flex items-center gap-3">
       <!-- ใช้โลโก้ -->
       <img src="logo.png" alt="Elite Unlock Logo" class="w-10 h-10 rounded-lg object-contain bg-white shadow" />
@@ -342,9 +446,209 @@
   let ADMIN_ORDERS_UNSUB = null;
   let PRODUCTS_UNSUB = null;
   let CREDIT_REQUESTS_UNSUB = null;
+  let TOP_USERS_UNSUB = null;           // ✅ Real-time listener for Top 30 users
+  let CREDIT_HISTORY_UNSUB = null;      // ✅ Real-time listener for credit request history
   let CART = [];
   let PENDING_RESET_CODE = null;
   let PENDING_RESET_EMAIL = "";
+
+  // ✅ Banner Configuration
+  const BANNER_URL = "https://img5.pic.in.th/file/secure-sv1/b0ad3bfb9972fd9d2bec506fbcdb8f9c.png"; // แก้เป็น URL จริง
+  const BANNER_HIDDEN_KEY = 'bannerHiddenToday';
+  let banner = false; // ตัวแปร banner (true/false) - ถ้า true แสดง banner
+
+  // ✅ Function: ตรวจว่า banner ควรแสดงหรือไม่
+  function shouldShowBanner() {
+    if (!banner) return false;
+    
+    try {
+      const stored = localStorage.getItem(BANNER_HIDDEN_KEY);
+      if (!stored) {
+        console.log('✅ No stored data - showing banner');
+        return true;
+      }
+      
+      const data = JSON.parse(stored);
+      
+      // ถ้า URL เปลี่ยน ให้แสดง banner อีกครั้ง
+      if (data.url !== BANNER_URL) {
+        console.log('✅ URL changed - showing banner');
+        localStorage.removeItem(BANNER_HIDDEN_KEY);
+        return true;
+      }
+      
+      // Default: แสดง banner ทุกครั้ง (ไม่ซ่อนวันเดิม)
+      console.log('✅ Showing banner');
+      return true;
+    } catch (e) {
+      console.warn('⚠️ localStorage error:', e);
+      return true;
+    }
+  }
+
+  // ✅ Function: ซ่อน banner สำหรับ session นี้
+  function hideBannerSession() {
+    try {
+      const data = {
+        hidden: true,
+        hiddenAt: new Date().toISOString()
+      };
+      sessionStorage.setItem(BANNER_HIDDEN_KEY, JSON.stringify(data));
+      console.log('✅ Banner hidden for this session');
+    } catch (e) {
+      console.warn('Failed to save banner hide state:', e);
+    }
+  }
+
+  // ✅ Function: ตรวจว่า banner ซ่อนในสessions นี้หรือไม่
+  function isBannerHiddenInSession() {
+    try {
+      const stored = sessionStorage.getItem(BANNER_HIDDEN_KEY);
+      if (!stored) return false;
+      const data = JSON.parse(stored);
+      return data.hidden === true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ✅ Function: แสดง banner
+  function showBanner() {
+    if (!shouldShowBanner() || isBannerHiddenInSession()) return;
+    
+    const bannerEl = document.getElementById('bannerViewPager');
+    const bannerImg = document.getElementById('bannerImage');
+    
+    if (!bannerEl || !bannerImg) return;
+    
+    // Preload image to check if it exists
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      bannerImg.src = BANNER_URL;
+      bannerImg.alt = 'Banner Promo';
+      bannerEl.classList.remove('hidden');
+      document.body.classList.add('banner-visible');
+      console.log('✅ Banner loaded successfully');
+      
+      // Start 10-second countdown
+      startBannerCountdown(bannerEl);
+    };
+    tempImg.onerror = () => {
+      console.warn('❌ Banner image failed to load:', BANNER_URL);
+      // Still show banner even if image fails to load initially
+      bannerImg.src = BANNER_URL;
+      bannerImg.alt = 'Banner Promo';
+      bannerEl.classList.remove('hidden');
+      document.body.classList.add('banner-visible');
+      
+      // Start 10-second countdown
+      startBannerCountdown(bannerEl);
+    };
+    tempImg.src = BANNER_URL;
+  }
+
+  // ✅ Function: นับถอยหลัง 10 วินาที แล้วปิด banner
+  function startBannerCountdown(bannerEl) {
+    let countdown = 10;
+    const countdownEl = document.createElement('div');
+    countdownEl.className = 'banner-countdown';
+    countdownEl.textContent = countdown;
+    countdownEl.style.cssText = `
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      z-index: 60;
+    `;
+    
+    bannerEl.appendChild(countdownEl);
+    
+    const interval = setInterval(() => {
+      countdown--;
+      countdownEl.textContent = countdown;
+      
+      if (countdown <= 0) {
+        clearInterval(interval);
+        console.log('⏱️ Countdown finished - auto-closing banner');
+        bannerEl.classList.add('hidden');
+        document.body.classList.remove('banner-visible');
+        countdownEl.remove();
+      }
+    }, 1000);
+    
+    // Stop countdown if user interacts with banner
+    bannerEl.addEventListener('click', () => {
+      clearInterval(interval);
+      countdownEl.remove();
+      console.log('⏱️ Countdown cancelled - user interaction detected');
+    }, { once: true });
+  }
+
+  // ✅ Event Listeners สำหรับ Banner
+  document.addEventListener('DOMContentLoaded', () => {
+    const closeBtn = document.getElementById('bannerCloseBtn');
+    const hideBtn = document.getElementById('bannerHideToday');
+    const bannerEl = document.getElementById('bannerViewPager');
+    
+    console.log('🔍 Banner init:', { 
+      banner, 
+      shouldShow: shouldShowBanner(), 
+      hiddenInSession: isBannerHiddenInSession(), 
+      BANNER_URL,
+      closeBtnFound: !!closeBtn,
+      hideBtnFound: !!hideBtn,
+      bannerElFound: !!bannerEl
+    });
+    
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        console.log('🔘 Close button clicked - removing hidden class');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (bannerEl) {
+          console.log('✅ Hiding banner element');
+          bannerEl.classList.add('hidden');
+          document.body.classList.remove('banner-visible');
+          console.log('✅ Banner hidden:', bannerEl.classList);
+        } else {
+          console.error('❌ Banner element not found');
+        }
+      });
+      console.log('✅ Close button listener attached');
+    } else {
+      console.error('❌ Close button not found');
+    }
+    
+    if (hideBtn) {
+      hideBtn.addEventListener('click', function(e) {
+        console.log('🔘 Hide button clicked - hiding for this session');
+        e.preventDefault();
+        e.stopPropagation();
+        hideBannerSession();
+        
+        if (bannerEl) {
+          bannerEl.classList.add('hidden');
+          document.body.classList.remove('banner-visible');
+        }
+      });
+      console.log('✅ Hide button listener attached');
+    } else {
+      console.error('❌ Hide button not found');
+    }
+    
+    // แสดง banner เมื่อโหลดเพจ
+    setTimeout(showBanner, 500);
+  });
 
   // ----- Activity Timeout Variables -----
   const ACTIVITY_STORAGE_KEY = 'lastActivityTime';
@@ -1658,7 +1962,21 @@ if (cartListEl && cartListEl.children.length === 0) {
 
     </div>`;
   document.body.appendChild(adminCreditModal);
-  document.getElementById('closeAdminCredit')?.addEventListener('click', ()=>{ const creditModal = document.getElementById('adminCreditModal'); if(creditModal) hideModalElement(creditModal); });
+  document.getElementById('closeAdminCredit')?.addEventListener('click', ()=>{ 
+    const creditModal = document.getElementById('adminCreditModal'); 
+    if(creditModal) {
+      // Clean up real-time listeners when closing
+      if (TOP_USERS_UNSUB) {
+        TOP_USERS_UNSUB();
+        TOP_USERS_UNSUB = null;
+      }
+      if (CREDIT_HISTORY_UNSUB) {
+        CREDIT_HISTORY_UNSUB();
+        CREDIT_HISTORY_UNSUB = null;
+      }
+      hideModalElement(creditModal);
+    }
+  });
 
   // Admin Product Modal (open from header) - enhanced with product management
   const adminProductModal = document.createElement('div');
@@ -3848,6 +4166,98 @@ Line: @825lhqmj`;
 
   // แทนที่ของเดิมทั้งหมด
   // ✅ Get top 20 users by accumulated credits (total from all approved credit requests)
+  // ✅ Global listener for Top Users (real-time updates)
+  function listenToTopUsers() {
+    try {
+      // ยกเลิกการฟังเก่า
+      if (TOP_USERS_UNSUB) {
+        TOP_USERS_UNSUB();
+        TOP_USERS_UNSUB = null;
+      }
+
+      const topUsersList = document.getElementById('topUsersList');
+      if (!topUsersList) return;
+
+      // ตั้งค่า listener สำหรับข้อมูลผู้ใช้
+      const usersRef = collection(db, 'users');
+      
+      TOP_USERS_UNSUB = onSnapshot(usersRef, (usersSnap) => {
+        // เก็บข้อมูลผู้ใช้
+        const userCredits = new Map();
+        usersSnap.forEach(userDoc => {
+          const data = userDoc.data();
+          const email = data.email || 'unknown';
+          const currentCredits = Number(data.credits || 0);
+          userCredits.set(email, {
+            current: currentCredits,
+            accumulated: 0
+          });
+        });
+
+        // ตั้งค่า listener สำหรับ credit requests ที่ approved
+        const creditsRef = collection(db, 'creditRequests');
+        const creditsQuery = query(creditsRef, where('status', '==', 'approved'));
+        
+        onSnapshot(creditsQuery, (creditsSnap) => {
+          // รีเซ็ตค่า accumulated
+          userCredits.forEach(data => {
+            data.accumulated = 0;
+          });
+
+          // รวมค่า accumulated จากคำขอ approved
+          creditsSnap.forEach(doc => {
+            const data = doc.data();
+            const email = data.userEmail || 'unknown';
+            const amount = Number(data.amount || 0);
+            
+            if (userCredits.has(email)) {
+              userCredits.get(email).accumulated += amount;
+            } else {
+              userCredits.set(email, {
+                current: 0,
+                accumulated: amount
+              });
+            }
+          });
+
+          // กรองและเรียงลำดับ
+          const excludedUsernames = ['eliteunlock', 'butterflysaterra', 'tyvanforuse'];
+          const sorted = Array.from(userCredits.entries())
+            .filter(([email, data]) => {
+              const username = email.split('@')[0].toLowerCase();
+              return data.accumulated > 0 && !excludedUsernames.includes(username);
+            })
+            .sort((a, b) => b[1].accumulated - a[1].accumulated)
+            .slice(0, 30);
+
+          // อัปเดต UI
+          if (sorted.length === 0) {
+            topUsersList.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">ไม่มีข้อมูลผู้ใช้</td></tr>';
+            return;
+          }
+
+          topUsersList.innerHTML = '';
+          sorted.forEach((entry, idx) => {
+            const [email, creditsData] = entry;
+            const { current, accumulated } = creditsData;
+            const emailUsername = email.split('@')[0];
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50';
+            row.innerHTML = `
+              <td class="p-2 text-center font-medium">${idx + 1}</td>
+              <td class="p-2 truncate">${escapeHtml(emailUsername)}</td>
+              <td class="p-2 text-right font-semibold text-indigo-700">${current.toLocaleString('th-TH')} / ${accumulated.toLocaleString('th-TH')}</td>
+            `;
+            topUsersList.appendChild(row);
+          });
+        });
+      });
+
+    } catch (err) {
+      console.error('Error listening to top users:', err);
+    }
+  }
+
   async function loadTopUsersList() {
     try {
       const topUsersList = document.getElementById('topUsersList');
@@ -3855,74 +4265,9 @@ Line: @825lhqmj`;
       
       topUsersList.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">กำลังโหลด...</td></tr>';
       
-      // Get all users with current credits
-      const usersSnap = await getDocs(collection(db, 'users'));
-      const userCredits = new Map(); // { email: { current, accumulated } }
+      // Start real-time listener
+      listenToTopUsers();
       
-      usersSnap.forEach(userDoc => {
-        const data = userDoc.data();
-        const email = data.email || 'unknown';
-        const currentCredits = Number(data.credits || 0);
-        userCredits.set(email, {
-          current: currentCredits,
-          accumulated: 0 // Will be calculated from credit requests
-        });
-      });
-      
-      // Get all approved credit requests and sum by email
-      const creditsSnap = await getDocs(
-        query(
-          collection(db, 'creditRequests'),
-          where('status', '==', 'approved')
-        )
-      );
-      
-      creditsSnap.forEach(doc => {
-        const data = doc.data();
-        const email = data.userEmail || 'unknown';
-        const amount = Number(data.amount || 0);
-        
-        if (userCredits.has(email)) {
-          const user = userCredits.get(email);
-          user.accumulated += amount;
-        } else {
-          // User may not exist in users collection yet, create entry
-          userCredits.set(email, {
-            current: 0,
-            accumulated: amount
-          });
-        }
-      });
-      
-      // Filter to only users with accumulated credits, sort by accumulated (descending)
-      const excludedUsernames = ['eliteunlock', 'butterflysaterra', 'tyvanforuse'];
-      const sorted = Array.from(userCredits.entries())
-        .filter(([email, data]) => {
-          const username = email.split('@')[0].toLowerCase();
-          return data.accumulated > 0 && !excludedUsernames.includes(username);
-        })
-        .sort((a, b) => b[1].accumulated - a[1].accumulated)
-        .slice(0, 30);
-      
-      if (sorted.length === 0) {
-        topUsersList.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">ไม่มีข้อมูลผู้ใช้</td></tr>';
-        return;
-      }
-      
-      topUsersList.innerHTML = '';
-      sorted.forEach((entry, idx) => {
-        const [email, creditsData] = entry;
-        const { current, accumulated } = creditsData;
-        const emailUsername = email.split('@')[0]; // Extract username from email
-        const row = document.createElement('tr');
-        row.className = 'border-b';
-        row.innerHTML = `
-          <td class="p-2 text-center font-medium">${idx + 1}</td>
-          <td class="p-2 truncate">${escapeHtml(emailUsername)}</td>
-          <td class="p-2 text-right font-semibold">${current.toLocaleString('th-TH')} / ${accumulated.toLocaleString('th-TH')}</td>
-        `;
-        topUsersList.appendChild(row);
-      });
     } catch (err) {
       console.error('Error loading top users:', err);
       const el = document.getElementById('topUsersList');
@@ -3930,7 +4275,76 @@ Line: @825lhqmj`;
     }
   }
 
-  // ✅ Load credit request history (20 recent requests)
+  // ✅ Global listener for credit request history (real-time updates)
+  function listenToCreditHistory() {
+    try {
+      // ยกเลิกการฟังเก่า
+      if (CREDIT_HISTORY_UNSUB) {
+        CREDIT_HISTORY_UNSUB();
+        CREDIT_HISTORY_UNSUB = null;
+      }
+
+      const historyList = document.getElementById('creditHistoryList');
+      if (!historyList) return;
+
+      const creditsRef = collection(db, 'creditRequests');
+      const q = query(
+        creditsRef,
+        orderBy('createdAt', 'desc'),
+        limit(20)
+      );
+
+      // ✅ ตั้งค่า listener สำหรับอัปเดต real-time
+      CREDIT_HISTORY_UNSUB = onSnapshot(q, (snap) => {
+        if (snap.empty) {
+          historyList.innerHTML = '<div class="text-sm text-slate-400">ไม่มีประวัติคำขอเติมเครดิต</div>';
+          return;
+        }
+
+        historyList.innerHTML = '';
+        snap.forEach(doc => {
+          const data = doc.data();
+          const status = data.status || 'pending';
+          let statusBadge = '⏳ รอตรวจสอบ';
+          let statusColor = 'bg-amber-100 text-amber-800';
+          
+          if (status === 'approved') {
+            statusBadge = '✅ อนุมัติแล้ว';
+            statusColor = 'bg-emerald-100 text-emerald-800';
+          } else if (status === 'rejected') {
+            statusBadge = '❌ ปฏิเสธ';
+            statusColor = 'bg-red-100 text-red-800';
+          }
+          
+          const createdAt = data.createdAt?.toDate?.() || null;
+          const dt = createdAt 
+            ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
+            : '-';
+          
+          const item = document.createElement('div');
+          item.className = 'p-3 border rounded-lg bg-white hover:shadow-sm transition';
+          item.innerHTML = `
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="font-medium text-sm truncate">${escapeHtml(data.userEmail || '-')}</div>
+              <span class="px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${statusColor}">${statusBadge}</span>
+            </div>
+            <div class="text-xs text-slate-600">
+              <div>จำนวน: <span class="font-semibold text-indigo-700">${Number(data.amount || 0).toLocaleString('th-TH')}</span> เครดิต</div>
+              <div>วันที่: ${dt}</div>
+            </div>
+            ${data.proofImageUrl ? `
+              <a href="${escapeHtml(data.proofImageUrl)}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:underline mt-2 inline-block">📋 ดูสลิป</a>
+            ` : ''}
+          `;
+          historyList.appendChild(item);
+        });
+      });
+    } catch (err) {
+      console.error('Error listening to credit history:', err);
+    }
+  }
+
+  // ✅ Load credit request history (20 recent requests) with real-time updates
   async function loadCreditRequestHistory() {
     try {
       const historyList = document.getElementById('creditHistoryList');
@@ -3938,56 +4352,9 @@ Line: @825lhqmj`;
       
       historyList.innerHTML = '<div class="text-sm text-slate-400">กำลังโหลด...</div>';
       
-      const q = query(
-        collection(db, 'creditRequests'),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
+      // Start real-time listener
+      listenToCreditHistory();
       
-      const snap = await getDocs(q);
-      
-      if (snap.empty) {
-        historyList.innerHTML = '<div class="text-sm text-slate-400">ไม่มีประวัติคำขอเติมเครดิต</div>';
-        return;
-      }
-      
-      historyList.innerHTML = '';
-      snap.forEach(doc => {
-        const data = doc.data();
-        const status = data.status || 'pending';
-        let statusBadge = '⏳ รอตรวจสอบ';
-        let statusColor = 'bg-amber-100 text-amber-800';
-        
-        if (status === 'approved') {
-          statusBadge = '✅ อนุมัติแล้ว';
-          statusColor = 'bg-emerald-100 text-emerald-800';
-        } else if (status === 'rejected') {
-          statusBadge = '❌ ปฏิเสธ';
-          statusColor = 'bg-red-100 text-red-800';
-        }
-        
-        const createdAt = data.createdAt?.toDate?.() || null;
-        const dt = createdAt 
-          ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
-          : '-';
-        
-        const item = document.createElement('div');
-        item.className = 'p-3 border rounded-lg bg-white';
-        item.innerHTML = `
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <div class="font-medium text-sm truncate">${escapeHtml(data.userEmail || '-')}</div>
-            <span class="px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${statusColor}">${statusBadge}</span>
-          </div>
-          <div class="text-xs text-slate-600">
-            <div>จำนวน: ${Number(data.amount || 0).toLocaleString('th-TH')} เครดิต</div>
-            <div>วันที่: ${dt}</div>
-          </div>
-          ${data.proofImageUrl ? `
-            <a href="${escapeHtml(data.proofImageUrl)}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">📋 ดูสลิป</a>
-          ` : ''}
-        `;
-        historyList.appendChild(item);
-      });
     } catch (err) {
       console.error('Error loading credit history:', err);
       const el = document.getElementById('creditHistoryList');
