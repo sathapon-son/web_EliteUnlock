@@ -452,10 +452,11 @@
   let PENDING_RESET_CODE = null;
   let PENDING_RESET_EMAIL = "";
 
-  // ✅ Banner Configuration
-  const BANNER_URL = "https://img2.pic.in.th/pic/unlocktool-down.png"; // แก้เป็น URL จริง
+  // ✅ Banner Configuration (อ่านจาก Firestore)
+  let BANNER_URL = ""; // จะถูกโหลดจาก Firestore
+  let banner = true; // จะถูกโหลดจาก Firestore
+  const BANNER_CONFIG_ID = '9E11bFQAAAI7lNyBlIBO';
   const BANNER_HIDDEN_KEY = 'bannerHiddenToday';
-  let banner = true; // ตัวแปร banner (true/false) - ถ้า true แสดง banner
 
   // ✅ Function: ตรวจว่า banner ควรแสดงหรือไม่
   function shouldShowBanner() {
@@ -599,16 +600,6 @@
     const hideBtn = document.getElementById('bannerHideToday');
     const bannerEl = document.getElementById('bannerViewPager');
     
-    console.log('🔍 Banner init:', { 
-      banner, 
-      shouldShow: shouldShowBanner(), 
-      hiddenInSession: isBannerHiddenInSession(), 
-      BANNER_URL,
-      closeBtnFound: !!closeBtn,
-      hideBtnFound: !!hideBtn,
-      bannerElFound: !!bannerEl
-    });
-    
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
         console.log('🔘 Close button clicked - removing hidden class');
@@ -646,8 +637,13 @@
       console.error('❌ Hide button not found');
     }
     
-    // แสดง banner เมื่อโหลดเพจ
-    setTimeout(showBanner, 500);
+    // ✅ แสดง banner หลังจากโหลด config จาก Firestore เสร็จ
+    loadBannerConfig().then(() => {
+      console.log('✅ Banner config ready, showing banner');
+      showBanner();
+    }).catch(err => {
+      console.error('❌ Failed to load banner config, skipping banner:', err);
+    });
   });
 
   // ----- Activity Timeout Variables -----
@@ -885,6 +881,24 @@
       initAnalytics().catch(e => console.warn('Analytics check failed:', e?.message || e));
     } catch(e){ 
       console.warn('Analytics setup failed:', e?.message || e); 
+    }
+  }
+
+  // ✅ Load Banner Configuration from Firestore
+  async function loadBannerConfig() {
+    try {
+      const bannerDocRef = doc(db, "banner", BANNER_CONFIG_ID);
+      const snap = await getDoc(bannerDocRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        BANNER_URL = data.BANNER_URL || BANNER_URL;
+        banner = data.banner !== undefined ? data.banner : true;
+        console.log('✅ Banner config loaded from Firestore:', { BANNER_URL, banner });
+      } else {
+        console.warn('⚠️ Banner config document not found, using defaults');
+      }
+    } catch (err) {
+      console.error('❌ Failed to load banner config:', err);
     }
   }
 

@@ -97,6 +97,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ===== banner =====
+    match /banner/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ===== credit requests =====
     match /creditRequests/{id} {
       allow create: if isSignedIn()
