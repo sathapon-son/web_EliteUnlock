@@ -1383,7 +1383,7 @@ document.body.appendChild(forgotModal);
     const submitBtn = document.getElementById('submitTopup');
     if (!submitBtn) return;
 
-    topupCountdown = 15;
+    topupCountdown = 30;
     submitBtn.disabled = true;
     submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
@@ -1429,6 +1429,9 @@ document.body.appendChild(forgotModal);
         throw new Error('กรุณาแนบหลักฐานการโอนเงิน');
       }
 
+      // ✅ Start countdown timer immediately when button is clicked
+      startTopupCountdown();
+
       msgEl.textContent = 'กำลังอัปโหลดรูปภาพ...';
       const imageUrl = await uploadImageToStorage(file);
 
@@ -1442,9 +1445,6 @@ document.body.appendChild(forgotModal);
       amountInput.value = '';
       fileInput.value = '';
       document.getElementById('selectedFileName').textContent = 'ยังไม่ได้เลือกไฟล์';
-
-      // Start countdown timer
-      startTopupCountdown();
 
       // Start listening for request updates
       listenCreditRequests();
