@@ -179,7 +179,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 60vw;
+      width: 80vw;
       max-width: 900px;
       min-height: 300px;
       overflow: hidden;
@@ -453,9 +453,9 @@
   let PENDING_RESET_EMAIL = "";
 
   // ✅ Banner Configuration
-  const BANNER_URL = "https://img5.pic.in.th/file/secure-sv1/b0ad3bfb9972fd9d2bec506fbcdb8f9c.png"; // แก้เป็น URL จริง
+  const BANNER_URL = "https://img2.pic.in.th/pic/unlocktool-down.png"; // แก้เป็น URL จริง
   const BANNER_HIDDEN_KEY = 'bannerHiddenToday';
-  let banner = false; // ตัวแปร banner (true/false) - ถ้า true แสดง banner
+  let banner = true; // ตัวแปร banner (true/false) - ถ้า true แสดง banner
 
   // ✅ Function: ตรวจว่า banner ควรแสดงหรือไม่
   function shouldShowBanner() {
@@ -549,7 +549,7 @@
 
   // ✅ Function: นับถอยหลัง 10 วินาที แล้วปิด banner
   function startBannerCountdown(bannerEl) {
-    let countdown = 10;
+    let countdown = 15;
     const countdownEl = document.createElement('div');
     countdownEl.className = 'banner-countdown';
     countdownEl.textContent = countdown;
