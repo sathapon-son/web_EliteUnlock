@@ -214,26 +214,27 @@
       position: absolute;
       top: 12px;
       right: 12px;
-      background: rgba(255, 255, 255, 0.9);
+      background: transparent;
       color: #1e293b;
-      width: 40px;
-      height: 40px;
+      width: auto;
+      height: auto;
       border: none;
-      border-radius: 50%;
-      font-size: 24px;
+      font-size: 32px;
+      font-weight: bold;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      padding: 0;
+      box-shadow: none;
       transition: all 0.2s ease;
-      z-index: 50;
+      z-index: 101;
+      line-height: 1;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .banner-close-btn:hover {
-      background: rgba(255, 255, 255, 1);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      transform: scale(1.1);
+      transform: scale(1.15);
     }
 
     .banner-hide-option {
