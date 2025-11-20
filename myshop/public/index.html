@@ -185,12 +185,18 @@
       overflow: hidden;
       border-radius: 1.5rem;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-      animation: slideInDown 0.5s ease-out;
       z-index: 100;
       background: white;
       display: flex;
       align-items: center;
       justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    /* ✅ เมื่อแสดง banner ให้ fade in */
+    #bannerViewPager.show {
+      opacity: 1;
     }
 
     #bannerViewPager.hidden {
@@ -249,7 +255,8 @@
       background: rgba(0, 0, 0, 0.8);
     }
 
-    @keyframes slideInDown {
+    /* ✅ ลบ animation slideInDown - ใช้ fade in แทน */
+    /* @keyframes slideInDown {
       from {
         opacity: 0;
         transform: translateY(-30px);
@@ -258,7 +265,7 @@
         opacity: 1;
         transform: translateY(0);
       }
-    }
+    } */
 
     /* Overlay background when banner visible */
     body.banner-visible::before {
@@ -277,7 +284,7 @@
   <section id="bannerViewPager" class="hidden">
     <img id="bannerImage" src="" alt="Banner" />
     <button id="bannerCloseBtn" class="banner-close-btn" aria-label="ปิด Banner">×</button>
-    <button id="bannerHideToday" class="banner-hide-option">ไม่แสดงอีกในวันนี้</button>
+    <button id="bannerHideToday" class="banner-hide-option">ไม่แสดงในวันนี้อีก</button>
   </section>
 
   <!-- Header -->
@@ -458,6 +465,26 @@
   const BANNER_CONFIG_ID = '9E11bFQAAAI7lNyBlIBO';
   const BANNER_HIDDEN_KEY = 'bannerHiddenToday';
 
+  // ✅ Function: ซ่อน banner สำหรับวันนี้
+  function hideBannerToday() {
+    try {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // รูปแบบ YYYY-MM-DD
+      
+      const data = {
+        hidden: true,
+        hiddenAt: now.toISOString(),
+        hiddenDate: dateStr,
+        url: BANNER_URL
+      };
+      
+      localStorage.setItem(BANNER_HIDDEN_KEY, JSON.stringify(data));
+      console.log('✅ Banner hidden for today:', dateStr);
+    } catch (e) {
+      console.warn('Failed to save banner hide state:', e);
+    }
+  }
+
   // ✅ Function: ตรวจว่า banner ควรแสดงหรือไม่
   function shouldShowBanner() {
     if (!banner) return false;
@@ -478,44 +505,29 @@
         return true;
       }
       
-      // Default: แสดง banner ทุกครั้ง (ไม่ซ่อนวันเดิม)
-      console.log('✅ Showing banner');
+      // ✅ ตรวจสอบว่าเป็นวันเดียวกันหรือไม่
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      
+      if (data.hiddenDate && data.hiddenDate === today) {
+        console.log('❌ Banner hidden for today:', today);
+        return false; // ซ่อนต่อ
+      }
+      
+      // ถ้าเป็นคนละวันแล้ว ให้แสดง banner
+      console.log('✅ New day - showing banner again');
+      localStorage.removeItem(BANNER_HIDDEN_KEY);
       return true;
+      
     } catch (e) {
       console.warn('⚠️ localStorage error:', e);
       return true;
     }
   }
 
-  // ✅ Function: ซ่อน banner สำหรับ session นี้
-  function hideBannerSession() {
-    try {
-      const data = {
-        hidden: true,
-        hiddenAt: new Date().toISOString()
-      };
-      sessionStorage.setItem(BANNER_HIDDEN_KEY, JSON.stringify(data));
-      console.log('✅ Banner hidden for this session');
-    } catch (e) {
-      console.warn('Failed to save banner hide state:', e);
-    }
-  }
-
-  // ✅ Function: ตรวจว่า banner ซ่อนในสessions นี้หรือไม่
-  function isBannerHiddenInSession() {
-    try {
-      const stored = sessionStorage.getItem(BANNER_HIDDEN_KEY);
-      if (!stored) return false;
-      const data = JSON.parse(stored);
-      return data.hidden === true;
-    } catch {
-      return false;
-    }
-  }
-
   // ✅ Function: แสดง banner
   function showBanner() {
-    if (!shouldShowBanner() || isBannerHiddenInSession()) return;
+    if (!shouldShowBanner()) return;
     
     const bannerEl = document.getElementById('bannerViewPager');
     const bannerImg = document.getElementById('bannerImage');
@@ -527,11 +539,19 @@
     tempImg.onload = () => {
       bannerImg.src = BANNER_URL;
       bannerImg.alt = 'Banner Promo';
+      
+      // ✅ แสดง banner ตรงกลางตั้งแต่แรก
       bannerEl.classList.remove('hidden');
-      document.body.classList.add('banner-visible');
+      
+      // ✅ ใช้ setTimeout เล็กน้อยเพื่อให้ CSS transition ทำงาน
+      setTimeout(() => {
+        bannerEl.classList.add('show');
+        document.body.classList.add('banner-visible');
+      }, 10);
+      
       console.log('✅ Banner loaded successfully');
       
-      // Start 10-second countdown
+      // Start 25-second countdown
       startBannerCountdown(bannerEl);
     };
     tempImg.onerror = () => {
@@ -539,18 +559,22 @@
       // Still show banner even if image fails to load initially
       bannerImg.src = BANNER_URL;
       bannerImg.alt = 'Banner Promo';
-      bannerEl.classList.remove('hidden');
-      document.body.classList.add('banner-visible');
       
-      // Start 10-second countdown
+      bannerEl.classList.remove('hidden');
+      setTimeout(() => {
+        bannerEl.classList.add('show');
+        document.body.classList.add('banner-visible');
+      }, 10);
+      
+      // Start 25-second countdown
       startBannerCountdown(bannerEl);
     };
     tempImg.src = BANNER_URL;
   }
 
-  // ✅ Function: นับถอยหลัง 10 วินาที แล้วปิด banner
+  // ✅ Function: นับถอยหลัง 25 วินาที แล้วปิด banner
   function startBannerCountdown(bannerEl) {
-    let countdown = 15;
+    let countdown = 25;
     const countdownEl = document.createElement('div');
     countdownEl.className = 'banner-countdown';
     countdownEl.textContent = countdown;
@@ -580,9 +604,12 @@
       if (countdown <= 0) {
         clearInterval(interval);
         console.log('⏱️ Countdown finished - auto-closing banner');
-        bannerEl.classList.add('hidden');
-        document.body.classList.remove('banner-visible');
-        countdownEl.remove();
+        bannerEl.classList.remove('show'); // ✅ fade out ก่อน
+        setTimeout(() => {
+          bannerEl.classList.add('hidden');
+          document.body.classList.remove('banner-visible');
+          countdownEl.remove();
+        }, 300); // รอให้ fade out เสร็จ
       }
     }, 1000);
     
@@ -602,15 +629,18 @@
     
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
-        console.log('🔘 Close button clicked - removing hidden class');
+        console.log('🔘 Close button clicked - fading out');
         e.preventDefault();
         e.stopPropagation();
         
         if (bannerEl) {
-          console.log('✅ Hiding banner element');
-          bannerEl.classList.add('hidden');
-          document.body.classList.remove('banner-visible');
-          console.log('✅ Banner hidden:', bannerEl.classList);
+          console.log('✅ Fading out banner element');
+          bannerEl.classList.remove('show'); // ✅ fade out ก่อน
+          setTimeout(() => {
+            bannerEl.classList.add('hidden');
+            document.body.classList.remove('banner-visible');
+          }, 300);
+          console.log('✅ Banner hidden');
         } else {
           console.error('❌ Banner element not found');
         }
@@ -622,14 +652,17 @@
     
     if (hideBtn) {
       hideBtn.addEventListener('click', function(e) {
-        console.log('🔘 Hide button clicked - hiding for this session');
+        console.log('🔘 Hide button clicked - hiding for today');
         e.preventDefault();
         e.stopPropagation();
-        hideBannerSession();
+        hideBannerToday();
         
         if (bannerEl) {
-          bannerEl.classList.add('hidden');
-          document.body.classList.remove('banner-visible');
+          bannerEl.classList.remove('show'); // ✅ fade out ก่อน
+          setTimeout(() => {
+            bannerEl.classList.add('hidden');
+            document.body.classList.remove('banner-visible');
+          }, 300);
         }
       });
       console.log('✅ Hide button listener attached');
