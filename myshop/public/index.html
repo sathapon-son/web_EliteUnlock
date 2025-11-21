@@ -313,10 +313,6 @@
             <p class="text-slate-600 mt-1">
               คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
             </p>
-            <p class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
-            font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse">
-              🏷️ ลดราคา ถึง 21/11/68
-            </p>
           </div>
           <div class="flex flex-wrap gap-2">
             <span class="badge bg-emerald-50 text-emerald-700">✔ รับประกันเปิดใช้งาน</span>
@@ -511,7 +507,10 @@
       
       // ✅ ตรวจสอบว่าเป็นวันเดียวกันหรือไม่
       const now = new Date();
-      const today = now.toISOString().split('T')[0];
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
       
       if (data.hiddenDate && data.hiddenDate === today) {
         console.log('❌ Banner hidden for today:', today);
