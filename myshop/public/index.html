@@ -1593,6 +1593,7 @@ document.body.appendChild(forgotModal);
         <table id="ordersTable" class="w-full text-sm border-collapse">
           <thead>
             <tr class="text-left border-b">
+              <th class="p-2">Order #</th>
               <th class="p-2">ชื่อโปรแกรม</th>
               <th class="p-2">สถานะ</th>
               <th class="p-2">เครดิต</th>
@@ -3363,6 +3364,29 @@ if (cartListEl && cartListEl.children.length === 0) {
   }
   function closeHistoryModal(){ hideModalElement(historyModal); }
 
+  // ✅ ฟังก์ชันสำหรับสร้างลำดับหมายเลขคำสั่งซื้อ
+  async function getNextOrderNumber(){
+    const counterRef = doc(db,'counters','orderNumber');
+    try{
+      const result = await runTransaction(db, async (transaction) => {
+        const counterSnap = await transaction.get(counterRef);
+        let nextNumber = 1; // ค่าเริ่มต้น
+        
+        if(counterSnap.exists()){
+          nextNumber = (counterSnap.data().value || 0) + 1;
+        }
+        
+        transaction.set(counterRef, { value: nextNumber });
+        return nextNumber;
+      });
+      return result;
+    } catch(err){
+      console.error('Error getting next order number:', err);
+      // ถ้าเกิดข้อผิดพลาดให้ใช้ timestamp แทน
+      return 1 + Math.floor(Date.now() / 1000 % 100000);
+    }
+  }
+
   async function placeOrder(){
     if(!PENDING_ORDER||!CURRENT_USER) return;
     const uref = doc(db,'users',CURRENT_USER.uid);
@@ -3399,10 +3423,16 @@ if (cartListEl && cartListEl.children.length === 0) {
       document.getElementById('orderMsg').textContent = 'เครดิตไม่เพียงพอ';
       return;
     }
-    const orderRef = await addDoc(collection(db,'orders'),{
+    
+    // ✅ สร้างลำดับหมายเลขคำสั่งซื้อ
+    const orderNumber = await getNextOrderNumber();
+    
+    const orderRef = doc(collection(db,'orders'), String(orderNumber));
+    await setDoc(orderRef, {
       userId: CURRENT_USER.uid,
       userEmail: (CURRENT_USER.email||'').toLowerCase(),
       status: 'pending',
+      orderNumber: orderNumber,
       product: {
         id: PENDING_ORDER.id,
         name: PENDING_ORDER.pack,
@@ -3422,7 +3452,7 @@ if (cartListEl && cartListEl.children.length === 0) {
     });
     const lineName = CURRENT_USER?.email || CURRENT_USER_DOC?.email || 'customer';
     const lineNote = buildLineNote({
-      orderId: orderRef.id,
+      orderId: orderNumber,
       program: PENDING_ORDER.program,
       email: emailForProduct || CURRENT_USER?.email || '',
       username: usernameForProduct || '',
@@ -3471,6 +3501,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       table.innerHTML = `
         <thead>
           <tr class="text-left border-b">
+            <th class="p-2">Order #</th>
             <th class="p-2">สินค้า</th>
             <th class="p-2">ราคา</th>
             <th class="p-2">ลูกค้า</th>
@@ -3495,6 +3526,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       });
       docs.forEach(d=>{
         const data = d.data();
+        const orderNum = data.orderNumber || d.id || '-';
         const status = (data.status||'').toString();
         let statusLabel = status;
         let statusClass = 'bg-slate-100 text-slate-700';
@@ -3540,6 +3572,7 @@ if (cartListEl && cartListEl.children.length === 0) {
         }
 
         tr.innerHTML = `
+          <td class="p-2 align-top font-semibold">${escapeHtml(String(orderNum))}</td>
           <td class="p-2 align-top">${escapeHtml(prodName)}</td>
           <td class="p-2 align-top">${currencyTH(prodPrice)}</td>
           <td class="p-2 align-top">${escapeHtml(data.userEmail||data.userId)}</td>
@@ -5113,6 +5146,19 @@ Line: @825lhqmj`;
         additional: it.additionalDetails || ''
       };
     });
+    // ✅ สร้างลำดับหมายเลขสำหรับแต่ละรายการล่วงหน้า
+    let orderNumbers = [];
+    try {
+      for (let i = 0; i < CART.length; i++) {
+        const num = await getNextOrderNumber();
+        orderNumbers.push(num);
+      }
+    } catch (err) {
+      msg.classList.add('text-red-600');
+      msg.textContent = 'ไม่สามารถสร้างหมายเลขคำสั่งซื้อได้';
+      return;
+    }
+
     const lineName = CURRENT_USER?.email || CURRENT_USER_DOC?.email || 'customer';
     try{
       // Transaction: deduct user credits and create paid orders atomically
@@ -5122,7 +5168,6 @@ Line: @825lhqmj`;
         const bal = (usnap.data()?.credits) || 0;
         if(bal < total) throw new Error('เครดิตไม่เพียงพอ');
         tx.update(uref, { credits: bal - total });
-        const ocol = collection(db,'orders');
         for(let idx=0; idx<CART.length; idx++){
           const it = CART[idx];
           // ✅ ดึงราคาล่าสุดจาก FS_PRODUCTS
@@ -5132,12 +5177,14 @@ Line: @825lhqmj`;
             currentPrice = getEffectivePrice(fsProduct);
           }
           
-          const oref = doc(ocol);
-          if(lineOrders[idx]) lineOrders[idx].orderId = oref.id;
+          const orderNum = orderNumbers[idx] || (1 + idx);
+          const oref = doc(db,'orders', String(orderNum));
+          if(lineOrders[idx]) lineOrders[idx].orderId = orderNum;
           tx.set(oref, {
             userId: CURRENT_USER.uid,
             userEmail: (CURRENT_USER.email||'').toLowerCase(),
             status: 'pending',
+            orderNumber: orderNum,
             product: {
               id: it.id,
               name: it.name,
@@ -5352,7 +5399,7 @@ Line: @825lhqmj`;
   function renderUserHistory(docs){
     const tbody = document.getElementById('ordersTbody');
     if(!tbody) return;
-    if(!docs.length){ tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-slate-500">ยังไม่มีคำสั่งซื้อ</td></tr>'; return; }
+    if(!docs.length){ tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-slate-500">ยังไม่มีคำสั่งซื้อ</td></tr>'; return; }
     // sort by createdAt desc client-side
     docs.sort((a,b)=>{
       const ta = a.createdAt?.toMillis?.() || 0;
@@ -5361,6 +5408,7 @@ Line: @825lhqmj`;
     });
     tbody.innerHTML = '';
     docs.forEach(p=>{
+      const orderNum = p.orderNumber || p.id || '-';
       const prodName = p.product?.name || p.pack || p.name || '';
       const prodPrice = p.product?.price ?? p.price ?? 0;
       const statusRaw = (p.status||'').toString();
@@ -5389,6 +5437,7 @@ Line: @825lhqmj`;
         : '<span class="text-slate-400">-</span>';
 
       tr.innerHTML = `
+        <td class="p-2 align-top font-semibold">${escapeHtml(String(orderNum))}</td>
         <td class="p-2 align-top">${escapeHtml(prodName)}</td>
         <td class="p-2 align-top whitespace-nowrap"><span class="px-2 py-1 rounded ${statusClass} text-sm">${escapeHtml(statusLabel)}</span></td>
         <td class="p-2 align-top">${currencyTH(prodPrice)}</td>

@@ -44,8 +44,7 @@ exports.order = onRequest(
           "🪙 มีคำขอเติมเครดิตใหม่",
           `👤 ลูกค้า: ${userEmail}`,
           `💰 จำนวน: ${amt.toLocaleString()} เครดิต`,
-          `🔗 หลักฐาน: ${proofImageUrl || 'ไม่มี'}`,
-          `⏳ สถานะ: รอตรวจสอบ`
+          `🔗 หลักฐาน: ${proofImageUrl || 'ไม่มี'}`
         ].join('\n');
         console.log('Credit request LINE notification:', { userEmail, amt, proofImageUrl });
       } else {

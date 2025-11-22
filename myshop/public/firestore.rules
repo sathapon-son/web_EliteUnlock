@@ -67,8 +67,10 @@ service cloud.firestore {
     // แก้ไข: ให้ทุกคนที่ sign in แล้วสามารถสั่งซื้อได้
     match /orders/{id} {
       // อนุญาตให้สร้าง order ได้ถ้า sign in แล้ว
+      // รองรับทั้ง addDoc() และ setDoc() ด้วย Document ID ที่เฉพาะเจาะจง
       allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.orderNumber is int;
       
       // อ่านได้ถ้าเป็นเจ้าของ order หรือเป็น admin
       allow read: if isSignedIn() && (
@@ -134,6 +136,11 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time;
 
       allow update, delete: if false;
+    }
+
+    // ===== counters (for order numbering) =====
+    match /counters/{counter} {
+      allow read, write: if isSignedIn();
     }
   }
 }
