@@ -277,6 +277,13 @@
       z-index: 35;
       backdrop-filter: blur(2px);
     }
+
+    /* Discount button active state */
+    #discountToggleBtn.active {
+      background: linear-gradient(to right, #10b981, #059669);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+      animation: none;
+    }
   </style>
 </head>
 
@@ -313,6 +320,12 @@
             <p class="text-slate-600 mt-1">
               คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
             </p>
+            <div id="discountSection" class="hidden">
+              <button id="discountToggleBtn" onclick="filterDiscountedPackages()" class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
+              font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse hover:shadow-xl hover:scale-105 transition-transform cursor-pointer border-0">
+                🏷️ ลดราคา ถึง 30/11/68
+              </button>
+            </div>
           </div>
           <div class="flex flex-wrap gap-2">
             <span class="badge bg-emerald-50 text-emerald-700">✔ รับประกันเปิดใช้งาน</span>
@@ -626,6 +639,12 @@
 
   // ✅ Event Listeners สำหรับ Banner
   document.addEventListener('DOMContentLoaded', () => {
+    // Initialize discount section visibility based on DISCOUNT variable
+    const discountSection = document.getElementById('discountSection');
+    if (discountSection && DISCOUNT) {
+      discountSection.classList.remove('hidden');
+    }
+
     const closeBtn = document.getElementById('bannerCloseBtn');
     const hideBtn = document.getElementById('bannerHideToday');
     const bannerEl = document.getElementById('bannerViewPager');
@@ -747,6 +766,7 @@
   const PROGRAM_FILTER_KEY = 'selectedProgram';
   // Do not persist selected program across page reloads; always default to all programs
   let SELECTED_PROGRAM = '';
+  let DISCOUNT = true; // เริ่มต้นแสดงส่วนลด
 
   function updateProgramDropdown() {
     const filterEl = document.getElementById('programFilter');
@@ -865,6 +885,22 @@
     // Program filter works independently - resets search
     render(groupByProgram(filtered), "");
   }
+
+  function filterDiscountedPackages() {
+    const filterEl = document.getElementById('programFilter');
+    console.log('🏷️ filterDiscountedPackages clicked');
+    console.log('filterEl:', filterEl);
+    console.log('FS_PRODUCTS length:', FS_PRODUCTS.length);
+    
+    if (filterEl) {
+      filterEl.value = '__DISCOUNT__';
+      console.log('Set filter value to: __DISCOUNT__');
+      onProgramFilterChange();
+    }
+  }
+
+  // Make function available to global scope (for HTML onclick)
+  window.filterDiscountedPackages = filterDiscountedPackages;
 
   // ----- Firebase Configuration -----
   const firebaseConfig = {
@@ -2549,6 +2585,24 @@ if (cartListEl && cartListEl.children.length === 0) {
       fields.appendChild(wrap);
     }
     document.getElementById('detailMsg').textContent = '';
+    
+    // ✅ ตรวจสอบและควบคุมปุ่มตามราคา = 0
+    const addBtn = document.getElementById('detailAddCart');
+    const priceValue = Number(p.price) || 0;
+    if(addBtn) {
+      if(priceValue === 0) {
+        addBtn.disabled = true;
+        addBtn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
+        addBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+        addBtn.textContent = '❌ ไม่พร้อมขาย';
+      } else {
+        addBtn.disabled = false;
+        addBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
+        addBtn.classList.add('bg-indigo-600');
+        addBtn.textContent = 'เพิ่มในตะกร้า';
+      }
+    }
+    
     panel.classList.remove('hidden');
     // scroll into view
     try{ panel.scrollIntoView({behavior:'smooth', block:'center'}); }catch{}
@@ -2577,6 +2631,13 @@ if (cartListEl && cartListEl.children.length === 0) {
     const p = CURRENT_DETAIL_PRODUCT;
     const msgEl = document.getElementById('detailMsg'); msgEl.textContent=''; msgEl.className='text-sm text-red-600';
     if(!p){ msgEl.textContent = 'ไม่พบสินค้า'; return; }
+    
+    // ✅ ตรวจสอบราคา = 0 (สินค้าที่ไม่พร้อมขาย)
+    const price = Number(p.price) || 0;
+    if(price === 0) {
+      msgEl.textContent = '❌ สินค้านี้ไม่พร้อมขายในขณะนี้';
+      return;
+    }
     
     // collect dynamic details
     const details = {
@@ -3296,6 +3357,13 @@ if (cartListEl && cartListEl.children.length === 0) {
     const profile = usnap.data();
     const bal = profile?.credits||0;
     const price = Number(PENDING_ORDER.price||0);
+    
+    // ✅ ตรวจสอบราคา = 0 (สินค้าที่ไม่พร้อมขาย)
+    if(price === 0) {
+      document.getElementById('orderMsg').textContent = '❌ สินค้านี้ไม่พร้อมขายในขณะนี้';
+      return;
+    }
+    
     const emailForProduct = document.getElementById('orderEmailInput').value.trim();
     const passwordForProduct = document.getElementById('orderPasswordInput')?.value?.trim()||'';
     const usernameForProduct = document.getElementById('orderUsernameInput')?.value?.trim()||'';
@@ -4867,6 +4935,24 @@ Line: @825lhqmj`;
       fields.appendChild(wrap);
     }
     document.getElementById('pdMsg').textContent='';
+    
+    // ✅ ตรวจสอบและควบคุมปุ่มตามราคา = 0
+    const pdAddCartBtn = document.getElementById('pdAddCart');
+    const priceVal = Number(p.price) || 0;
+    if(pdAddCartBtn) {
+      if(priceVal === 0) {
+        pdAddCartBtn.disabled = true;
+        pdAddCartBtn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
+        pdAddCartBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+        pdAddCartBtn.textContent = '❌ ไม่พร้อมขาย';
+      } else {
+        pdAddCartBtn.disabled = false;
+        pdAddCartBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-400');
+        pdAddCartBtn.classList.add('bg-indigo-600');
+        pdAddCartBtn.textContent = 'เพิ่มในตะกร้า';
+      }
+    }
+    
     showModalElement(productModal);
   }
   function closeProductModal(){ hideModalElement(productModal); PRODUCT_SELECTED=null; }
@@ -4975,6 +5061,17 @@ Line: @825lhqmj`;
     }
 
     if(!CART.length){ msg.classList.add('text-slate-500'); msg.textContent = 'ตะกร้าว่าง'; return; }
+    
+    // ✅ ตรวจสอบว่าสินค้าใดมีราคา = 0
+    for(let i=0; i<CART.length; i++){
+      const fsProduct = FS_PRODUCTS.find(p => p.id === CART[i].id);
+      const currentPrice = fsProduct ? getEffectivePrice(fsProduct) : (CART[i].price || 0);
+      if(currentPrice === 0) {
+        msg.classList.add('text-red-600');
+        msg.textContent = `❌ "${CART[i].name}" ไม่พร้อมขายในขณะนี้ กรุณาลบออกจากตะกร้า`;
+        return;
+      }
+    }
     // validate required fields for each item
     for(let i=0;i<CART.length;i++){
       const it = CART[i];
@@ -5078,6 +5175,15 @@ Line: @825lhqmj`;
   document.getElementById('pdAddCart').addEventListener('click', ()=>{
     if(!PRODUCT_SELECTED){ return; }
     const msg = document.getElementById('pdMsg'); msg.textContent=''; msg.className='text-sm';
+    
+    // ✅ ตรวจสอบราคา = 0 (สินค้าที่ไม่พร้อมขาย)
+    const price = Number(PRODUCT_SELECTED.price) || 0;
+    if(price === 0) {
+      msg.classList.add('text-red-600');
+      msg.textContent = '❌ สินค้านี้ไม่พร้อมขายในขณะนี้';
+      return;
+    }
+    
     const details = {
       emailForProduct: document.getElementById('pdEmail')?.value?.trim()||'',
       usernameForProduct: document.getElementById('pdUsername')?.value?.trim()||'',
