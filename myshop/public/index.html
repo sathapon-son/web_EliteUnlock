@@ -2799,12 +2799,25 @@ if (cartListEl && cartListEl.children.length === 0) {
 
       const oldPrice = oldPriceMap[cartItem.id];
       const newPrice = getEffectivePrice(product);
+      const oldPriceValue = oldPrice ? oldPrice.price : null;
+      const oldAgentPrice = oldPrice ? oldPrice.agentPrice : null;
 
-      // ถ้าราคาเปลี่ยนแปลง ให้อัปเดต
+      // ✅ ตรวจสอบว่ามีการเปลี่ยนแปลงราคาหรือไม่
+      // หากมี oldPrice แสดงว่ามีการเปลี่ยนแปลง
+      // หากไม่มี oldPrice แต่ cartItem มีราคา แสดงว่าอาจจำเป็นต้องตรวจสอบ
       if (oldPrice && (oldPrice.price !== product.price || oldPrice.agentPrice !== product.agentPrice)) {
         cartItem.price = newPrice;
         hasChanges = true;
         console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${oldPrice.price}, ราคาใหม่: ${product.price}`);
+      }
+      // ✅ ป้องกันราคา 0 (สินค้าที่ไม่พร้อมขาย) - อัปเดต cart item ด้วย
+      else {
+        // ตรวจสอบว่ามีการเปลี่ยนแปลงจากราคา > 0 เป็น 0 หรือ ตัวแทนราคาเปลี่ยน
+        if (cartItem.price !== newPrice && (cartItem.price > 0 || newPrice === 0)) {
+          cartItem.price = newPrice;
+          hasChanges = true;
+          console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${cartItem.price}, ราคาใหม่: ${newPrice}`);
+        }
       }
     });
 
@@ -4787,69 +4800,66 @@ Line: @825lhqmj`;
     showModalElement(cartModal);
 
     // ✅ ตั้ง listener real-time เพื่ออัปเดตตะกร้าอัตโนมัติเมื่อตะกร้าเปิดอยู่
-    if (!CART_LISTENER_ACTIVE) {
-      CART_LISTENER_ACTIVE = true;
-      console.log('✅ เปิด Cart Listener - ตะกร้าจะอัปเดตอัตโนมัติ');
-
-      // ฟังการเปลี่ยนแปลงของ products collection
-      const colRef = collection(db, 'products');
-      const unsubscribe = onSnapshot(colRef, (snap) => {
-        // ✅ ตรวจสอบว่าตะกร้ายังเปิดอยู่หรือไม่
-        const cartModalEl = document.getElementById('cartModal');
-        if (!cartModalEl || cartModalEl.classList.contains('hidden')) {
-          console.log('❌ ตะกร้าปิดแล้ว - ยกเลิก listener');
-          CART_LISTENER_ACTIVE = false;
-          if (unsubscribe) unsubscribe();
-          return;
-        }
-
-        // ✅ ตรวจสอบว่ามี cartList element หรือไม่ (ป้องกัน error)
-        const cartList = document.getElementById('cartList');
-        if (!cartList) {
-          console.warn('⚠️ ไม่พบ cartList element');
-          return;
-        }
-
-        // ✅ ดึงราคาล่าสุดจาก Firestore และอัปเดตตะกร้า
-        const oldFSProducts = FS_PRODUCTS;
-        FS_PRODUCTS = snap.docs.map(d => ({
-          id: d.id,
-          program: d.data().program || 'อื่น ๆ',
-          pack: d.data().name || d.data().pack || 'สินค้า',
-          price: Number(d.data().price) || 0,
-          agentPrice: Number(d.data().agentPrice) || 0,
-          image: d.data().image || '',
-          requiresEmail: !!d.data().requiresEmail,
-          requiresUsername: !!d.data().requiresUsername,
-          requiresSN: !!d.data().requiresSN,
-          requiresIMEI: !!d.data().requiresIMEI,
-          requiresPassword: !!d.data().requiresPassword,
-          requiresDetails: !!d.data().requiresDetails,
-          details: d.data().details || '',
-          type: (function(){
-            const data = d.data() || {};
-            if(data.type) return data.type;
-            if(data.isCredit) return 'credit';
-            const combined = ((data.program||'') + ' ' + (data.name||'')).toLowerCase();
-            if(combined.includes('เติมเครดิต')) return 'credit';
-            return 'normal';
-          })()
-        })).filter(x => (Number(x.price) || 0) > 0 || (Number(x.agentPrice) || 0) > 0);
-
-        // ✅ Debounce การ render เพื่อไม่ให้ render บ่อยเกินไป
-        if (CART_AUTO_UPDATE_TIMEOUT) {
-          clearTimeout(CART_AUTO_UPDATE_TIMEOUT);
-        }
-
-        CART_AUTO_UPDATE_TIMEOUT = setTimeout(() => {
-          console.log('✅ อัปเดตตะกร้า - ราคาล่าสุด');
-          renderCart();
-        }, 300);
-      });
-
-      // ✅ เก็บ unsubscribe function เพื่อใช้ปิด listener
-      _CART_LISTENER_UNSUB = unsubscribe;
+    // ปิด listener เก่า (ถ้ามี) ก่อนตั้งใหม่
+    if (_CART_LISTENER_UNSUB) {
+      _CART_LISTENER_UNSUB();
+      _CART_LISTENER_UNSUB = null;
     }
+
+    CART_LISTENER_ACTIVE = true;
+    console.log('✅ เปิด Cart Listener - ตะกร้าจะอัปเดตอัตโนมัติ');
+
+    // ฟังการเปลี่ยนแปลงของ products collection
+    const colRef = collection(db, 'products');
+    const unsubscribe = onSnapshot(colRef, (snap) => {
+      // ✅ ตรวจสอบว่าตะกร้ายังเปิดอยู่หรือไม่
+      const cartModalEl = document.getElementById('cartModal');
+      if (!cartModalEl || cartModalEl.classList.contains('hidden')) {
+        console.log('❌ ตะกร้าปิดแล้ว - ยกเลิก listener');
+        CART_LISTENER_ACTIVE = false;
+        if (unsubscribe && typeof unsubscribe === 'function') unsubscribe();
+        _CART_LISTENER_UNSUB = null;
+        return;
+      }
+
+      // ✅ ดึงราคาล่าสุดจาก Firestore และอัปเดต FS_PRODUCTS
+      FS_PRODUCTS = snap.docs.map(d => ({
+        id: d.id,
+        program: d.data().program || 'อื่น ๆ',
+        pack: d.data().name || d.data().pack || 'สินค้า',
+        price: Number(d.data().price) || 0,
+        agentPrice: Number(d.data().agentPrice) || 0,
+        image: d.data().image || '',
+        requiresEmail: !!d.data().requiresEmail,
+        requiresUsername: !!d.data().requiresUsername,
+        requiresSN: !!d.data().requiresSN,
+        requiresIMEI: !!d.data().requiresIMEI,
+        requiresPassword: !!d.data().requiresPassword,
+        requiresDetails: !!d.data().requiresDetails,
+        details: d.data().details || '',
+        type: (function(){
+          const data = d.data() || {};
+          if(data.type) return data.type;
+          if(data.isCredit) return 'credit';
+          const combined = ((data.program||'') + ' ' + (data.name||'')).toLowerCase();
+          if(combined.includes('เติมเครดิต')) return 'credit';
+          return 'normal';
+        })()
+      })).filter(x => (Number(x.price) || 0) > 0 || (Number(x.agentPrice) || 0) > 0);
+
+      // ✅ Debounce การ render เพื่อไม่ให้ render บ่อยเกินไป
+      if (CART_AUTO_UPDATE_TIMEOUT) {
+        clearTimeout(CART_AUTO_UPDATE_TIMEOUT);
+      }
+
+      CART_AUTO_UPDATE_TIMEOUT = setTimeout(() => {
+        console.log('✅ อัปเดตตะกร้า - ราคาล่าสุด');
+        renderCart();
+      }, 300);
+    });
+
+    // ✅ เก็บ unsubscribe function เพื่อใช้ปิด listener
+    _CART_LISTENER_UNSUB = unsubscribe;
   }
 
   function closeCartModal(){
