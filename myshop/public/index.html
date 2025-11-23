@@ -478,11 +478,20 @@
   const BANNER_CONFIG_ID = '9E11bFQAAAI7lNyBlIBO';
   const BANNER_HIDDEN_KEY = 'bannerHiddenToday';
 
+  // ✅ Helper: Get today's date in YYYY-MM-DD format
+  function getTodayDateStr() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   // ✅ Function: ซ่อน banner สำหรับวันนี้
   function hideBannerToday() {
     try {
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0]; // รูปแบบ YYYY-MM-DD
+      const dateStr = getTodayDateStr();
       
       const data = {
         hidden: true,
@@ -492,52 +501,44 @@
       };
       
       localStorage.setItem(BANNER_HIDDEN_KEY, JSON.stringify(data));
-      console.log('✅ Banner hidden for today:', dateStr);
     } catch (e) {
-      console.warn('Failed to save banner hide state:', e);
+      // Silent fail
     }
   }
 
   // ✅ Function: ตรวจว่า banner ควรแสดงหรือไม่
   function shouldShowBanner() {
+    // ถ้า banner setting เป็น false ให้ไม่แสดง
     if (!banner) return false;
+    
+    // ถ้าไม่มี URL ให้ไม่แสดง
+    if (!BANNER_URL) return false;
     
     try {
       const stored = localStorage.getItem(BANNER_HIDDEN_KEY);
-      if (!stored) {
-        console.log('✅ No stored data - showing banner');
-        return true;
-      }
+      if (!stored) return true;
       
       const data = JSON.parse(stored);
       
       // ถ้า URL เปลี่ยน ให้แสดง banner อีกครั้ง
       if (data.url !== BANNER_URL) {
-        console.log('✅ URL changed - showing banner');
         localStorage.removeItem(BANNER_HIDDEN_KEY);
         return true;
       }
       
       // ✅ ตรวจสอบว่าเป็นวันเดียวกันหรือไม่
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const today = `${year}-${month}-${day}`;
+      const today = getTodayDateStr();
       
       if (data.hiddenDate && data.hiddenDate === today) {
-        console.log('❌ Banner hidden for today:', today);
-        return false; // ซ่อนต่อ
+        return false;
       }
       
       // ถ้าเป็นคนละวันแล้ว ให้แสดง banner
-      console.log('✅ New day - showing banner again');
       localStorage.removeItem(BANNER_HIDDEN_KEY);
       return true;
       
     } catch (e) {
-      console.warn('⚠️ localStorage error:', e);
-      return true;
+      return true; // Show on error
     }
   }
 
@@ -565,13 +566,10 @@
         document.body.classList.add('banner-visible');
       }, 10);
       
-      console.log('✅ Banner loaded successfully');
-      
       // Start 25-second countdown
       startBannerCountdown(bannerEl);
     };
     tempImg.onerror = () => {
-      console.warn('❌ Banner image failed to load:', BANNER_URL);
       // Still show banner even if image fails to load initially
       bannerImg.src = BANNER_URL;
       bannerImg.alt = 'Banner Promo';
@@ -651,53 +649,40 @@
     
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
-        console.log('🔘 Close button clicked - fading out');
         e.preventDefault();
         e.stopPropagation();
         
         if (bannerEl) {
-          console.log('✅ Fading out banner element');
-          bannerEl.classList.remove('show'); // ✅ fade out ก่อน
+          bannerEl.classList.remove('show');
           setTimeout(() => {
             bannerEl.classList.add('hidden');
             document.body.classList.remove('banner-visible');
           }, 300);
-          console.log('✅ Banner hidden');
-        } else {
-          console.error('❌ Banner element not found');
         }
       });
-      console.log('✅ Close button listener attached');
-    } else {
-      console.error('❌ Close button not found');
     }
     
     if (hideBtn) {
       hideBtn.addEventListener('click', function(e) {
-        console.log('🔘 Hide button clicked - hiding for today');
         e.preventDefault();
         e.stopPropagation();
         hideBannerToday();
         
         if (bannerEl) {
-          bannerEl.classList.remove('show'); // ✅ fade out ก่อน
+          bannerEl.classList.remove('show');
           setTimeout(() => {
             bannerEl.classList.add('hidden');
             document.body.classList.remove('banner-visible');
           }, 300);
         }
       });
-      console.log('✅ Hide button listener attached');
-    } else {
-      console.error('❌ Hide button not found');
     }
     
-    // ✅ แสดง banner หลังจากโหลด config จาก Firestore เสร็จ
+    // ✅ โหลด banner config แล้วแสดง banner
     loadBannerConfig().then(() => {
-      console.log('✅ Banner config ready, showing banner');
       showBanner();
     }).catch(err => {
-      console.error('❌ Failed to load banner config, skipping banner:', err);
+      // Silent fail
     });
   });
 
@@ -965,12 +950,9 @@
         const data = snap.data();
         BANNER_URL = data.BANNER_URL || BANNER_URL;
         banner = data.banner !== undefined ? data.banner : true;
-        console.log('✅ Banner config loaded from Firestore:', { BANNER_URL, banner });
-      } else {
-        console.warn('⚠️ Banner config document not found, using defaults');
       }
     } catch (err) {
-      console.error('❌ Failed to load banner config:', err);
+      // Silent fail
     }
   }
 
