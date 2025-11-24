@@ -2246,7 +2246,38 @@ if (cartListEl && cartListEl.children.length === 0) {
       if(!g[k]) g[k]=[];
       g[k].push(it);
     }
-    return g;
+    
+    // ✅ เรียงแพ็กเกจตามลำดับที่กำหนด
+    const priorityOrder = [
+      'A12+ iCloud Bypass (No signal)',
+      'Digital Tool Rent (เช่า)',
+      'Unlocktool',
+      'TSM TOOL PRO',
+      'Android Multi Tool (AMT)',
+      'FRPFILE Remove Screen Time & Bypass iCloud Open Menu (NOT FMI OFF) *ต้องเข้าหน้าหลักได้และไม่ติดรายเดือน',
+      'Microsoft Office',
+      'Microsoft Windows',
+      'EFT Tool PRO - Without Dongle'
+    ];
+    
+    // สร้าง object ใหม่ที่เรียงตามลำดับที่กำหนด
+    const sortedG = {};
+    
+    // เพิ่มแพ็กเกจตามลำดับความสำคัญ
+    for(const prog of priorityOrder){
+      if(g[prog]){
+        sortedG[prog] = g[prog];
+        delete g[prog];
+      }
+    }
+    
+    // เพิ่มแพ็กเกจที่เหลือเรียงตาม a-z (ทั้งภาษาไทยและอังกฤษ)
+    const remainingKeys = Object.keys(g).sort((a,b) => a.localeCompare(b, ['th','en']));
+    for(const key of remainingKeys){
+      sortedG[key] = g[key];
+    }
+    
+    return sortedG;
   }
 
   // Parse duration from a package name into months (number). Returns Infinity when unknown.
