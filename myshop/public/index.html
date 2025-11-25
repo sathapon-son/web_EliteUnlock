@@ -617,7 +617,7 @@
       
       if (countdown <= 0) {
         clearInterval(interval);
-        console.log('⏱️ Countdown finished - auto-closing banner');
+        //console.log('⏱️ Countdown finished - auto-closing banner');
         bannerEl.classList.remove('show'); // ✅ fade out ก่อน
         setTimeout(() => {
           bannerEl.classList.add('hidden');
@@ -631,7 +631,7 @@
     bannerEl.addEventListener('click', () => {
       clearInterval(interval);
       countdownEl.remove();
-      console.log('⏱️ Countdown cancelled - user interaction detected');
+      //console.log('⏱️ Countdown cancelled - user interaction detected');
     }, { once: true });
   }
 
@@ -873,13 +873,13 @@
 
   function filterDiscountedPackages() {
     const filterEl = document.getElementById('programFilter');
-    console.log('🏷️ filterDiscountedPackages clicked');
-    console.log('filterEl:', filterEl);
-    console.log('FS_PRODUCTS length:', FS_PRODUCTS.length);
+    //console.log('🏷️ filterDiscountedPackages clicked');
+    //console.log('filterEl:', filterEl);
+    //console.log('FS_PRODUCTS length:', FS_PRODUCTS.length);
     
     if (filterEl) {
       filterEl.value = '__DISCOUNT__';
-      console.log('Set filter value to: __DISCOUNT__');
+      //console.log('Set filter value to: __DISCOUNT__');
       onProgramFilterChange();
     }
   }
@@ -971,10 +971,10 @@
     
     try {
       // Debug auth info
-      console.log('Current User:', CURRENT_USER);
-      console.log('User Email:', CURRENT_USER.email);
+      //console.log('Current User:', CURRENT_USER);
+      //console.log('User Email:', CURRENT_USER.email);
       const token = await CURRENT_USER.getIdToken();
-      console.log('Auth Token:', token);
+      //console.log('Auth Token:', token);
       
       const storage = getStorage(app);
       const fileExt = file.name.split('.').pop().toLowerCase();
@@ -988,21 +988,21 @@
       
       // Create full path: slips/email/YYYY-MM-DD/timestamp_random.ext
       const fileName = `${folder}/${emailFolder}/${dateFolder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-      console.log('Uploading to path:', fileName);
+      //console.log('Uploading to path:', fileName);
       
       const storageRef = ref(storage, fileName);
       
       // Upload file first
       const uploadResult = await uploadBytes(storageRef, file);
-      console.log('Upload successful:', uploadResult);
+      //console.log('Upload successful:', uploadResult);
       
       // Then get download URL
       const url = await getDownloadURL(storageRef);
-      console.log('Got download URL:', url);
+      //console.log('Got download URL:', url);
       
       return url;
     } catch (error) {
-      console.error('Storage error:', error);
+      //console.error('Storage error:', error);
       if (error.code === 'storage/unauthorized') {
         throw new Error('ไม่สามารถเข้าถึงพื้นที่จัดเก็บได้ กรุณาลองเข้าสู่ระบบใหม่');
       }
@@ -2708,12 +2708,12 @@ if (cartListEl && cartListEl.children.length === 0) {
   // ✅ ฟังก์ชันคำนวณเครดิตสะสมทั้งหมด (แก้ไขแล้ว)
   async function updateTotalTopupCredits() {
     if (!CURRENT_USER) {
-      console.log('ไม่มีผู้ใช้ล็อกอิน');
+      //console.log('ไม่มีผู้ใช้ล็อกอิน');
       return;
     }
 
   try {
-    console.log('กำลังคำนวณเครดิตสะสมสำหรับ:', CURRENT_USER.uid);
+    //console.log('กำลังคำนวณเครดิตสะสมสำหรับ:', CURRENT_USER.uid);
     
     const q = query(
       collection(db, 'creditRequests'),
@@ -2724,24 +2724,24 @@ if (cartListEl && cartListEl.children.length === 0) {
     const snap = await getDocs(q);
     let totalCredits = 0;
     
-    console.log('พบคำขอเติมเครดิต:', snap.size, 'รายการ');
+    //console.log('พบคำขอเติมเครดิต:', snap.size, 'รายการ');
     
     snap.forEach(doc => {
       const data = doc.data();
       const amount = Number(data.amount || 0);
       totalCredits += amount;
-      console.log('คำขอ:', doc.id, 'จำนวน:', amount, 'เครดิต');
+      //console.log('คำขอ:', doc.id, 'จำนวน:', amount, 'เครดิต');
     });
 
     const totalEl = document.getElementById('userTotalTopup');
     if (totalEl) {
       totalEl.textContent = `${totalCredits.toLocaleString('th-TH')} เครดิต`;
-      console.log('อัปเดตเครดิตสะสมแล้ว:', totalCredits, 'เครดิต');
+      //console.log('อัปเดตเครดิตสะสมแล้ว:', totalCredits, 'เครดิต');
     } else {
-      console.log('ไม่พบ element userTotalTopup');
+      //console.log('ไม่พบ element userTotalTopup');
     }
   } catch (err) {
-    console.error('❌ อัปเดตเครดิตสะสมล้มเหลว:', err);
+    //console.error('❌ อัปเดตเครดิตสะสมล้มเหลว:', err);
     const totalEl = document.getElementById('userTotalTopup');
     if (totalEl) totalEl.textContent = 'ไม่สามารถโหลดข้อมูล';
   }
@@ -2823,7 +2823,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       if (oldPrice && (oldPrice.price !== product.price || oldPrice.agentPrice !== product.agentPrice)) {
         cartItem.price = newPrice;
         hasChanges = true;
-        console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${oldPrice.price}, ราคาใหม่: ${product.price}`);
+        //console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${oldPrice.price}, ราคาใหม่: ${product.price}`);
       }
       // ✅ ป้องกันราคา 0 (สินค้าที่ไม่พร้อมขาย) - อัปเดต cart item ด้วย
       else {
@@ -2831,7 +2831,7 @@ if (cartListEl && cartListEl.children.length === 0) {
         if (cartItem.price !== newPrice && (cartItem.price > 0 || newPrice === 0)) {
           cartItem.price = newPrice;
           hasChanges = true;
-          console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${cartItem.price}, ราคาใหม่: ${newPrice}`);
+          //console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${cartItem.price}, ราคาใหม่: ${newPrice}`);
         }
       }
     });
@@ -2839,7 +2839,7 @@ if (cartListEl && cartListEl.children.length === 0) {
     // ถ้าราคามีการเปลี่ยนแปลง ให้บันทึก
     if (hasChanges) {
       saveCart();
-      console.log('✅ ตะกร้าได้รับการอัปเดตราคา');
+      //console.log('✅ ตะกร้าได้รับการอัปเดตราคา');
     }
   }
 
@@ -2857,7 +2857,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   function resetActivityTimer() {
     // Skip timeout for admin users
     if (IS_ADMIN) {
-      console.log('Admin user - timeout disabled');
+      //console.log('Admin user - timeout disabled');
       return false;
     }
     
@@ -2880,7 +2880,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       const timeSinceActivity = Date.now() - LAST_ACTIVITY;
       
       if (timeSinceActivity >= TIMEOUT_DURATION && CURRENT_USER) {
-        console.log('Session timeout: logging out due to inactivity');
+        //console.log('Session timeout: logging out due to inactivity');
         await performLogout();
       }
     }, TIMEOUT_DURATION);
@@ -2890,7 +2890,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   function checkInactivityTimeout() {
     // Skip for admin users
     if (IS_ADMIN) {
-      console.log('Admin user - timeout check disabled');
+      //console.log('Admin user - timeout check disabled');
       return false;
     }
     
@@ -2901,7 +2901,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       
       // ✅ ถ้าไม่มีข้อมูลเดิม แสดงว่าเพิ่ง login ใหม่ -> ไม่ควร timeout
       if (!lastActivityStr) {
-        console.log('No previous activity found - fresh login, skipping timeout check');
+        //console.log('No previous activity found - fresh login, skipping timeout check');
         // บันทึก timestamp ปัจจุบันสำหรับ session ใหม่
         resetActivityTimer();
         return false;
@@ -2909,7 +2909,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       
       const lastActivityTime = parseInt(lastActivityStr, 10);
       if (isNaN(lastActivityTime)) {
-        console.log('Invalid activity timestamp, skipping timeout check');
+        //console.log('Invalid activity timestamp, skipping timeout check');
         // บันทึก timestamp ใหม่
         resetActivityTimer();
         return false;
@@ -2919,21 +2919,21 @@ if (cartListEl && cartListEl.children.length === 0) {
       
       // ✅ ถ้าเวลาผ่านไปน้อยกว่า 10 วินาที แสดงว่าเพิ่ง login -> skip
       if (timeSinceLastActivity < 10000) {
-        console.log('Recent activity detected (< 10s), skipping timeout check');
+        //console.log('Recent activity detected (< 10s), skipping timeout check');
         // อัปเดต timestamp
         resetActivityTimer();
         return false;
       }
       
       if (timeSinceLastActivity >= TIMEOUT_DURATION) {
-        console.log('Inactivity timeout detected after page reload. Time elapsed:', timeSinceLastActivity, 'ms');
+        //console.log('Inactivity timeout detected after page reload. Time elapsed:', timeSinceLastActivity, 'ms');
         return true; // Timeout detected
       }
       
       // ไม่ timeout แต่ควรอัปเดต timestamp
       resetActivityTimer();
     } catch (e) {
-      console.warn('Error checking inactivity timeout:', e);
+      //console.warn('Error checking inactivity timeout:', e);
       // กรณีเกิด error ให้ reset timer
       try { resetActivityTimer(); } catch(_) {}
     }
@@ -2945,7 +2945,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   function startActivityMonitoring() {
     // Skip for admin users
     if (IS_ADMIN) {
-      console.log('Admin user - activity monitoring disabled');
+      //console.log('Admin user - activity monitoring disabled');
       return; // Don't set up activity monitoring for admins
     }
     
@@ -4081,7 +4081,7 @@ Line: @825lhqmj`;
       if (!amount || amount < 1) throw new Error('จำนวนเครดิตต้องมากกว่า 0');
       if (!proofImageUrl) throw new Error('กรุณาแนบหลักฐานการโอนเงิน');
 
-      console.log('Submitting credit request:', { amount, proofImageUrl });
+      //console.log('Submitting credit request:', { amount, proofImageUrl });
 
       // Create credit request only
       const requestRef = await addDoc(collection(db, 'creditRequests'), {
@@ -4288,7 +4288,7 @@ Line: @825lhqmj`;
       const uref = doc(db, 'users', userId);
       const userSnap = await getDoc(uref);
       if (!userSnap.exists()) {
-        console.log('checkAndUpgradeAgent: User document not found');
+        //console.log('checkAndUpgradeAgent: User document not found');
         return false;
       }
       
@@ -4296,7 +4296,7 @@ Line: @825lhqmj`;
       const isAlreadyAgent = userData.isAgent === true && (userData.role === 2 || Number(userData.role) === 2);
       
       if (isAlreadyAgent) {
-        console.log('checkAndUpgradeAgent:', userId, 'already an agent, skipping upgrade');
+        //console.log('checkAndUpgradeAgent:', userId, 'already an agent, skipping upgrade');
         return false;
       }
       
@@ -4309,7 +4309,7 @@ Line: @825lhqmj`;
       const snap = await getDocs(qref);
       let total = 0;
       snap.forEach(s => { const d = s.data(); total += Number(d.amount || 0); });
-      console.log('checkAndUpgradeAgent:', userId, 'totalApprovedCredits=', total);
+      //console.log('checkAndUpgradeAgent:', userId, 'totalApprovedCredits=', total);
       
       const THRESHOLD = 4500;
       if (total >= THRESHOLD) {
@@ -4320,7 +4320,7 @@ Line: @825lhqmj`;
             role: 2,
             agentActivatedAt: serverTimestamp() 
           });
-          console.log('✅ Upgraded user to agent:', userId);
+          //console.log('✅ Upgraded user to agent:', userId);
         } catch(e){ 
           console.warn('Failed to mark user isAgent in profile', e); 
           return false;
@@ -4723,7 +4723,7 @@ Line: @825lhqmj`;
   }
 
   function listenCreditRequests() {
-    console.log('Starting listenCreditRequests');
+    //console.log('Starting listenCreditRequests');
     try {
       if (CREDIT_REQUESTS_UNSUB) {
         CREDIT_REQUESTS_UNSUB();
@@ -4731,7 +4731,7 @@ Line: @825lhqmj`;
       }
 
       if (!CURRENT_USER) {
-        console.log('No user logged in, not listening for credit requests');
+        //console.log('No user logged in, not listening for credit requests');
         return;
       }
 
@@ -4993,7 +4993,7 @@ Line: @825lhqmj`;
     }
 
     CART_LISTENER_ACTIVE = true;
-    console.log('✅ เปิด Cart Listener - ตะกร้าจะอัปเดตอัตโนมัติ');
+    //console.log('✅ เปิด Cart Listener - ตะกร้าจะอัปเดตอัตโนมัติ');
 
     // ฟังการเปลี่ยนแปลงของ products collection
     const colRef = collection(db, 'products');
@@ -5001,7 +5001,7 @@ Line: @825lhqmj`;
       // ✅ ตรวจสอบว่าตะกร้ายังเปิดอยู่หรือไม่
       const cartModalEl = document.getElementById('cartModal');
       if (!cartModalEl || cartModalEl.classList.contains('hidden')) {
-        console.log('❌ ตะกร้าปิดแล้ว - ยกเลิก listener');
+        //console.log('❌ ตะกร้าปิดแล้ว - ยกเลิก listener');
         CART_LISTENER_ACTIVE = false;
         if (unsubscribe && typeof unsubscribe === 'function') unsubscribe();
         _CART_LISTENER_UNSUB = null;
@@ -5039,7 +5039,7 @@ Line: @825lhqmj`;
       }
 
       CART_AUTO_UPDATE_TIMEOUT = setTimeout(() => {
-        console.log('✅ อัปเดตตะกร้า - ราคาล่าสุด');
+        //console.log('✅ อัปเดตตะกร้า - ราคาล่าสุด');
         renderCart();
       }, 300);
     });
@@ -5054,7 +5054,7 @@ Line: @825lhqmj`;
     // ✅ ยกเลิก listener เมื่อปิดตะกร้า
     CART_LISTENER_ACTIVE = false;
     if (_CART_LISTENER_UNSUB) {
-      console.log('❌ ปิด Cart Listener');
+      //console.log('❌ ปิด Cart Listener');
       _CART_LISTENER_UNSUB();
       _CART_LISTENER_UNSUB = null;
     }
@@ -6076,7 +6076,7 @@ Line: @825lhqmj`;
       
       // ✅ Check for inactivity timeout when page reloads or user logs in
       if (checkInactivityTimeout()) {
-        console.log('User session expired due to inactivity');
+        //console.log('User session expired due to inactivity');
         await handleSessionExpired();
         return;
       }

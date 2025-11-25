@@ -1,12 +1,20 @@
 const { onRequest } = require("firebase-functions/v2/https");
 
 const REGION = "asia-southeast1";
+const SECRETS_KEY = 1; // 0 = default, 1 = _1, 2 = _2, etc.
+
+// สร้าง secrets array เฉพาะตัวที่ใช้ตามค่า SECRETS_KEY
+const suffix = SECRETS_KEY === 0 ? '' : `_${SECRETS_KEY}`;
+const secretsArray = [
+  `LINE_CHANNEL_ACCESS_TOKEN${suffix}`,
+  `LINE_TARGET_ID${suffix}`
+];
 
 exports.order = onRequest(
   {
     region: REGION,
     invoker: "public", // อนุญาตให้เรียกจากหน้าเว็บได้โดยไม่ต้อง login
-    secrets: ["LINE_CHANNEL_ACCESS_TOKEN", "LINE_TARGET_ID"],
+    secrets: secretsArray,
   },
   async (req, res) => {
     try {
@@ -28,9 +36,14 @@ exports.order = onRequest(
       const body = req.body || {};
       const { name, product, qty, total, note, type, email, amount, proofImageUrl } = body;
 
-      if (!process.env.LINE_CHANNEL_ACCESS_TOKEN || !process.env.LINE_TARGET_ID) {
-        console.error("Missing LINE secrets");
-        return res.status(500).json({ ok: false, error: "Server not configured with LINE secrets" });
+      // เลือก secrets ตามค่า SECRETS_KEY
+      const suffix = SECRETS_KEY === 0 ? '' : `_${SECRETS_KEY}`;
+      const lineToken = process.env[`LINE_CHANNEL_ACCESS_TOKEN${suffix}`];
+      const lineTargetId = process.env[`LINE_TARGET_ID${suffix}`];
+
+      if (!lineToken || !lineTargetId) {
+        console.error(`Missing LINE secrets for key ${SECRETS_KEY}`);
+        return res.status(500).json({ ok: false, error: `Server not configured with LINE secrets (key: ${SECRETS_KEY})` });
       }
 
       let text;
@@ -62,14 +75,14 @@ exports.order = onRequest(
       }
 
       const payload = {
-        to: process.env.LINE_TARGET_ID,
+        to: lineTargetId,
         messages: [{ type: "text", text }],
       };
 
       const r = await fetch("https://api.line.me/v2/bot/message/push", {
         method: "POST",
         headers: {
-          Authorization: "Bearer " + process.env.LINE_CHANNEL_ACCESS_TOKEN,
+          Authorization: "Bearer " + lineToken,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
