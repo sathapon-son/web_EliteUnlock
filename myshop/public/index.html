@@ -4692,9 +4692,7 @@ Line: @825lhqmj`;
               <div>จำนวน: <span class="font-semibold text-indigo-700">${Number(data.amount || 0).toLocaleString('th-TH')}</span> เครดิต</div>
               <div>วันที่: ${dt}</div>
             </div>
-            ${data.proofImageUrl ? `
-              <a href="${escapeHtml(data.proofImageUrl)}" target="_blank" rel="noopener" class="text-xs text-indigo-600 hover:underline mt-2 inline-block">📋 ดูสลิป</a>
-            ` : ''}
+            
           `;
           historyList.appendChild(item);
         });
@@ -4838,9 +4836,7 @@ Line: @825lhqmj`;
                 จำนวน: <span class="font-semibold">${Number(data.amount || 0).toLocaleString('th-TH')}</span> เครดิต
                 · เวลา: ${dt}
               </div>
-              ${data.proofImageUrl ? `
-                <a href="${data.proofImageUrl}" target="_blank" rel="noopener" class="text-sm text-indigo-600 hover:underline">ดูสลิป</a>
-              ` : ''}
+              
               ${
                 // ปุ่มสำหรับแอดมินเฉพาะในมุมมองแอดมิน และเฉพาะ pending
                 (!isUserView && status === 'pending')
