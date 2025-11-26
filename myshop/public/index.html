@@ -284,6 +284,29 @@
       box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
       animation: none;
     }
+
+    /* ✅ Loading Spinner Animation */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-spinner.small {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #e2e8f0;
+      border-top: 2px solid #3b82f6;
+    }
   </style>
 </head>
 
@@ -1519,6 +1542,100 @@ document.body.appendChild(forgotModal);
       </div>
     </div>`;
   document.body.appendChild(resetPasswordModal);
+
+  // ✅ Slip/Receipt Modal - สำหรับดูรูปภาพหลักฐานการโอนเงิน
+  const slipModal = document.createElement('div');
+  slipModal.className = 'modal fixed inset-0 z-[9999] hidden items-center justify-center overflow-auto';
+  slipModal.id = 'slipModal';
+  slipModal.setAttribute('aria-hidden','true');
+  slipModal.setAttribute('role','dialog');
+  slipModal.setAttribute('aria-modal','true');
+  slipModal.innerHTML = `
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"></div>
+
+    <!-- Dialog -->
+    <div class="relative mx-4 my-8 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl flex-shrink-0">
+      <div class="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 flex flex-col max-h-[85vh]">
+        <!-- Header -->
+        <div class="relative p-4 sm:p-6 border-b border-slate-100 flex-shrink-0">
+          <div class="flex items-center justify-center gap-2">
+            <div class="h-10 w-10 grid place-items-center rounded-xl bg-blue-50 text-2xl">🖼️</div>
+            <h3 class="text-lg sm:text-xl font-bold text-slate-800">ดูหลักฐานการโอนเงิน</h3>
+          </div>
+          <button id="closeSlip"
+                  class="absolute right-3 top-3 sm:right-4 sm:top-4 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                  aria-label="Close">✖</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+          <div id="slipEmailInfo" class="text-xs sm:text-sm text-slate-600 flex-shrink-0">
+            <strong>อีเมล:</strong> <span id="slipEmail" class="break-all"></span>
+          </div>
+          <div class="flex justify-center bg-slate-100 rounded-lg p-3 sm:p-4 min-h-[250px] sm:min-h-[350px] overflow-auto flex-shrink">
+            <img id="slipImage" src="" alt="Receipt/Slip" class="max-w-full max-h-full object-contain rounded-lg border border-slate-300" />
+          </div>
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
+            <a id="slipDownloadBtn" href="" download="slip.png" class="flex-1 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 font-medium shadow transition">
+              ⬇️ ดาวน์โหลด
+            </a>
+            <button id="slipOpenBtn" class="flex-1 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 font-medium shadow transition">
+              🔗 เปิดใหม่
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(slipModal);
+
+  // ✅ ฟังก์ชันแสดง Slip Modal
+  function showSlipModal(imageUrl, userEmail = '') {
+    const imgEl = document.getElementById('slipImage');
+    const emailEl = document.getElementById('slipEmail');
+    const downloadBtn = document.getElementById('slipDownloadBtn');
+    const openBtn = document.getElementById('slipOpenBtn');
+    const imgContainer = imgEl.parentElement;
+    
+    // ✅ Clear รูปเก่าและเพิ่ม spinner
+    imgEl.src = '';
+    imgEl.style.display = 'none';
+    imgContainer.innerHTML = '<div class="flex items-center justify-center w-full h-full"><div class="loading-spinner"></div></div>';
+    
+    emailEl.textContent = userEmail || '-';
+    downloadBtn.href = imageUrl;
+    downloadBtn.download = `slip-${userEmail || 'unknown'}.png`;
+    
+    openBtn.onclick = () => {
+      window.open(imageUrl, '_blank');
+    };
+    
+    // ✅ แสดง Modal ก่อน แล้วค่อย load รูป
+    showModalElement(slipModal);
+    
+    // ✅ Load รูปภาพใหม่
+    const tempImg = new Image();
+    tempImg.onload = () => {
+      imgEl.src = imageUrl;
+      imgEl.alt = 'Receipt/Slip';
+      imgEl.style.display = 'block';
+      imgContainer.innerHTML = '';
+      imgContainer.appendChild(imgEl);
+    };
+    tempImg.onerror = () => {
+      imgEl.src = imageUrl;
+      imgEl.alt = 'ไม่สามารถโหลดรูปภาพ';
+      imgEl.style.display = 'block';
+      imgContainer.innerHTML = '';
+      imgContainer.appendChild(imgEl);
+    };
+    tempImg.src = imageUrl;
+  }
+
+  document.getElementById('closeSlip')?.addEventListener('click', () => {
+    hideModalElement(slipModal);
+  });
 
   // Order Modal
   const orderModal = document.createElement('div');
@@ -3344,7 +3461,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       <div>สินค้า: <strong>${product.pack}</strong></div>
       <div>ราคา: <strong>${currencyTH(product.price)}</strong> เครดิต</div>
       <div>เครดิตคงเหลือ: <strong>${currencyTH(bal)}</strong></div>
-      <div class="${can? 'text-emerald-600':'text-red-600'}">${can? 'สามารถสั่งซื้อได้':'เครดิตไม่เพียงพอ'}</div>`;
+      <div class="${can? 'text-emerald-600':'text-red-600'}">${can? 'สามารถสั่งซื้อได้':'เครดิตไม่เพียงพอ กรุณาเติมเครดิตก่อนสั่งซื้อ'}</div>`;
     document.getElementById('orderEmailBlock').classList.toggle('hidden', !product.requiresEmail);
     document.getElementById('orderEmailInput').value = '';
     document.getElementById('orderPasswordBlock').classList.toggle('hidden', !product.requiresPassword);
@@ -3434,7 +3551,7 @@ if (cartListEl && cartListEl.children.length === 0) {
     if(PENDING_ORDER.requiresIMEI && !imeiForProduct){ document.getElementById('orderMsg').textContent = 'กรุณากรอก IMEI สำหรับสิน้านี้'; return; }
     if(PENDING_ORDER.requiresDetails && !additionalDetails){ document.getElementById('orderMsg').textContent = 'กรุณากรอกรายละเอียดสำหรับสินค้านี้'; return; }
     if(bal < price){
-      document.getElementById('orderMsg').textContent = 'เครดิตไม่เพียงพอ';
+      document.getElementById('orderMsg').textContent = 'เครดิตไม่เพียงพอ กรุณาเติมเครดิตก่อนสั่งซื้อ';
       return;
     }
     
@@ -4692,9 +4809,35 @@ Line: @825lhqmj`;
               <div>จำนวน: <span class="font-semibold text-indigo-700">${Number(data.amount || 0).toLocaleString('th-TH')}</span> เครดิต</div>
               <div>วันที่: ${dt}</div>
             </div>
-            
+            <div class="flex gap-2 mt-2">
+              ${
+                // ปุ่มดูสลิป (เฉพาะ Admin - แสดงหากมีรูปภาพ)
+                data.proofImageUrl
+                  ? `<button class="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700"
+                            data-view-slip-history="${doc.id}">🖼️ ดูสลิป</button>`
+                  : ''
+              }
+            </div>
           `;
           historyList.appendChild(item);
+        });
+
+        // ✅ bind ปุ่มดูสลิปในประวัติ
+        historyList.querySelectorAll('[data-view-slip-history]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try {
+              const requestId = btn.getAttribute('data-view-slip-history');
+              const snap = await getDoc(doc(db, 'creditRequests', requestId));
+              if (snap.exists()) {
+                const data = snap.data();
+                if (data.proofImageUrl) {
+                  showSlipModal(data.proofImageUrl, data.userEmail);
+                } else {
+                  alert('ไม่พบรูปภาพหลักฐาน (ข้อมูลอาจบันทึกเก่า)');
+                }
+              }
+            } catch(e) { alert(e?.message || 'ผิดพลาด'); }
+          });
         });
       });
     } catch (err) {
@@ -4828,7 +4971,7 @@ Line: @825lhqmj`;
 
           listEl.insertAdjacentHTML('beforeend', `
             <div class="p-3 border rounded-md bg-white flex flex-col gap-2">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-2">
                 <div class="font-medium">${data.userEmail || '-'}</div>
                 <span class="px-2 py-0.5 rounded ${statusClass}">${statusText}</span>
               </div>
@@ -4837,17 +4980,24 @@ Line: @825lhqmj`;
                 · เวลา: ${dt}
               </div>
               
-              ${
-                // ปุ่มสำหรับแอดมินเฉพาะในมุมมองแอดมิน และเฉพาะ pending
-                (!isUserView && status === 'pending')
-                  ? `<div class="flex gap-2 pt-2">
-                      <button class="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
+              <div class="flex gap-2 pt-2">
+                ${
+                  // ปุ่มดูสลิป (เฉพาะ Admin view เท่านั้น - แสดงสำหรับทุกสถานะหากมีรูปภาพ)
+                  (!isUserView && data.proofImageUrl)
+                    ? `<button class="px-3 py-1 rounded bg-blue-600 text-white text-sm hover:bg-blue-700"
+                              data-view-slip="${docSnap.id}">🖼️ ดูสลิป</button>`
+                    : ''
+                }
+                ${
+                  // ปุ่มสำหรับแอดมินเฉพาะในมุมมองแอดมิน และเฉพาะ pending
+                  (!isUserView && status === 'pending')
+                    ? `<button class="px-3 py-1 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
                               data-approve="${docSnap.id}">อนุมัติ</button>
-                      <button class="px-3 py-1 rounded bg-red-600 text-white text-sm"
-                              data-reject="${docSnap.id}">ปฏิเสธ</button>
-                    </div>`
-                  : ''
-              }
+                      <button class="px-3 py-1 rounded bg-red-600 text-white text-sm hover:bg-red-700"
+                              data-reject="${docSnap.id}">ปฏิเสธ</button>`
+                    : ''
+                }
+              </div>
             </div>
           `);
         });
@@ -4869,6 +5019,26 @@ Line: @825lhqmj`;
             });
           });
         }
+
+        // ✅ bind ปุ่มดูสลิป (แสดงให้ Admin view เท่านั้น)
+        listEl.querySelectorAll('[data-view-slip]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try {
+              const requestId = btn.getAttribute('data-view-slip');
+              const snap = await getDoc(doc(db, 'creditRequests', requestId));
+              if (snap.exists()) {
+                const data = snap.data();
+                if (data.proofImageUrl) {
+                  showSlipModal(data.proofImageUrl, data.userEmail);
+                } else {
+                  alert('ไม่พบรูปภาพหลักฐาน (ข้อมูลอาจบันทึกเก่า)');
+                }
+              } else {
+                alert('ไม่พบข้อมูลคำขอเติมเครดิต');
+              }
+            } catch(e) { alert(e?.message || 'ผิดพลาด'); }
+          });
+        });
       });
     } catch (err) {
       console.error('listenCreditRequests error', err);
@@ -5237,22 +5407,24 @@ Line: @825lhqmj`;
     });
   }
 
-  // ปุ่มยืนยันการสั่งซื้อจากตะกร้า: ตรวจสอบการล็อกอิน, ฟิลด์ที่ต้องกรอก, เครดิต แล้วสร้างคำสั่งซื้อ
-  async function confirmCartOrders(){
-    const msg = document.getElementById('cartMsg'); msg.textContent=''; msg.className='mt-2 text-sm';
+// ✅ แก้ไขฟังก์ชัน confirmCartOrders()
+async function confirmCartOrders(){
+    const msg = document.getElementById('cartMsg'); 
+    msg.textContent=''; 
+    msg.className='mt-2 text-sm';
+    
     if(!CURRENT_USER){
-      // หลังล็อกอินเสร็จ ให้เปิดตะกร้ากลับมา
       AFTER_LOGIN_ACTION = { action: 'openCart' };
-
-      // ปิดตะกร้าก่อน เพื่อไม่ให้ทับโมดัลล็อกอิน
       hideModalElement(cartModal);
-
-      // แล้วค่อยเปิดหน้าล็อกอิน
       openLoginModal();
       return;
     }
 
-    if(!CART.length){ msg.classList.add('text-slate-500'); msg.textContent = 'ตะกร้าว่าง'; return; }
+    if(!CART.length){ 
+      msg.classList.add('text-slate-500'); 
+      msg.textContent = 'ตะกร้าว่าง'; 
+      return; 
+    }
     
     // ✅ ตรวจสอบว่าสินค้าใดมีราคา = 0
     for(let i=0; i<CART.length; i++){
@@ -5264,16 +5436,42 @@ Line: @825lhqmj`;
         return;
       }
     }
-    // validate required fields for each item
+    
+    // ✅ validate required fields for each item
     for(let i=0;i<CART.length;i++){
       const it = CART[i];
-      if(it.requiresEmail && !it.emailForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอกอีเมลสำหรับ: ${it.name}`; return; }
-      if(it.requiresUsername && !it.usernameForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก Username สำหรับ: ${it.name}`; return; }
-      if(it.requiresSN && !it.snForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก SN/Serial สำหรับ: ${it.name}`; return; }
-      if(it.requiresIMEI && !it.imeiForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก IMEI สำหรับ: ${it.name}`; return; }
-      if(it.requiresPassword && !it.passwordForProduct){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอก รหัสผ่านสำหรับ: ${it.name}`; return; }
-      if(it.requiresDetails && !it.additionalDetails){ msg.classList.add('text-red-600'); msg.textContent = `กรุณากรอกรายละเอียดสำหรับ: ${it.name}`; return; }
+      if(it.requiresEmail && !it.emailForProduct){ 
+        msg.classList.add('text-red-600'); 
+        msg.textContent = `กรุณากรอกอีเมลสำหรับ: ${it.name}`; 
+        return; 
+      }
+      if(it.requiresUsername && !it.usernameForProduct){ 
+        msg.classList.add('text-red-600'); 
+        msg.textContent = `กรุณากรอก Username สำหรับ: ${it.name}`; 
+        return; 
+      }
+      if(it.requiresSN && !it.snForProduct){ 
+        msg.classList.add('text-red-600'); 
+        msg.textContent = `กรุณากรอก SN/Serial สำหรับ: ${it.name}`; 
+        return; 
+      }
+      if(it.requiresIMEI && !it.imeiForProduct){ 
+        msg.classList.add('text-red-600'); 
+        msg.textContent = `กรุณากรอก IMEI สำหรับ: ${it.name}`; 
+        return; 
+      }
+      if(it.requiresPassword && !it.passwordForProduct){ 
+        msg.classList.add('text-red-600'); 
+        msg.textContent = `กรุณากรอก รหัสผ่านสำหรับ: ${it.name}`; 
+        return; 
+      }
+      if(it.requiresDetails && !it.additionalDetails){ 
+        msg.classList.add('text-red-600'); 
+        msg.textContent = `กรุณากรอกรายละเอียดสำหรับ: ${it.name}`; 
+        return; 
+      }
     }
+    
     // ✅ คำนวณราคารวมโดยใช้ราคาล่าสุดจาก FS_PRODUCTS
     let total = 0;
     const lineOrders = CART.map(it => {
@@ -5295,40 +5493,60 @@ Line: @825lhqmj`;
         additional: it.additionalDetails || ''
       };
     });
-    // ✅ สร้างลำดับหมายเลขสำหรับแต่ละรายการล่วงหน้า
-    let orderNumbers = [];
-    try {
-      for (let i = 0; i < CART.length; i++) {
-        const num = await getNextOrderNumber();
-        orderNumbers.push(num);
-      }
-    } catch (err) {
-      msg.classList.add('text-red-600');
-      msg.textContent = 'ไม่สามารถสร้างหมายเลขคำสั่งซื้อได้';
-      return;
-    }
 
     const lineName = CURRENT_USER?.email || CURRENT_USER_DOC?.email || 'customer';
+    
     try{
-      // Transaction: deduct user credits and create paid orders atomically
+      // ✅ Transaction: ตรวจสอบเครดิตก่อน -> สร้าง order number -> หักเครดิตและสร้างคำสั่งซื้อ
+      let orderNumbers = [];
+      
       await runTransaction(db, async (tx)=>{
+        // 1️⃣ ตรวจสอบเครดิตก่อน
         const uref = doc(db,'users',CURRENT_USER.uid);
         const usnap = await tx.get(uref);
         const bal = (usnap.data()?.credits) || 0;
-        if(bal < total) throw new Error('เครดิตไม่เพียงพอ');
+        
+        if(bal < total) {
+          throw new Error('เครดิตไม่เพียงพอ กรุณาเติมเครดิตก่อนทำรายการ');
+        }
+        
+        // 2️⃣ เครดิตเพียงพอ -> สร้าง order numbers
+        const counterRef = doc(db,'counters','orderNumber');
+        const counterSnap = await tx.get(counterRef);
+        let nextNumber = 1;
+        
+        if(counterSnap.exists()){
+          nextNumber = (counterSnap.data().value || 0) + 1;
+        }
+        
+        // สร้างเลขคำสั่งซื้อทั้งหมดในครั้งเดียว
+        for(let i = 0; i < CART.length; i++){
+          orderNumbers.push(nextNumber + i);
+        }
+        
+        // อัปเดต counter เป็นค่าสุดท้าย
+        tx.set(counterRef, { value: nextNumber + CART.length - 1 });
+        
+        // 3️⃣ หักเครดิต
         tx.update(uref, { credits: bal - total });
+        
+        // 4️⃣ สร้างคำสั่งซื้อทั้งหมด
         for(let idx=0; idx<CART.length; idx++){
           const it = CART[idx];
-          // ✅ ดึงราคาล่าสุดจาก FS_PRODUCTS
+          
+          // ดึงราคาล่าสุดจาก FS_PRODUCTS
           let currentPrice = it.price || 0;
           const fsProduct = FS_PRODUCTS.find(p => p.id === it.id);
           if(fsProduct){
             currentPrice = getEffectivePrice(fsProduct);
           }
           
-          const orderNum = orderNumbers[idx] || (1 + idx);
+          const orderNum = orderNumbers[idx];
           const oref = doc(db,'orders', String(orderNum));
+          
+          // อัปเดต lineOrders ด้วย orderId
           if(lineOrders[idx]) lineOrders[idx].orderId = orderNum;
+          
           tx.set(oref, {
             userId: CURRENT_USER.uid,
             userEmail: (CURRENT_USER.email||'').toLowerCase(),
@@ -5356,6 +5574,8 @@ Line: @825lhqmj`;
           });
         }
       });
+      
+      // ✅ ส่งแจ้งเตือน LINE หลังจาก transaction สำเร็จ
       lineOrders.forEach(item => {
         const note = buildLineNote(item);
         notifyLineOrder({
@@ -5366,13 +5586,24 @@ Line: @825lhqmj`;
           note
         });
       });
-      // update local state and UI
+      
+      // ✅ อัปเดต local state และ UI
       if(!CURRENT_USER_DOC) CURRENT_USER_DOC = { credits: 0 };
       CURRENT_USER_DOC.credits = (CURRENT_USER_DOC.credits || 0) - total;
-      CART = []; saveCart(); renderCart(); updateHeaderAuth();
-      msg.classList.add('text-emerald-700'); msg.textContent = 'สั่งซื้อสำเร็จ: หักเครดิตเรียบร้อยแล้ว';
+      CART = []; 
+      saveCart(); 
+      renderCart(); 
+      updateHeaderAuth();
+      
+      msg.classList.add('text-emerald-700'); 
+      msg.textContent = 'สั่งซื้อสำเร็จ: หักเครดิตเรียบร้อยแล้ว';
+      
       setTimeout(()=>{ closeCartModal(); }, 900);
-    }catch(e){ msg.classList.add('text-red-600'); msg.textContent = e.message || 'เกิดข้อผิดพลาดในการทำรายการ'; }
+      
+    }catch(e){ 
+      msg.classList.add('text-red-600'); 
+      msg.textContent = e.message || 'เกิดข้อผิดพลาดในการทำรายการ'; 
+    }
   }
 
   document.getElementById('continueShopping')?.addEventListener('click', ()=>{ confirmCartOrders(); });
