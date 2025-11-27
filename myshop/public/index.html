@@ -486,7 +486,7 @@
   let ADMIN_ORDERS_UNSUB = null;
   let PRODUCTS_UNSUB = null;
   let CREDIT_REQUESTS_UNSUB = null;
-  let TOP_USERS_UNSUB = null;           // ✅ Real-time listener for Top 30 users
+  let TOP_USERS_UNSUB = null;           // ✅ Real-time listener for Top 40 users
   let CREDIT_HISTORY_UNSUB = null;      // ✅ Real-time listener for credit request history
   let CART = [];
   let PENDING_RESET_CODE = null;
@@ -1240,7 +1240,7 @@ function updateSidebar(){
             showModalElement(creditModal);
             try {
               await Promise.all([
-                loadTopUsersList(),        // โหลดเครดิตสะสม Top 30
+                loadTopUsersList(),        // โหลดเครดิตสะสม Top 40
                 loadCreditRequestHistory(),// โหลดประวัติคำขอ 20 รายการล่าสุด
                 listenCreditRequests()     // Live update รายการคำขอ
               ]);
@@ -2116,9 +2116,9 @@ if (cartListEl && cartListEl.children.length === 0) {
               </div>
             </div>
 
-            <!-- หัวข้อที่ 3: เครดิตสะสม Top 30 -->
+            <!-- หัวข้อที่ 3: เครดิตสะสม Top 40 -->
             <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
-              <h4 class="font-semibold mb-3">🏆 เครดิตสะสม Top 30</h4>
+              <h4 class="font-semibold mb-3">🏆 เครดิตสะสม Top 40</h4>
               <div class="overflow-y-auto custom-scrollbar flex-1" style="max-height: 400px;">
                 <table class="w-full text-sm">
                   <thead class="sticky top-0 bg-white border-b">
@@ -2135,9 +2135,9 @@ if (cartListEl && cartListEl.children.length === 0) {
               </div>
             </div>
 
-            <!-- หัวข้อที่ 4: ประวัติคำขอ 20 รายการล่าสุด -->
+            <!-- หัวข้อที่ 4: ประวัติคำขอ 30 รายการล่าสุด -->
             <div class="bg-white rounded-lg border p-4 flex flex-col min-h-0">
-              <h4 class="font-semibold mb-3">📋 ประวัติคำขอ (20 รายการล่าสุด)</h4>
+              <h4 class="font-semibold mb-3">📋 ประวัติคำขอ (30 รายการล่าสุด)</h4>
               <div class="overflow-y-auto custom-scrollbar flex-1 space-y-3" id="creditHistoryList">
                 <div class="text-sm text-slate-400 text-center">กำลังโหลด...</div>
               </div>
@@ -2189,13 +2189,13 @@ if (cartListEl && cartListEl.children.length === 0) {
             <textarea id="pDetails" rows="3" placeholder="กรอกข้อความ" class="border rounded p-2 w-full"></textarea>
             <p class="text-xs text-slate-500 w-full">เพิ่มหลายรายการ: กรอกแพ็กเกจกับราคา (คั่นด้วยเครื่องหมาย , หรือ |) ทีละบรรทัด</p>
             <div class="flex flex-wrap items-center gap-3 w-full">
-              <label class="inline-flex items-center gap-2"><input id="pReqEmail" type="checkbox" /> ต้องการอีเมล</label>
-              <label class="inline-flex items-center gap-2"><input id="pReqPassword" type="checkbox" /> ต้องการรหัสผ่าน</label>
-              <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> ต้องการ Username</label>
-              <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> ต้องการ SN</label>
-              <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> ต้องการ IMEI</label>
-              <label class="inline-flex items-center gap-2"><input id="pReqDetails" type="checkbox" /> ต้องการรายละเอียดจากลูกค้า</label>
-              <label class="inline-flex items-center gap-2"><input id="pTypeCredit" type="checkbox" /> เป็นสินค้าประเภทเครดิต</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqEmail" type="checkbox" /> อีเมล</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqPassword" type="checkbox" /> รหัสผ่าน</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqUsername" type="checkbox" /> Username</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqSN" type="checkbox" /> SN</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqIMEI" type="checkbox" /> IMEI</label>
+              <label class="inline-flex items-center gap-2"><input id="pReqDetails" type="checkbox" /> รายละเอียด</label>
+              <label class="inline-flex items-center gap-2"><input id="pTypeCredit" type="checkbox" /> ประเภทเครดิต</label>
               <button id="addProductBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md">เพิ่มสินค้า</button>
             </div>
           </div>
@@ -2367,7 +2367,7 @@ if (cartListEl && cartListEl.children.length === 0) {
     
     // ✅ เรียงแพ็กเกจตามลำดับที่กำหนด
     const priorityOrder = [
-      'A12+ iCloud Bypass (No signal)',
+      'A12+ iCloud Bypass',
       'Digital Tool Rent (เช่า)',
       'Unlocktool',
       'TSM TOOL PRO',
@@ -4705,7 +4705,7 @@ Line: @825lhqmj`;
               return data.accumulated > 0 && !excludedUsernames.includes(username);
             })
             .sort((a, b) => b[1].accumulated - a[1].accumulated)
-            .slice(0, 30);
+            .slice(0, 40);
 
           // อัปเดต UI
           if (sorted.length === 0) {
@@ -4768,7 +4768,7 @@ Line: @825lhqmj`;
       const q = query(
         creditsRef,
         orderBy('createdAt', 'desc'),
-        limit(20)
+        limit(30)
       );
 
       // ✅ ตั้งค่า listener สำหรับอัปเดต real-time
