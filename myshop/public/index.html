@@ -978,12 +978,84 @@
     }
   }
 
+  // ✅ Compress image before upload (reduce file size by ~40% while maintaining clarity)
+  async function compressImage(file, quality = 0.4) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const img = new Image();
+        
+        img.onload = () => {
+          // Create canvas
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Calculate new dimensions (max 1920x1920 for optimal quality/size balance)
+          let width = img.width;
+          let height = img.height;
+          const maxDimension = 1920;
+          
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension;
+              width = maxDimension;
+            } else {
+              width = (width / height) * maxDimension;
+              height = maxDimension;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Enable image smoothing for better quality
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw image
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to blob with compression
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Failed to compress image'));
+                return;
+              }
+              
+              // Create new file from blob
+              const compressedFile = new File(
+                [blob],
+                file.name,
+                {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                }
+              );
+              
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target.result;
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Upload image to Firebase Storage and return URL
   async function uploadImageToStorage(file, folder = 'slips') {
     if (!file || !(file instanceof File)) throw new Error('Invalid file');
     if (!file.type.startsWith('image/')) throw new Error('File must be an image');
 
-    // ✅ Limit file size (5MB)
+    // ✅ Limit original file size (2MB before compression)
     const maxSize = 2 * 1024 * 1024;
     if (file.size > maxSize) {
       throw new Error('ขนาดไฟล์ใหญ่เกินไป (จำกัด 2MB)');
@@ -992,14 +1064,15 @@
     if (!CURRENT_USER?.email) throw new Error('กรุณาเข้าสู่ระบบก่อนอัปโหลดรูป');
     
     try {
-      // Debug auth info
-      //console.log('Current User:', CURRENT_USER);
-      //console.log('User Email:', CURRENT_USER.email);
-      const token = await CURRENT_USER.getIdToken();
-      //console.log('Auth Token:', token);
+      // ✅ Compress image before upload (50% quality = ~50% size reduction)
+      const compressedFile = await compressImage(file, 0.5);
+      
+      // Check compressed size
+      const compressedSize = compressedFile.size / (1024 * 1024);
+      //console.log(`Original: ${(file.size / (1024 * 1024)).toFixed(2)}MB → Compressed: ${compressedSize.toFixed(2)}MB`);
       
       const storage = getStorage(app);
-      const fileExt = file.name.split('.').pop().toLowerCase();
+      const fileExt = 'jpg'; // Always use jpg after compression
       
       // Create sanitized email folder name (replace all . with _)
       const emailFolder = CURRENT_USER.email.toLowerCase().replaceAll('.', '_');
@@ -1010,17 +1083,14 @@
       
       // Create full path: slips/email/YYYY-MM-DD/timestamp_random.ext
       const fileName = `${folder}/${emailFolder}/${dateFolder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
-      //console.log('Uploading to path:', fileName);
       
       const storageRef = ref(storage, fileName);
       
-      // Upload file first
-      const uploadResult = await uploadBytes(storageRef, file);
-      //console.log('Upload successful:', uploadResult);
+      // Upload compressed file
+      const uploadResult = await uploadBytes(storageRef, compressedFile);
       
       // Then get download URL
       const url = await getDownloadURL(storageRef);
-      //console.log('Got download URL:', url);
       
       return url;
     } catch (error) {
