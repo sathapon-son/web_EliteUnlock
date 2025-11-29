@@ -343,6 +343,15 @@
             <p class="text-slate-600 mt-1">
               คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
             </p>
+            <div class="mt-3">
+              <span class="inline-block bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-medium">🔔 รอเอกสาร: ทะเบียนพาณิชย์</span>
+
+              <div class="mt-3 p-3 bg-white border rounded-lg shadow-sm">
+                <div class="text-sm text-slate-500">เลขทะเบียนพาณิชย์</div>
+                <div class="text-2xl font-extrabold text-slate-800">xxxxxxxxxxx</div>
+                <div class="mt-2 text-sm text-indigo-700 font-medium">จะได้เอกสารวันที่ 1 ธันวาคม 2568</div>
+              </div>
+            </div>
             <div id="discountSection" class="hidden">
               <button id="discountToggleBtn" onclick="filterDiscountedPackages()" class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
               font-bold px-4 py-1.5 rounded-xl shadow-lg animate-pulse hover:shadow-xl hover:scale-105 transition-transform cursor-pointer border-0">
@@ -779,9 +788,32 @@
     const filterEl = document.getElementById('programFilter');
     if (!filterEl || !FS_PRODUCTS.length) return;
     
-    // Get unique programs sorted A-Z
-    const programs = Array.from(new Set(FS_PRODUCTS.map(p => p.program || 'อื่น ๆ')))
-      .sort((a, b) => a.localeCompare(b, 'th'));
+    // Define priority order for programs
+    const priorityOrder = [
+      'A12+ iCloud Bypass',
+      'Digital Tool Rent (เช่า)',
+      'Unlocktool',
+      'TSM TOOL PRO',
+      'Android Multi Tool (AMT)',
+      'FRPFILE Remove Screen Time & Bypass iCloud Open Menu (NOT FMI OFF) *ต้องเข้าหน้าหลักได้และไม่ติดรายเดือน',
+      'Microsoft Office',
+      'Microsoft Windows',
+      'EFT Tool PRO - Without Dongle'
+    ];
+    
+    // Get unique programs
+    const uniquePrograms = Array.from(new Set(FS_PRODUCTS.map(p => p.program || 'อื่น ๆ')));
+    
+    // Sort programs: priority order first, then A-Z
+    const programs = [];
+    for(const prog of priorityOrder){
+      if(uniquePrograms.includes(prog)){
+        programs.push(prog);
+      }
+    }
+    const remaining = uniquePrograms.filter(p => !priorityOrder.includes(p))
+      .sort((a, b) => a.localeCompare(b, ['th','en']));
+    programs.push(...remaining);
     
     // Check if there are any discounted products
     const hasDiscounted = FS_PRODUCTS.some(p => (p.pack || '').includes('ลดราคา') || (p.program || '').includes('ลดราคา'));
@@ -1195,6 +1227,7 @@ headerRight.innerHTML = `
   <div class="flex items-center gap-3">
     <div id="userInfo" class="text-sm text-slate-700 hidden"></div>
     <div id="balanceInfo" class="text-sm font-semibold text-indigo-700 hidden"></div>
+    <a href="/about.html" class="bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-md shadow hover:bg-slate-300 transition-colors">เกี่ยวกับ</a>
     <button id="registerBtn" class="bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow">สมัครสมาชิก</button>
     <button id="loginBtn" class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow">เข้าสู่ระบบ</button>
     <button id="logoutBtn" class="bg-slate-200 text-slate-700 text-sm px-3 py-2 rounded-md shadow hidden">ออกจากระบบ</button>
@@ -1332,6 +1365,8 @@ function updateSidebar(){
     items.push({ label: 'เข้าสู่ระบบ', action: ()=>{ hideMobileSidebar(); openLoginModal(); } });
     items.push({ label: 'ตะกร้า', action: ()=>{ hideMobileSidebar(); openCartModal(); } });
   }
+  // Add "About" link for all users
+  items.push({ label: 'เกี่ยวกับ', action: ()=>{ hideMobileSidebar(); window.location.href = '/about.html'; } });
   // render
   menu.innerHTML = items.map((it,idx)=>{
     const cls = it.cls ? ` ${it.cls}` : 'text-slate-200 hover:bg-slate-800 rounded px-3 py-2 block';
@@ -2447,13 +2482,13 @@ if (cartListEl && cartListEl.children.length === 0) {
       'EFT Tool PRO - Without Dongle'
     ];
     
-    // สร้าง object ใหม่ที่เรียงตามลำดับที่กำหนด
-    const sortedG = {};
+    // สร้าง Array ของ [program, items] pairs เรียงตามลำดับที่กำหนด
+    const sortedEntries = [];
     
     // เพิ่มแพ็กเกจตามลำดับความสำคัญ
     for(const prog of priorityOrder){
       if(g[prog]){
-        sortedG[prog] = g[prog];
+        sortedEntries.push([prog, g[prog]]);
         delete g[prog];
       }
     }
@@ -2461,10 +2496,10 @@ if (cartListEl && cartListEl.children.length === 0) {
     // เพิ่มแพ็กเกจที่เหลือเรียงตาม a-z (ทั้งภาษาไทยและอังกฤษ)
     const remainingKeys = Object.keys(g).sort((a,b) => a.localeCompare(b, ['th','en']));
     for(const key of remainingKeys){
-      sortedG[key] = g[key];
+      sortedEntries.push([key, g[key]]);
     }
     
-    return sortedG;
+    return sortedEntries;
   }
 
   // Parse duration from a package name into months (number). Returns Infinity when unknown.
@@ -2577,7 +2612,9 @@ if (cartListEl && cartListEl.children.length === 0) {
       groupsEl.className = 'grid gap-6 md:grid-cols-2';
     }
 
-    Object.entries(groups).forEach(([program,items])=>{
+    // groups คือ Array ของ [program, items] pairs ที่เรียงลำดับแล้ว
+    const entries = Array.isArray(groups) ? groups : Object.entries(groups);
+    entries.forEach(([program,items])=>{
       let keep;
       if(!tokens.length){
         keep = items.slice();
@@ -3247,6 +3284,14 @@ if (cartListEl && cartListEl.children.length === 0) {
       }
 
       container.appendChild(logoutBtn);
+
+      // Add About link
+      const aboutLink = document.createElement('a');
+      aboutLink.href = '/about.html';
+      aboutLink.className = 'bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-md shadow hover:bg-slate-300 transition-colors inline-block';
+      aboutLink.textContent = 'เกี่ยวกับ';
+      container.appendChild(aboutLink);
+
       headerRight.appendChild(container);
 
       
@@ -3301,10 +3346,11 @@ if (cartListEl && cartListEl.children.length === 0) {
     } else {
       // Guest view
       const container = document.createElement('div'); container.className = 'flex items-center gap-3';
+      const aboutLink = document.createElement('a'); aboutLink.href = '/about.html'; aboutLink.className = 'bg-slate-200 text-slate-700 text-sm px-4 py-2 rounded-md shadow hover:bg-slate-300 transition-colors inline-block'; aboutLink.textContent = 'เกี่ยวกับ';
       const cartBtn = document.createElement('button'); cartBtn.id = 'cartBtn'; cartBtn.className = 'bg-indigo-50 text-indigo-700 text-sm px-3 py-2 rounded-md shadow'; cartBtn.textContent = `ตะกร้า (${CART.length})`;
       const registerBtn = document.createElement('button'); registerBtn.id = 'registerBtn'; registerBtn.className = 'bg-emerald-600 text-white text-sm px-4 py-2 rounded-md shadow'; registerBtn.textContent = 'สมัครสมาชิก';
       const loginBtn = document.createElement('button'); loginBtn.id = 'loginBtn'; loginBtn.className = 'bg-indigo-600 text-white text-sm px-4 py-2 rounded-md shadow'; loginBtn.textContent = 'เข้าสู่ระบบ';
-      container.appendChild(cartBtn); container.appendChild(registerBtn); container.appendChild(loginBtn);
+      container.appendChild(aboutLink); container.appendChild(cartBtn); container.appendChild(registerBtn); container.appendChild(loginBtn);
       headerRight.appendChild(container);
       
       registerBtn.addEventListener('click', openRegModal);

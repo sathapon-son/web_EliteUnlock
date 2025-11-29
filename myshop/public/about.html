@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>เกี่ยวกับเรา — Elite Unlock</title>
+  <meta name="description" content="ข้อมูลเกี่ยวกับ Elite Unlock ช่องทางติดต่อ และทะเบียนพาณิชย์">
+
+  <!-- Favicon / App Icons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/logo.png?v=1">
+  <link rel="shortcut icon" href="/logo.png?v=1" type="image/png">
+  <link rel="apple-touch-icon" href="/logo.png?v=1">
+  <meta name="theme-color" content="#4f46e5">
+
+  <script src="https://cdn.tailwindcss.com?v=3.3.5"></script>
+  <meta name="cache-control" content="no-cache, no-store, must-revalidate, max-age=0" />
+  <meta name="pragma" content="no-cache" />
+  <meta name="expires" content="0" />
+  <style>
+    .card-hover{transition:.25s ease}
+    .card-hover:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,.08)}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal.active{display:flex}
+    .badge{display:inline-flex;align-items:center;gap:.5rem;padding:.4rem .7rem;border-radius:.6rem;font-size:.8rem}
+  </style>
+</head>
+<body class="bg-gradient-to-b from-slate-50 to-slate-100 text-slate-800 antialiased">
+  <!-- Header with Navigation -->
+  <header class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between" id="mainHeader">
+    <div class="flex items-center gap-3">
+      <!-- ใช้โลโก้ -->
+      <img src="logo.png" alt="Elite Unlock Logo" class="w-10 h-10 rounded-lg object-contain bg-white shadow" />
+      <div>
+        <h1 class="text-2xl font-semibold"><a href="/" class="hover:underline">Elite Unlock — โปรแกรมปลดล็อคมือถือ</a></h1>
+        <p class="text-sm text-slate-600">
+          ของแท้ 100% • เปิดใช้งานรวดเร็ว • ราคาคุ้มค่ากว่า • มีดูแลหลังการขายจริง
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">🏠 กลับหน้าหลัก</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 pb-16">
+    <!-- Page Title -->
+    <section class="mb-12 mt-8">
+      <div class="rounded-2xl p-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
+        <h2 class="text-4xl font-extrabold mb-2">เกี่ยวกับ Elite Unlock</h2>
+        <p class="text-lg opacity-90">
+          เรามีความมุ่งมั่นให้บริการด้วยความเป็นมืออาชีพ ความเชื่อถือได้ และราคาที่ยุติธรรม
+        </p>
+      </div>
+    </section>
+
+    <!-- Business Registration -->
+    <section class="rounded-xl bg-white p-8 shadow mb-12">
+      <h3 class="text-2xl font-bold mb-6 text-indigo-600">🏢 ทะเบียนพาณิชย์</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Registration Info -->
+        <div class="space-y-4">
+          <div class="border-l-4 border-indigo-600 pl-4">
+            <p class="text-sm text-slate-500 font-semibold">ชื่อร้าน</p>
+            <p class="text-lg font-semibold">Elite Unlock</p>
+          </div>
+          
+          <div class="border-l-4 border-indigo-600 pl-4">
+            <p class="text-sm text-slate-500 font-semibold">เลขประจำตัวผู้เสียภาษีอากร</p>
+            <p class="text-lg font-semibold font-mono">xxxxxxxxxxx</p>
+          </div>
+          
+          <div class="border-l-4 border-indigo-600 pl-4">
+            <p class="text-sm text-slate-500 font-semibold">ที่อยู่สำนักงาน</p>
+            <p class="text-slate-700">เลย ประเทศไทย</p>
+          </div>
+
+          <div class="border-l-4 border-indigo-600 pl-4">
+            <p class="text-sm text-slate-500 font-semibold">ประเภทธุรกิจ</p>
+            <p class="text-slate-700">บริการจำหน่ายซอฟต์แวร์ดิจิทัล บริการปลดล็อกมือถือ และบริการเติมเครดิต</p>
+          </div>
+        </div>
+
+        <!-- Certificate Image -->
+        <div class="flex items-center justify-center">
+          <div class="w-full bg-slate-100 rounded-lg p-6 flex items-center justify-center min-h-[300px]">
+            <div class="text-center">
+              <div id="certImageContainer" class="mb-4">
+                <img id="certImage" src="Commercial_registration.jpg" alt="ทะเบียนพาณิชย์" class="max-w-full h-auto rounded-lg shadow" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Content -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+      <!-- About Section -->
+      <section class="rounded-xl bg-white p-8 shadow card-hover">
+        <h3 class="text-2xl font-bold mb-4 text-indigo-600">📋 เกี่ยวกับร้าน</h3>
+        <div class="text-slate-700 space-y-4">
+          <p>
+            Elite Unlock เป็นผู้ให้บริการคีย์และไลเซนส์โปรแกรมปลดล็อคมือถือที่เชื่อถือได้
+          </p>
+          <p>
+            เราเชี่ยวชาญในการจำหน่าย:
+          </p>
+          <ul class="list-disc list-inside space-y-2 ml-2">
+            <li>Unlocktool - ปลดล็อคมือถือทั่วไป</li>
+            <li>TSM TOOL PRO - เครื่องมือมืออาชีพสำหรับผู้ซ่อม</li>
+            <li>bypass icloud iphone ipad ทุกรุ่น</li>
+            <li>เครื่องมือปลดล็อคชั้นนำอื่น ๆ</li>
+          </ul>
+          <p class="pt-2">
+            เรามุ่งเน้นให้บริการด้วยคุณภาพสูง การสนับสนุนหลังการขายที่ดี และราคาที่เป็นธรรม
+          </p>
+        </div>
+      </section>
+
+      <!-- Contact Information -->
+      <section class="rounded-xl bg-white p-8 shadow card-hover">
+        <h3 class="text-2xl font-bold mb-4 text-indigo-600">📞 ช่องทางติดต่อ</h3>
+        <div class="space-y-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">📱</span>
+            <div>
+              <p class="font-semibold">โทรศัพท์มือถือ</p>
+              <p class="text-slate-600"><a href="tel:+66626072670" class="text-indigo-600 hover:underline">062-607-2670</a></p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">📧</span>
+            <div>
+              <p class="font-semibold">อีเมล</p>
+              <p class="text-slate-600"><a href="mailto:eliteunlockshop@gmail.com" class="text-indigo-600 hover:underline">eliteunlockshop@gmail.com</a></p>
+            </div>
+          </div>
+          
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">💬</span>
+            <div>
+              <p class="font-semibold">ไลน์/สอบถาม</p>
+              <p class="text-slate-600">@825lhqmj</p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">🕒</span>
+            <div>
+              <p class="font-semibold">เวลาทำการ</p>
+              <p class="text-slate-600">วันจันทร์ - วันอาทิตย์ 07:30 - 02:00 น.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Why Choose Us -->
+    <section class="rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 p-8 shadow">
+      <h3 class="text-2xl font-bold mb-6 text-indigo-600">⭐ ทำไมต้องเลือก Elite Unlock</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white rounded-lg p-6 shadow-sm">
+          <div class="text-4xl mb-3">✔️</div>
+          <h4 class="font-bold mb-2">ของแท้ 100%</h4>
+          <p class="text-sm text-slate-600">คีย์และไลเซนส์แท้ที่สามารถยืนยันได้</p>
+        </div>
+        
+        <div class="bg-white rounded-lg p-6 shadow-sm">
+          <div class="text-4xl mb-3">⚡</div>
+          <h4 class="font-bold mb-2">เปิดใช้งานรวดเร็ว</h4>
+          <p class="text-sm text-slate-600">บริการเปิดใช้งานในเวลาไม่นาน</p>
+        </div>
+        
+        <div class="bg-white rounded-lg p-6 shadow-sm">
+          <div class="text-4xl mb-3">💰</div>
+          <h4 class="font-bold mb-2">ราคาเป็นมิตร</h4>
+          <p class="text-sm text-slate-600">ราคาแข่งขันในตลาด มีมูลค่าเต็มที่</p>
+        </div>
+        
+        <div class="bg-white rounded-lg p-6 shadow-sm">
+          <div class="text-4xl mb-3">🛟</div>
+          <h4 class="font-bold mb-2">ซัพพอร์ต 24/7</h4>
+          <p class="text-sm text-slate-600">บริการสนับสนุนหลังการขายที่เชื่อถือได้</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Back Button -->
+    <div class="mt-12 text-center">
+      <a href="/" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+        ← กลับไปหน้าหลัก
+      </a>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-slate-800 text-white mt-16 py-8">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center text-slate-400 text-sm">
+        <p>&copy; © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · LINE: @825lhqmj</p>
+      </div>
+    </div>
+  </footer>
+
+  
+</body>
+</html>
