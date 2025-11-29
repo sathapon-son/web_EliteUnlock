@@ -339,17 +339,16 @@
       <div class="rounded-2xl p-6 bg-white shadow">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h2 class="text-2xl md:text-3xl font-extrabold">ปลดล็อคอย่างมั่นใจ — ของแท้ ราคาเป็นมิตร เปิดไว</h2>
-            <p class="text-slate-600 mt-1">
-              คีย์/ไลเซนส์แท้สำหรับ Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ เน้นความคุ้มค่า พร้อมคำแนะนำเบื้องต้น และรับประกันการเปิดใช้งานตามเงื่อนไข
+            <p class="text-slate-600 mt-1 leading-relaxed">
+              ✨ <span class="font-semibold">คีย์/ไลเซนส์แท้ 100%</span> สำหรับ Bypass iCloud iPhone iPad ทุกรุ่น, Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ | 💰 ราคาคุ้มค่า | 🚀 เปิดใช้งานทันที่
             </p>
             <div class="mt-3">
               <span class="inline-block bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-medium">🔔 รอเอกสาร: ทะเบียนพาณิชย์</span>
 
-              <div class="mt-3 p-3 bg-white border rounded-lg shadow-sm">
-                <div class="text-sm text-slate-500">เลขทะเบียนพาณิชย์</div>
+              <div class="mt-3 p-3 bg-white border rounded-lg shadow-sm text-center">
+                <div class="text-lg text-slate-500 font-medium">เลขทะเบียนพาณิชย์</div>
                 <div class="text-2xl font-extrabold text-slate-800">xxxxxxxxxxx</div>
-                <div class="mt-2 text-sm text-indigo-700 font-medium">จะได้เอกสารวันที่ 1 ธันวาคม 2568</div>
+                <div class="mt-2 text-sm text-indigo-700 font-medium">รอเอกสารวันที่ 1 ธันวาคม 2568</div>
               </div>
             </div>
             <div id="discountSection" class="hidden">
@@ -358,12 +357,6 @@
                 🏷️ ลดราคา ถึง 30/11/68
               </button>
             </div>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <span class="badge bg-emerald-50 text-emerald-700">✔ รับประกันเปิดใช้งาน</span>
-            <span class="badge bg-sky-50 text-sky-700">⏱ เปิดไว</span>
-            <span class="badge bg-amber-50 text-amber-700">฿ ราคาเป็นมิตร</span>
-            <span class="badge bg-violet-50 text-violet-700">🛟 ซัพพอร์ตหลังการขาย</span>
           </div>
         </div>
       </div>
@@ -480,6 +473,13 @@
   <footer class="max-w-6xl mx-auto px-6 py-6 text-sm text-slate-500 text-center">
     © 2025 Elite Unlock · ของแท้ ราคาเป็นมิตร เปิดไว · โทร 062-607-2670 · LINE: @825lhqmj
   </footer>
+
+  <!-- Scroll to Top Button -->
+  <button id="scrollToTopBtn" class="hidden fixed bottom-6 right-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all z-40 w-12 h-12 flex items-center justify-center text-lg font-bold animate-bounce" title="ไปด้านบน">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m-7 7l7-7 7 7"></path>
+    </svg>
+  </button>
 
   
   <script type="module">
@@ -1010,8 +1010,8 @@
     }
   }
 
-  // ✅ Compress image before upload (reduce file size by ~40% while maintaining clarity)
-  async function compressImage(file, quality = 0.4) {
+  // ✅ Compress image before upload (reduce file size by ~20% while maintaining clarity)
+  async function compressImage(file, quality = 0.2) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       
@@ -1320,7 +1320,7 @@ function updateSidebar(){
     items.push({ label: 'ตะกร้า', action: ()=>{ hideMobileSidebar(); openCartModal(); } });
     items.push({ label: 'ประวัติการสั่งซื้อ', action: ()=>{ hideMobileSidebar(); openHistoryModal(); } });
     if(IS_ADMIN){
-      items.push({ label: 'คำสั่งซื้อ (Admin)', action: ()=>{ 
+      items.push({ label: 'คำสั่งซื้อ', action: ()=>{ 
         hideMobileSidebar(); 
         const ordersModal = document.getElementById('adminOrdersModal'); 
         if(ordersModal){ 
@@ -1674,19 +1674,32 @@ document.body.appendChild(forgotModal);
 
         <!-- Body -->
         <div class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
-          <div id="slipEmailInfo" class="text-xs sm:text-sm text-slate-600 flex-shrink-0">
-            <strong>อีเมล:</strong> <span id="slipEmail" class="break-all"></span>
-          </div>
-          <div class="flex justify-center bg-slate-100 rounded-lg p-3 sm:p-4 min-h-[250px] sm:min-h-[350px] overflow-auto flex-shrink">
-            <img id="slipImage" src="" alt="Receipt/Slip" class="max-w-full max-h-full object-contain rounded-lg border border-slate-300" />
+          <!-- Email displayed below in the details panel to avoid duplication -->
+          <div class="flex justify-center bg-slate-100 rounded-lg p-3 sm:p-4 overflow-auto max-h-[50vh]">
+            <div class="w-full flex items-center justify-center">
+              <img id="slipImage" src="" alt="Receipt/Slip" class="w-auto max-w-full max-h-full object-contain rounded-lg border border-slate-300 mx-auto" style="max-height:calc(50vh - 2rem);" />
+            </div>
           </div>
           <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
-            <a id="slipDownloadBtn" href="" download="slip.png" class="flex-1 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700 font-medium shadow transition">
-              ⬇️ ดาวน์โหลด
-            </a>
-            <button id="slipOpenBtn" class="flex-1 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 font-medium shadow transition">
-              🔗 เปิดใหม่
-            </button>
+            <div class="flex-1 text-sm text-slate-700 p-2 rounded-lg bg-slate-50 border">
+              <div><strong>อีเมล:</strong> <span id="slipEmailSmall" class="break-all">-</span></div>
+              <div class="mt-1"><strong>จำนวน:</strong> <span id="slipAmount">-</span></div>
+              <div class="mt-1"><strong>เวลา:</strong> <span id="slipTime">-</span></div>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto items-center">
+              <button id="slipOpenBtn" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 font-medium shadow transition">
+                🔗 เปิดใหม่
+              </button>
+              <button id="slipExpandBtn" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-200 text-slate-800 text-sm hover:bg-slate-300 font-medium shadow transition">
+                🔍 ขยาย
+              </button>
+              <button id="slipApproveBtn" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700 font-medium shadow transition">
+                ✅ อนุมัติ
+              </button>
+              <button id="slipRejectBtn" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-rose-600 text-white text-sm hover:bg-rose-700 font-medium shadow transition">
+                ❌ ปฏิเสธ
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1695,11 +1708,16 @@ document.body.appendChild(forgotModal);
   document.body.appendChild(slipModal);
 
   // ✅ ฟังก์ชันแสดง Slip Modal
-  function showSlipModal(imageUrl, userEmail = '') {
+  function showSlipModal(imageUrl, userEmail = '', amount = '', timeStr = '', requestId = '') {
     const imgEl = document.getElementById('slipImage');
-    const emailEl = document.getElementById('slipEmail');
     const downloadBtn = document.getElementById('slipDownloadBtn');
     const openBtn = document.getElementById('slipOpenBtn');
+    const expandBtn = document.getElementById('slipExpandBtn');
+    const approveBtn = document.getElementById('slipApproveBtn');
+    const rejectBtn = document.getElementById('slipRejectBtn');
+    const slipEmailSmall = document.getElementById('slipEmailSmall');
+    const slipAmountEl = document.getElementById('slipAmount');
+    const slipTimeEl = document.getElementById('slipTime');
     const imgContainer = imgEl.parentElement;
     
     // ✅ Clear รูปเก่าและเพิ่ม spinner
@@ -1707,16 +1725,90 @@ document.body.appendChild(forgotModal);
     imgEl.style.display = 'none';
     imgContainer.innerHTML = '<div class="flex items-center justify-center w-full h-full"><div class="loading-spinner"></div></div>';
     
-    emailEl.textContent = userEmail || '-';
-    downloadBtn.href = imageUrl;
-    downloadBtn.download = `slip-${userEmail || 'unknown'}.png`;
-    
-    openBtn.onclick = () => {
-      window.open(imageUrl, '_blank');
+    if(slipEmailSmall) slipEmailSmall.textContent = userEmail || '-';
+
+    // Fill additional details (fall back to example values when not provided)
+    slipAmountEl.textContent = amount || '20 เครดิต';
+    slipTimeEl.textContent = timeStr || '29/11/68 23:02';
+
+    // Wire open (new tab) button
+    if(openBtn){
+      openBtn.onclick = () => { window.open(imageUrl, '_blank'); };
+    }
+
+    // Expand / fullscreen toggle
+    let _slipExpanded = false;
+    const setExpanded = (expanded) => {
+      _slipExpanded = !!expanded;
+      if(_slipExpanded){
+        // make image occupy more vertical space
+        imgEl.style.maxHeight = 'calc(100vh - 140px)';
+        imgContainer.style.maxHeight = 'calc(100vh - 120px)';
+        slipModal.classList.add('slip-expanded');
+        if(expandBtn) expandBtn.textContent = '🔽 ย่อ';
+      }else{
+        imgEl.style.maxHeight = 'calc(50vh - 2rem)';
+        imgContainer.style.maxHeight = '';
+        slipModal.classList.remove('slip-expanded');
+        if(expandBtn) expandBtn.textContent = '🔍 ขยาย';
+      }
     };
+
+    if(expandBtn){
+      expandBtn.onclick = () => setExpanded(!_slipExpanded);
+    }
+
+    // Auto-expand on small screens for better mobile viewing
+    if(window && window.innerWidth && window.innerWidth <= 640){
+      setTimeout(()=> setExpanded(true), 50);
+    }
+
+    // Approve handler - call confirmCreditRequest with requestId
+    if(approveBtn){
+      approveBtn.onclick = async () => {
+        if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
+        if(!confirm('ยืนยันการอนุมัติคำขอเติมเครดิตหรือไม่?')) return;
+        approveBtn.disabled = true;
+        approveBtn.textContent = 'กำลังอนุมัติ...';
+        try{
+          await confirmCreditRequest(requestId);
+          hideModalElement(slipModal);
+        }catch(e){
+          alert(e?.message || 'อนุมัติไม่สำเร็จ');
+          console.error(e);
+        }finally{
+          approveBtn.disabled = false;
+          approveBtn.textContent = '✅ อนุมัติ';
+        }
+      };
+    }
+
+    // Reject handler - call rejectCreditRequest with requestId
+    if(rejectBtn){
+      rejectBtn.onclick = async () => {
+        if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
+        // Immediately perform rejection without asking for a reason
+        rejectBtn.disabled = true;
+        rejectBtn.textContent = 'กำลังปฏิเสธ...';
+        try{
+          await rejectCreditRequest(requestId);
+          hideModalElement(slipModal);
+        }catch(e){
+          alert(e?.message || 'ปฏิเสธไม่สำเร็จ');
+          console.error(e);
+        }finally{
+          rejectBtn.disabled = false;
+          rejectBtn.textContent = '❌ ปฏิเสธ';
+        }
+      };
+    }
     
     // ✅ แสดง Modal ก่อน แล้วค่อย load รูป
     showModalElement(slipModal);
+    
+    // Remove references to removed buttons if present
+    try{ if(downloadBtn) downloadBtn.remove(); }catch(_){}
+    
     
     // ✅ Load รูปภาพใหม่
     const tempImg = new Image();
@@ -2168,7 +2260,7 @@ if (cartListEl && cartListEl.children.length === 0) {
     <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative">
       <button id="closeAdminOrders" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
       <div class="flex items-center justify-between">
-        <h3 class="text-xl font-bold mb-4">คำสั่งซื้อ (Admin)</h3>
+        <h3 class="text-xl font-bold mb-4">คำสั่งซื้อ</h3>
       </div>
       <div class="mb-4">
         <div class="text-sm text-slate-600 mb-2">ตัวกรองสถานะ: เลือกสถานะที่ต้องการแสดง (ค่าจะถูกบันทึกไว้)</div>
@@ -2628,6 +2720,12 @@ if (cartListEl && cartListEl.children.length === 0) {
       }
       if(!keep.length) return;
       keep.sort((a,b)=>{
+        // Special case: Digital Tool Rent (เช่า) - sort by package name
+        if(program === 'Digital Tool Rent (เช่า)'){
+          const nameCompare = (a.pack||'').localeCompare(b.pack||'', ['th', 'en']);
+          if(nameCompare !== 0) return nameCompare;
+        }
+        // Default sorting for other programs: duration, price, name
         const da = parseDurationMonths(a.pack);
         const db = parseDurationMonths(b.pack);
         if(isFinite(da) && isFinite(db) && da !== db) return da - db;
@@ -3275,7 +3373,7 @@ if (cartListEl && cartListEl.children.length === 0) {
 
       // Admin-only buttons (only include when IS_ADMIN true)
       if(IS_ADMIN){
-        const adminOrdersBtn = document.createElement('button'); adminOrdersBtn.id = 'adminOrdersBtn'; adminOrdersBtn.className = 'bg-amber-100 text-amber-800 text-sm px-3 py-2 rounded-md shadow'; adminOrdersBtn.textContent = 'คำสั่งซื้อ (Admin)';
+        const adminOrdersBtn = document.createElement('button'); adminOrdersBtn.id = 'adminOrdersBtn'; adminOrdersBtn.className = 'bg-amber-100 text-amber-800 text-sm px-3 py-2 rounded-md shadow'; adminOrdersBtn.textContent = 'คำสั่งซื้อ';
         const openAdminCreditBtn = document.createElement('button'); openAdminCreditBtn.id = 'openAdminCreditBtn'; openAdminCreditBtn.className = 'bg-emerald-500 text-white text-sm px-3 py-2 rounded-md shadow'; openAdminCreditBtn.textContent = 'เติมเครดิตลูกค้า';
         const openAdminProductBtn = document.createElement('button'); openAdminProductBtn.id = 'openAdminProductBtn'; openAdminProductBtn.className = 'bg-indigo-600 text-white text-sm px-3 py-2 rounded-md shadow'; openAdminProductBtn.textContent = 'เพิ่มสินค้า';
         container.appendChild(adminOrdersBtn);
@@ -4946,7 +5044,9 @@ Line: @825lhqmj`;
               if (snap.exists()) {
                 const data = snap.data();
                 if (data.proofImageUrl) {
-                  showSlipModal(data.proofImageUrl, data.userEmail);
+                  const createdAt = data.createdAt?.toDate?.() || null;
+                  const dt = createdAt ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                  showSlipModal(data.proofImageUrl, data.userEmail, (data.amount? `${Number(data.amount).toLocaleString('th-TH')} เครดิต` : ''), dt, requestId);
                 } else {
                   alert('ไม่พบรูปภาพหลักฐาน (ข้อมูลอาจบันทึกเก่า)');
                 }
@@ -5144,7 +5244,9 @@ Line: @825lhqmj`;
               if (snap.exists()) {
                 const data = snap.data();
                 if (data.proofImageUrl) {
-                  showSlipModal(data.proofImageUrl, data.userEmail);
+                  const createdAt = data.createdAt?.toDate?.() || null;
+                  const dt = createdAt ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                  showSlipModal(data.proofImageUrl, data.userEmail, (data.amount? `${Number(data.amount).toLocaleString('th-TH')} เครดิต` : ''), dt, requestId);
                 } else {
                   alert('ไม่พบรูปภาพหลักฐาน (ข้อมูลอาจบันทึกเก่า)');
                 }
@@ -6458,6 +6560,19 @@ async function confirmCartOrders(){
         }
       }catch(e){ console.error('resume after login failed', e); }
     }
+  });
+
+  // Scroll to top button functionality
+  const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+  window.addEventListener('scroll', () => {
+    if (window.pageYOffset > 300) {
+      scrollToTopBtn.classList.remove('hidden');
+    } else {
+      scrollToTopBtn.classList.add('hidden');
+    }
+  });
+  scrollToTopBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   // Initialize the application

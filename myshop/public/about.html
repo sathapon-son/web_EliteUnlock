@@ -108,7 +108,7 @@
           <ul class="list-disc list-inside space-y-2 ml-2">
             <li>Unlocktool - ปลดล็อคมือถือทั่วไป</li>
             <li>TSM TOOL PRO - เครื่องมือมืออาชีพสำหรับผู้ซ่อม</li>
-            <li>bypass icloud iphone ipad ทุกรุ่น</li>
+            <li>Bypass iCloud iPhone iPad ทุกรุ่น</li>
             <li>เครื่องมือปลดล็อคชั้นนำอื่น ๆ</li>
           </ul>
           <p class="pt-2">
@@ -141,15 +141,16 @@
             <span class="text-2xl">💬</span>
             <div>
               <p class="font-semibold">ไลน์/สอบถาม</p>
-              <p class="text-slate-600">@825lhqmj</p>
+              <p class="text-slate-600"><a href="https://line.me/ti/p/@825lhqmj" target="_blank" class="text-indigo-600 hover:underline">@825lhqmj</a></p>
             </div>
           </div>
 
           <div class="flex items-start gap-3">
             <span class="text-2xl">🕒</span>
             <div>
-              <p class="font-semibold">เวลาทำการ</p>
+              <p class="font-semibold">เวลาทำการ สำหรับตอบ Line และเติมเครดิต</p>
               <p class="text-slate-600">วันจันทร์ - วันอาทิตย์ 07:30 - 02:00 น.</p>
+              <p class="text-amber-700 font-semibold bg-amber-50 px-3 py-2 rounded-md border border-amber-200">⚠️ ขออภัย ถ้านอกเวลาทำการอาจตอบช้าหรือไม่ตอบ</p>
             </div>
           </div>
         </div>
@@ -202,6 +203,28 @@
       </div>
     </div>
   </footer>
+
+  <!-- Scroll to Top Button -->
+  <button id="scrollToTopBtn" class="hidden fixed bottom-6 right-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all z-40 w-12 h-12 flex items-center justify-center text-lg font-bold animate-bounce" title="ไปด้านบน">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m-7 7l7-7 7 7"></path>
+    </svg>
+  </button>
+
+  <script>
+    // Scroll to top button functionality
+    const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+    window.addEventListener('scroll', () => {
+      if (window.pageYOffset > 300) {
+        scrollToTopBtn.classList.remove('hidden');
+      } else {
+        scrollToTopBtn.classList.add('hidden');
+      }
+    });
+    scrollToTopBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
 
   
 </body>
