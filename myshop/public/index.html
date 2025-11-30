@@ -1787,7 +1787,8 @@ document.body.appendChild(forgotModal);
     if(rejectBtn){
       rejectBtn.onclick = async () => {
         if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
-        // Immediately perform rejection without asking for a reason
+        // popup ยืนยันก่อนปฏิเสธ
+        if(!confirm('ยืนยันการปฏิเสธคำขอเติมเครดิตหรือไม่?')) return;
         rejectBtn.disabled = true;
         rejectBtn.textContent = 'กำลังปฏิเสธ...';
         try{
@@ -3932,33 +3933,59 @@ if (cartListEl && cartListEl.children.length === 0) {
       listEl.appendChild(table);
 
       // attach listeners
+      // ✅ ปุ่ม Accept – ให้ถามยืนยันก่อน
       listEl.querySelectorAll('[data-accept-id]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
+          // popup ยืนยันก่อน
+          const ok = confirm('ยืนยัน Accept คำสั่งซื้อหรือไม่?');
+          if (!ok) return;
+
           const id = btn.getAttribute('data-accept-id');
           const replyBox = listEl.querySelector(`[data-reply-id="${id}"]`);
           const msgEl = listEl.querySelector(`[data-msg-id="${id}"]`);
-          msgEl.textContent = 'กำลังบันทึก...'; btn.disabled = true;
+          msgEl.textContent = 'กำลังบันทึก.'; 
+          btn.disabled = true;
           try{
             const docSnap = await getDoc(doc(db,'orders',id));
             const data = docSnap.data();
             await adminAcceptOrder(id, data, replyBox.value.trim());
-            msgEl.className = 'text-emerald-700'; msgEl.textContent = 'บันทึกแล้ว';
-          }catch(err){ console.error(err); msgEl.className='text-red-600'; msgEl.textContent = err.message||'ล้มเหลว'; }
-          finally{ btn.disabled=false; setTimeout(()=> msgEl.textContent='',2000); }
+            msgEl.className = 'text-emerald-700'; 
+            msgEl.textContent = 'บันทึกแล้ว';
+          }catch(err){
+            console.error(err); 
+            msgEl.className='text-red-600'; 
+            msgEl.textContent = err.message||'ล้มเหลว';
+          }finally{
+            btn.disabled=false; 
+            setTimeout(()=> msgEl.textContent='',2000);
+          }
         });
       });
 
+      // ✅ ปุ่ม Reject – ให้ถามยืนยันก่อน
       listEl.querySelectorAll('[data-reject-id]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
+          // popup ยืนยันก่อน
+          const ok = confirm('ยืนยัน Reject คำสั่งซื้อหรือไม่?');
+          if (!ok) return;
+
           const id = btn.getAttribute('data-reject-id');
           const replyBox = listEl.querySelector(`[data-reply-id="${id}"]`);
           const msgEl = listEl.querySelector(`[data-msg-id="${id}"]`);
-          msgEl.textContent = 'กำลังบันทึก...'; btn.disabled = true;
+          msgEl.textContent = 'กำลังบันทึก.'; 
+          btn.disabled = true;
           try{
             await adminRejectOrder(id, replyBox.value.trim());
-            msgEl.className = 'text-emerald-700'; msgEl.textContent = 'บันทึกแล้ว';
-          }catch(err){ console.error(err); msgEl.className='text-red-600'; msgEl.textContent = err.message||'ล้มเหลว'; }
-          finally{ btn.disabled=false; setTimeout(()=> msgEl.textContent='',2000); }
+            msgEl.className = 'text-emerald-700'; 
+            msgEl.textContent = 'บันทึกแล้ว';
+          }catch(err){
+            console.error(err); 
+            msgEl.className='text-red-600'; 
+            msgEl.textContent = err.message||'ล้มเหลว';
+          }finally{
+            btn.disabled=false; 
+            setTimeout(()=> msgEl.textContent='',2000);
+          }
         });
       });
     }, async (err)=>{
