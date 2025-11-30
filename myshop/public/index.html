@@ -1708,7 +1708,8 @@ document.body.appendChild(forgotModal);
   document.body.appendChild(slipModal);
 
   // ✅ ฟังก์ชันแสดง Slip Modal
-  function showSlipModal(imageUrl, userEmail = '', amount = '', timeStr = '', requestId = '') {
+  // showActions: เมื่อเป็น false จะซ่อนปุ่มอนุมัติ/ปฏิเสธ (ดูอย่างเดียว)
+  function showSlipModal(imageUrl, userEmail = '', amount = '', timeStr = '', requestId = '', showActions = true) {
     const imgEl = document.getElementById('slipImage');
     const downloadBtn = document.getElementById('slipDownloadBtn');
     const openBtn = document.getElementById('slipOpenBtn');
@@ -1763,45 +1764,53 @@ document.body.appendChild(forgotModal);
       setTimeout(()=> setExpanded(true), 50);
     }
 
-    // Approve handler - call confirmCreditRequest with requestId
-    if(approveBtn){
-      approveBtn.onclick = async () => {
-        if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
-        if(!confirm('ยืนยันการอนุมัติคำขอเติมเครดิตหรือไม่?')) return;
-        approveBtn.disabled = true;
-        approveBtn.textContent = 'กำลังอนุมัติ...';
-        try{
-          await confirmCreditRequest(requestId);
-          hideModalElement(slipModal);
-        }catch(e){
-          alert(e?.message || 'อนุมัติไม่สำเร็จ');
-          console.error(e);
-        }finally{
-          approveBtn.disabled = false;
-          approveBtn.textContent = '✅ อนุมัติ';
-        }
-      };
-    }
+    // If showActions=false hide approve/reject buttons and do not wire handlers
+    if (!showActions) {
+      try{ if(approveBtn) { approveBtn.style.display = 'none'; approveBtn.onclick = null; } }catch(_){}
+      try{ if(rejectBtn) { rejectBtn.style.display = 'none'; rejectBtn.onclick = null; } }catch(_){}
+    } else {
+      // Approve handler - call confirmCreditRequest with requestId
+      if(approveBtn){
+        approveBtn.style.display = '';
+        approveBtn.onclick = async () => {
+          if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
+          if(!confirm('ยืนยันการอนุมัติคำขอเติมเครดิตหรือไม่?')) return;
+          approveBtn.disabled = true;
+          approveBtn.textContent = 'กำลังอนุมัติ...';
+          try{
+            await confirmCreditRequest(requestId);
+            hideModalElement(slipModal);
+          }catch(e){
+            alert(e?.message || 'อนุมัติไม่สำเร็จ');
+            console.error(e);
+          }finally{
+            approveBtn.disabled = false;
+            approveBtn.textContent = '✅ อนุมัติ';
+          }
+        };
+      }
 
-    // Reject handler - call rejectCreditRequest with requestId
-    if(rejectBtn){
-      rejectBtn.onclick = async () => {
-        if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
-        // popup ยืนยันก่อนปฏิเสธ
-        if(!confirm('ยืนยันการปฏิเสธคำขอเติมเครดิตหรือไม่?')) return;
-        rejectBtn.disabled = true;
-        rejectBtn.textContent = 'กำลังปฏิเสธ...';
-        try{
-          await rejectCreditRequest(requestId);
-          hideModalElement(slipModal);
-        }catch(e){
-          alert(e?.message || 'ปฏิเสธไม่สำเร็จ');
-          console.error(e);
-        }finally{
-          rejectBtn.disabled = false;
-          rejectBtn.textContent = '❌ ปฏิเสธ';
-        }
-      };
+      // Reject handler - call rejectCreditRequest with requestId
+      if(rejectBtn){
+        rejectBtn.style.display = '';
+        rejectBtn.onclick = async () => {
+          if(!requestId){ alert('ไม่พบรหัสคำขอ (request id)'); return; }
+          // popup ยืนยันก่อนปฏิเสธ
+          if(!confirm('ยืนยันการปฏิเสธคำขอเติมเครดิตหรือไม่?')) return;
+          rejectBtn.disabled = true;
+          rejectBtn.textContent = 'กำลังปฏิเสธ...';
+          try{
+            await rejectCreditRequest(requestId);
+            hideModalElement(slipModal);
+          }catch(e){
+            alert(e?.message || 'ปฏิเสธไม่สำเร็จ');
+            console.error(e);
+          }finally{
+            rejectBtn.disabled = false;
+            rejectBtn.textContent = '❌ ปฏิเสธ';
+          }
+        };
+      }
     }
     
     // ✅ แสดง Modal ก่อน แล้วค่อย load รูป
@@ -4611,7 +4620,8 @@ Line: @825lhqmj`;
 </body>
 </html>`;
 
-    await addDoc(collection(db, 'mail'), {
+    // Send mail non-blocking: don't await so UI isn't blocked if mail write is slow
+    addDoc(collection(db, 'mail'), {
       to: [data.userEmail],
       from: 'Elite Unlock <eliteunlockshop@gmail.com>',
       replyTo: 'eliteunlockshop@gmail.com',
@@ -4627,7 +4637,7 @@ Line: @825lhqmj`;
         userId: data.userId
       },
       createdAt: serverTimestamp()
-    });
+    }).catch(err => console.warn('send mail (non-blocking) failed', err?.message || err));
 
     return true;
   } catch (err) {
@@ -5073,7 +5083,8 @@ Line: @825lhqmj`;
                 if (data.proofImageUrl) {
                   const createdAt = data.createdAt?.toDate?.() || null;
                   const dt = createdAt ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '-';
-                  showSlipModal(data.proofImageUrl, data.userEmail, (data.amount? `${Number(data.amount).toLocaleString('th-TH')} เครดิต` : ''), dt, requestId);
+                  // History view: show slip for viewing only (no approve/reject)
+                  showSlipModal(data.proofImageUrl, data.userEmail, (data.amount? `${Number(data.amount).toLocaleString('th-TH')} เครดิต` : ''), dt, requestId, false);
                 } else {
                   alert('ไม่พบรูปภาพหลักฐาน (ข้อมูลอาจบันทึกเก่า)');
                 }
@@ -5273,6 +5284,7 @@ Line: @825lhqmj`;
                 if (data.proofImageUrl) {
                   const createdAt = data.createdAt?.toDate?.() || null;
                   const dt = createdAt ? createdAt.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                  // Admin list view: default behavior (approve/reject buttons shown)
                   showSlipModal(data.proofImageUrl, data.userEmail, (data.amount? `${Number(data.amount).toLocaleString('th-TH')} เครดิต` : ''), dt, requestId);
                 } else {
                   alert('ไม่พบรูปภาพหลักฐาน (ข้อมูลอาจบันทึกเก่า)');
