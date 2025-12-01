@@ -173,35 +173,56 @@
       white-space: nowrap;
     }
 
-    /* ✅ Banner ViewPager - Fixed Position Center */
+/* ✅ Banner ViewPager - Fixed Position Center */
     #bannerViewPager {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: auto;
-      max-width: calc(100vw - 40px);
-      height: 653px;
-      overflow: hidden;
-      border-radius: 1.5rem;
+      /* Use a responsive width so the banner fills most of small screens
+         but does not grow too large on desktop */
+      width: min(92vw, 420px);
+      height: auto;
+      max-width: 95vw;
+      max-height: 90vh;
+      padding: 0.5rem; /* small padding so rounded corners are visible */
+      overflow: visible;
+      border-radius: 1.25rem;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
       z-index: 100;
-      background: white;
+      background: transparent;
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s ease, transform 0.2s ease;
     }
 
-    /* ✅ ลดความสูงบนจอเล็ก */
-    @media (max-height: 800px) {
+    /* ✅ ปรับขนาดสำหรับมือถือ */
+    @media (max-width: 640px) {
       #bannerViewPager {
-        height: auto;
-        max-height: calc(100vh - 20px);
+        /* make banner wider on small devices */
+        width: 94vw;
+        max-width: 94vw;
+        max-height: 88vh;
       }
     }
 
+    /* ✅ ปรับขนาดสำหรับแท็บเล็ต */
+    @media (min-width: 641px) and (max-width: 1024px) {
+      #bannerViewPager {
+        max-width: 85vw;
+        max-height: 88vh;
+      }
+    }
+
+    /* ✅ ปรับขนาดสำหรับจอใหญ่ (Desktop) */
+    @media (min-width: 1025px) {
+      #bannerViewPager {
+        max-width: 80vw;
+        max-height: 92vh;
+      }
+    }
     /* ✅ เมื่อแสดง banner ให้ fade in */
     #bannerViewPager.show {
       opacity: 1;
@@ -212,10 +233,14 @@
     }
 
     #bannerViewPager img {
-      width: 100%;
-      height: 100%;
       display: block;
-      object-fit: cover;
+      /* Respect container sizing: image scales responsively */
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 0.75rem;
     }
 
     .banner-close-btn {
