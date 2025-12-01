@@ -31,14 +31,14 @@
       <!-- ใช้โลโก้ -->
       <img src="logo.png" alt="Elite Unlock Logo" class="w-10 h-10 rounded-lg object-contain bg-white shadow" />
       <div>
-        <h1 class="text-2xl font-semibold"><a href="/" class="hover:underline">Elite Unlock — โปรแกรมปลดล็อคมือถือ</a></h1>
+        <h1 class="text-2xl font-semibold"><a href="/" onclick="navigateHome(event)" class="hover:underline">Elite Unlock — โปรแกรมปลดล็อคมือถือ</a></h1>
         <p class="text-sm text-slate-600">
           ของแท้ 100% • เปิดใช้งานรวดเร็ว • ราคาคุ้มค่ากว่า • มีดูแลหลังการขายจริง
         </p>
       </div>
     </div>
     <div class="flex items-center gap-3">
-      <a href="/" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">🏠 กลับหน้าหลัก</a>
+      <a href="/" onclick="navigateHome(event)" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">🏠 กลับหน้าหลัก</a>
     </div>
   </header>
 
@@ -180,7 +180,7 @@
 
     <!-- Back Button -->
     <div class="mt-12 text-center">
-      <a href="/" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
+      <a href="/" onclick="navigateHome(event)" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors">
         ← กลับไปหน้าหลัก
       </a>
     </div>
@@ -203,6 +203,19 @@
   </button>
 
   <script>
+    // ✅ ฟังก์ชันสำหรับกลับไปหน้าหลักโดยไม่ reload
+    function navigateHome(event) {
+      event.preventDefault();
+      // ใช้ history.back() เพื่อกลับไปหน้าเดิมแทนการ reload
+      // หรือหากต้องการไปยังหน้าหลัก สามารถใช้ window.location.hash = '' 
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        // หากไม่มีประวัติการเยี่ยมชม ให้ไปที่หน้าหลัก
+        window.location.href = '/';
+      }
+    }
+
     // Scroll to top button functionality
     const scrollToTopBtn = document.getElementById('scrollToTopBtn');
     window.addEventListener('scroll', () => {
