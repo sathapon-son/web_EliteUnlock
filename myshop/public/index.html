@@ -347,7 +347,7 @@
   <!-- ✅ Banner ViewPager - Fixed Position -->
   <section id="bannerViewPager" class="hidden">
     <img id="bannerImage" src="" alt="Banner" />
-    <button id="bannerCloseBtn" class="banner-close-btn" aria-label="ปิด Banner">×</button>
+    <button id="bannerCloseBtn" class="banner-close-btn h-12 w-12 text-2xl flex items-center justify-center rounded-full hover:bg-slate-200 transition" aria-label="ปิด Banner">×</button>
     <button id="bannerHideToday" class="banner-hide-option">ไม่แสดงในวันนี้อีก</button>
   </section>
 
@@ -479,7 +479,8 @@
           <li>• ไลเซนส์แท้ ตรวจสอบได้</li>
           <li>• ราคาเป็นมิตร คุ้มค่าการใช้งานระยะยาว</li>
           <li>• ติดต่อได้จริง หลายช่องทาง</li>
-          <li class="text-indigo-600 font-medium">• ฟรี! อัพเกรดเป็นตัวแทน เมื่อสะสมเครดิตครบ 4,500 เครดิต รับราคาพิเศษทันที</li>
+          <li class="text-indigo-600 font-medium">• อัพเกรดเป็นตัวแทน เมื่อสะสมเครดิตครบ 4,500 เครดิต รับราคาพิเศษทันที</li>
+          <li class="text-indigo-600 font-medium">• อัพเกรดเป็น VIP เมื่อสะสมเครดิตครบ 15,000 เครดิต รับราคาพิเศษสุด ๆ ทันที</li>
         </ul>
       </div>
       <div class="p-5 rounded-2xl bg-white shadow">
@@ -1293,7 +1294,7 @@ mobileSidebar.innerHTML = `
         <div id="sbName" class="font-semibold">สวัสดี</div>
         <div id="sbEmail" class="text-xs text-slate-300"></div>
       </div>
-      <button id="closeSidebar" class="text-slate-300 hover:text-white">✕</button>
+      <button id="closeSidebar" class="text-slate-300 hover:text-white h-12 w-12 text-2xl flex items-center justify-center rounded-full hover:bg-slate-700 transition">✕</button>
     </div>
   </div>
   <nav class="p-3">
@@ -1445,8 +1446,8 @@ regModal.innerHTML = `
           <h3 class="text-xl font-bold text-slate-800">สมัครสมาชิก</h3>
         </div>
         <button id="closeReg"
-                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                aria-label="Close">✖</button>
+          class="absolute right-3 top-3 inline-flex h-12 w-12 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 text-2xl transition"
+          aria-label="Close">✖</button>
       </div>
 
       <!-- Body -->
@@ -1535,8 +1536,8 @@ loginModal.innerHTML = `
           <h3 class="text-xl font-bold text-slate-800">ลงชื่อเข้าใช้</h3>
         </div>
         <button id="closeLogin"
-                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                aria-label="Close">✖</button>
+          class="absolute right-3 top-3 inline-flex h-12 w-12 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 text-2xl transition"
+          aria-label="Close">✖</button>
       </div>
 
       <!-- Body -->
@@ -1609,8 +1610,8 @@ forgotModal.innerHTML = `
           <h3 class="text-xl font-bold text-slate-800">ลืมรหัสผ่าน</h3>
         </div>
         <button id="closeForgot"
-                class="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                aria-label="Close">✖</button>
+          class="absolute right-3 top-3 inline-flex h-12 w-12 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 text-2xl transition"
+          aria-label="Close">✖</button>
       </div>
 
       <!-- Body -->
@@ -1675,7 +1676,7 @@ document.body.appendChild(forgotModal);
   resetPasswordModal.className = 'modal'; resetPasswordModal.id = 'resetPasswordModal'; resetPasswordModal.setAttribute('aria-hidden','true');
   resetPasswordModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-      <button id="closeReset" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeReset" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4 text-center">ตั้งรหัสผ่านใหม่</h3>
       <p id="resetEmail" class="text-sm text-slate-500 text-center mb-2"></p>
       <div class="space-y-3">
@@ -1888,7 +1889,7 @@ document.body.appendChild(forgotModal);
   orderModal.className = 'modal'; orderModal.id = 'orderModal'; orderModal.setAttribute('aria-hidden','true');
   orderModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-      <button id="closeOrder" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeOrder" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4 text-center">ยืนยันการสั่งซื้อ</h3>
       <div id="orderSummary" class="text-sm text-slate-700 mb-3"></div>
       <div id="orderEmailBlock" class="space-y-2 hidden">
@@ -1928,7 +1929,7 @@ document.body.appendChild(forgotModal);
   historyModal.className = 'modal'; historyModal.id = 'historyModal'; historyModal.setAttribute('aria-hidden','true');
   historyModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-4xl w-full p-6 relative">
-      <button id="closeHistory" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeHistory" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <div class="flex items-center justify-between">
         <h3 class="text-xl font-bold mb-4">ประวัติการสั่งซื้อ</h3>
       </div>
@@ -1958,7 +1959,7 @@ document.body.appendChild(forgotModal);
   topupModal.className = 'modal'; topupModal.id = 'topupModal'; topupModal.setAttribute('aria-hidden','true');
   topupModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative max-h-[90vh] flex flex-col">
-      <button id="closeTopup" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeTopup" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4 text-center">เติมเครดิต</h3>
       <div class="space-y-4 flex-1 custom-scrollbar overflow-y-auto">
         
@@ -2008,7 +2009,7 @@ document.body.appendChild(forgotModal);
           </div>
           <div class="flex items-center justify-center gap-4 p-2">
             <div class="text-center">
-              <div class="text-sm mt-1">LINE: @825lhqmj</div>
+              <p class="text-slate-600"><a href="https://line.me/ti/p/@825lhqmj" target="_blank" class="text-indigo-600 hover:underline">ติดต่อผ่าน LINE @825lhqmj</a></p>
             </div>
           </div>
         </div>
@@ -2291,7 +2292,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   productModal.className = 'modal'; productModal.id = 'productModal'; productModal.setAttribute('aria-hidden','true');
   productModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-3xl w-full p-6 relative">
-      <button id="closeProduct" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeProduct" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-3">
           <img id="pdImage" src="" alt="" class="w-full object-cover rounded border bg-slate-50" style="aspect-ratio: 800/550;" />
@@ -2324,7 +2325,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   adminOrdersModal.className = 'modal'; adminOrdersModal.id = 'adminOrdersModal'; adminOrdersModal.setAttribute('aria-hidden','true');
   adminOrdersModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative">
-      <button id="closeAdminOrders" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeAdminOrders" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <div class="flex items-center justify-between">
         <h3 class="text-xl font-bold mb-4">คำสั่งซื้อ</h3>
       </div>
@@ -2351,7 +2352,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   adminCreditModal.className = 'modal'; adminCreditModal.id = 'adminCreditModal'; adminCreditModal.setAttribute('aria-hidden','true');
   adminCreditModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full p-6 relative flex flex-col h-[90vh] min-h-0">
-      <button id="closeAdminCredit" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeAdminCredit" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <h3 class="text-xl font-bold mb-4">จัดการเครดิต</h3>
       
       <div class="flex-1 min-h-0">
@@ -2432,7 +2433,7 @@ if (cartListEl && cartListEl.children.length === 0) {
   adminProductModal.className = 'modal overflow-y-auto'; adminProductModal.id = 'adminProductModal'; adminProductModal.setAttribute('aria-hidden','true');
   adminProductModal.innerHTML = `
     <div class="bg-white rounded-xl shadow-lg max-w-6xl w-full max-h-[90vh] relative flex flex-col">
-      <button id="closeAdminProduct" class="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-lg" aria-label="Close">&times;</button>
+      <button id="closeAdminProduct" class="absolute right-3 top-3 h-12 w-12 text-2xl flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition" aria-label="Close">&times;</button>
       <div class="p-6 overflow-y-auto flex-1 space-y-6">
         <h3 class="text-xl font-bold">จัดการสินค้า</h3>
 
@@ -2507,7 +2508,7 @@ if (cartListEl && cartListEl.children.length === 0) {
           </div>
         </div>
         <div class="mt-6 flex justify-end">
-          <button id="closeAdminProductFooter" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ปิด</button>
+          <button id="closeAdminProductFooter" class="bg-slate-200 text-slate-700 px-6 py-4 rounded-md text-xl">ปิด</button>
         </div>
       </div>
     </div>
@@ -4354,25 +4355,63 @@ async function queueOrderMail({ orderId, status, data = {}, reply = '' }){
   });
 }
 
-  async function adminAcceptOrder(orderId, data, reply){
-    const orderData = { ...(data || {}) };
-    const needsMail = !orderData.mailAcceptedAt;
-    if(needsMail){
-      const targetEmail = ((orderData.emailForProduct || orderData.userEmail || '')).trim();
-      if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
+// ✅ สร้างข้อความตอบกลับอัตโนมัติตามประเภทสินค้า
+function generateAutoReply(orderData, manualReply = '') {
+  const productName = orderData.product?.name || orderData.name || '';
+  const program = orderData.product?.program || orderData.program || '';
+  const sn = orderData.snForProduct || orderData.sn || '';
+  
+  // กรณี: A12+ iCloud Bypass
+  if (program.includes('A12+ iCloud Bypass')) {
+    let autoReply = '**สำคัญมาก ๆ wifi iPhone/iPad ก่อน bypass ไม่งั้นจะไม่ผ่าน\n';
+    autoReply += 'Your unlock code has been successfully calculated.\n';
+    if (sn) {
+      autoReply += `SN : ${sn}\n`;
     }
-    const oref = doc(db,'orders',orderId);
-    const payload = { status: 'accepted', acceptedAt: serverTimestamp() };
-    if(reply) payload.reply = reply;
-    await updateDoc(oref, payload);
-    if(needsMail){
-      orderData.status = 'accepted';
-      orderData.reply = reply || orderData.reply || '';
-      await queueOrderMail({ orderId, status: 'accepted', data: orderData, reply: orderData.reply });
-      await updateDoc(oref, { mailAcceptedAt: serverTimestamp() });
-    }
+    autoReply += productName;
+    return autoReply;
   }
+  
+  // กรณี: Digital Tool Rent (เช่า)
+  if (program.includes('Digital Tool Rent') || program.includes('เช่า')) {
+    let autoReply = productName;
+    if (manualReply) {
+      autoReply += '\n' + manualReply;
+    }
+    return autoReply;
+  }
+  
+  // กรณีอื่น ๆ: ใช้ข้อความที่ admin พิมพ์เอง
+  return manualReply || '';
+}
 
+async function adminAcceptOrder(orderId, data, reply){
+  const orderData = { ...(data || {}) };
+  const needsMail = !orderData.mailAcceptedAt;
+  if(needsMail){
+    const targetEmail = ((orderData.emailForProduct || orderData.userEmail || '')).trim();
+    if(!targetEmail) throw new Error('ไม่พบอีเมลลูกค้าในคำสั่งซื้อ');
+  }
+  
+  // ✅ สร้างข้อความตอบกลับอัตโนมัติ
+  const autoReply = generateAutoReply(orderData, reply);
+  
+  const oref = doc(db,'orders',orderId);
+  const payload = { 
+    status: 'accepted', 
+    acceptedAt: serverTimestamp(),
+    reply: autoReply // ใช้ข้อความอัตโนมัติ
+  };
+  
+  await updateDoc(oref, payload);
+  
+  if(needsMail){
+    orderData.status = 'accepted';
+    orderData.reply = autoReply;
+    await queueOrderMail({ orderId, status: 'accepted', data: orderData, reply: autoReply });
+    await updateDoc(oref, { mailAcceptedAt: serverTimestamp() });
+  }
+}
   async function adminRejectOrder(orderId, reply){
     const oref = doc(db,'orders',orderId);
     let mailData = null;
