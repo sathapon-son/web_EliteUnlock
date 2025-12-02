@@ -379,9 +379,14 @@
               </div>
             </div>
           <div>
-            <p class="text-slate-600 mt-1 leading-relaxed">
-              ✨ <span class="font-semibold">คีย์/ไลเซนส์แท้ 100%</span> สำหรับ Bypass iCloud iPhone iPad ทุกรุ่น, Unlocktool, TSM TOOL PRO และเครื่องมือยอดนิยมอื่น ๆ | 💰 ราคาคุ้มค่า | 🚀 เปิดใช้งานเร็ว
-            </p>
+            <div class="mt-1">
+              <h3 class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-semibold shadow-md">🔥 สินค้าขายดี</h3>
+              <ol class="text-slate-600 mt-2 leading-relaxed list-decimal ml-5 space-y-1">
+                <li>FRPFILE ACTIVATOR A12+ Bypass Hello Screen iPhone XR to 17 Pro Max - iPad A12+ To M3</li>
+                <li>🏷️ลดราคา Unlocktool (เช่า 6 ชั่วโมง) ฿150 เหลือ ฿90</li>
+                <li>iRemoval Pro A12+ ALL Model iPhone &amp; iPad Promotional Offer</li>
+              </ol>
+            </div>
 
             <div id="discountSection" class="hidden">
               <button id="discountToggleBtn" onclick="filterDiscountedPackages()" class="mt-2 inline-block bg-gradient-to-r from-pink-500 to-red-500 text-white 
@@ -522,6 +527,7 @@
   let CURRENT_USER_DOC = null;
   let IS_ADMIN = false;
   let IS_AGENT = false;
+  let IS_VIP = false;
   let FS_PRODUCTS = [];
   let PENDING_ORDER = null;
   let USER_ORDERS_UNSUB = null;
@@ -1960,7 +1966,7 @@ document.body.appendChild(forgotModal);
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">จำนวนเครดิตที่ต้องการเติม</label>
           <input type="number" id="topupAmount" class="w-full border rounded-md p-2" min="1" step="1" placeholder="ระบุจำนวนเครดิต" />
-          <p class="text-xs text-gray-500 mt-1">1 เครดิต = 1 บาท</p>
+          <p class="text-xs text-gray-500 mt-1">1 เครดิต = 1 บาท *ไม่มีขึ้นต่ำ</p>
         </div>
 
         <!-- File upload (custom Thai button) -->
@@ -2002,7 +2008,6 @@ document.body.appendChild(forgotModal);
           </div>
           <div class="flex items-center justify-center gap-4 p-2">
             <div class="text-center">
-              <img src="LINE_QR.png" alt="LINE QR" class="w-32 h-32 border rounded mx-auto" />
               <div class="text-sm mt-1">LINE: @825lhqmj</div>
             </div>
           </div>
@@ -2012,8 +2017,8 @@ document.body.appendChild(forgotModal);
         <div class="rounded-lg p-4 bg-indigo-50 border-2 border-indigo-200 text-center">
           <div class="text-indigo-800 font-semibold mb-2">🌟 สิทธิพิเศษสำหรับลูกค้า</div>
           <div class="text-indigo-700 leading-relaxed">
-            เมื่อสะสมเครดิตครบ 4,500 เครดิต<br/>
-            รับสิทธิ์อัพเกรดเป็น ตัวแทน ทันที<br/>
+            เมื่อสะสมเครดิตครบ 4,500 เครดิต = ตัวแทน<br/>
+            สะสมเครดิตครบ 15,000 เครดิต = VIP<br/>
             พร้อมส่วนลดราคาพิเศษ!
           </div>
         </div>
@@ -2419,10 +2424,11 @@ if (cartListEl && cartListEl.children.length === 0) {
           <div class="flex flex-wrap gap-3">
             <input id="pProgram" type="text" placeholder="โปรแกรม" class="border rounded p-2 min-w-[12rem] flex-1" />
             <input id="pImage" type="text" placeholder="ลิงก์รูปภาพ" class="border rounded p-2 min-w-[12rem] flex-1" />
-            <div class="grid gap-2 w-full sm:grid-cols-3">
-              <input id="pName" type="text" placeholder="แพ็กเกจ / ชื่อ (เพิ่มรายการเดียว)" class="border rounded p-2" />
-              <input id="pPrice" type="number" placeholder="ราคา (เครดิต)" class="border rounded p-2" />
-              <input id="pAgentPrice" type="number" placeholder="ราคาตัวแทน (optional)" class="border rounded p-2" />
+            <div class="grid gap-2 w-full sm:grid-cols-4">
+              <input id="pName" type="text" placeholder="แพ็กเกจ / ชื่อ" class="border rounded p-2" />
+              <input id="pPrice" type="number" placeholder="ราคา" class="border rounded p-2" />
+              <input id="pAgentPrice" type="number" placeholder="ราคาตัวแทน" class="border rounded p-2" />
+              <input id="pVIPPrice" type="number" placeholder="ราคา VIP" class="border rounded p-2" />
             </div>
             <textarea id="pBulkLines" rows="3" placeholder="6 เดือน, 1200
 12 เดือน, 2200" class="border rounded p-2 w-full"></textarea>
@@ -2459,7 +2465,8 @@ if (cartListEl && cartListEl.children.length === 0) {
                     <th class="p-2">โปรแกรม</th>
                     <th class="p-2">แพ็กเกจ / ชื่อ</th>
                     <th class="p-2">ราคา</th>
-                    <th class="p-2">ราคา (ตัวแทน)</th>
+                    <th class="p-2">ตัวแทน</th>
+                    <th class="p-2">VIP</th>
                     <th class="p-2">image</th>
                     <th class="p-2">email?</th>
                     <th class="p-2">password?</th>
@@ -2552,6 +2559,8 @@ if (cartListEl && cartListEl.children.length === 0) {
   function getEffectivePrice(p){
     const base = Number(p?.price) || 0;
     const agent = Number(p?.agentPrice) || 0;
+    const vip = Number(p?.vipPrice) || 0;
+    if(IS_VIP && vip > 0) return vip;
     if(IS_AGENT && agent > 0) return agent;
     return base;
   }
@@ -2560,6 +2569,12 @@ if (cartListEl && cartListEl.children.length === 0) {
     const base = Number(p?.price) || 0;
     const agent = Number(p?.agentPrice) || 0;
     return IS_AGENT && agent > 0 && agent !== base;
+  }
+
+  function priceHasVIPDiscount(p){
+    const base = Number(p?.price) || 0;
+    const vip = Number(p?.vipPrice) || 0;
+    return IS_VIP && vip > 0 && vip !== base;
   }
 
   function buildLineNote(details = {}) {
@@ -2859,7 +2874,8 @@ if (cartListEl && cartListEl.children.length === 0) {
       program: p.program||'อื่น ๆ',
       pack: p.name||p.pack||'สินค้า',
       price: Number(p.price)||0,
-  agentPrice: Number(p.agentPrice)||0,
+      agentPrice: Number(p.agentPrice)||0,
+      vipPrice: Number(p.vipPrice)||0,
       image: p.image||'',
       requiresEmail: !!p.requiresEmail,
       requiresUsername: !!p.requiresUsername,
@@ -2867,7 +2883,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       requiresIMEI: !!p.requiresIMEI,
       requiresPassword: !!p.requiresPassword,
       details: p.details||''
-  })).filter(x => (Number(x.price)||0) > 0 || (Number(x.agentPrice)||0) > 0);
+  })).filter(x => (Number(x.price)||0) > 0 || (Number(x.agentPrice)||0) > 0 || (Number(x.vipPrice)||0) > 0);
   }
 
   function renderProductSteps(wrapperId, listId, details) {
@@ -2913,7 +2929,10 @@ if (cartListEl && cartListEl.children.length === 0) {
          ฿<span id="detailPrice">${currencyTH(displayPrice||0)}</span>`;
     } else {
       document.getElementById('detailPrice').textContent = currencyTH(displayPrice||0);
-      if(isAgentDiscount){
+      if(priceHasVIPDiscount(p)){
+        const el = document.getElementById('detailPrice');
+        el.insertAdjacentHTML('afterend', ' <span class="text-xs inline-block ml-2 bg-purple-100 text-purple-800 px-2 py-0.5 rounded">ราคา VIP</span>');
+      } else if(isAgentDiscount){
         const el = document.getElementById('detailPrice');
         el.insertAdjacentHTML('afterend', ' <span class="text-xs inline-block ml-2 bg-amber-100 text-amber-800 px-2 py-0.5 rounded">ราคาตัวแทน</span>');
       }
@@ -3125,7 +3144,7 @@ if (cartListEl && cartListEl.children.length === 0) {
       // สร้าง map เก่า เพื่อเปรียบเทียบราคา
       const oldPriceMap = {};
       FS_PRODUCTS.forEach(p => {
-        oldPriceMap[p.id] = { price: p.price, agentPrice: p.agentPrice };
+        oldPriceMap[p.id] = { price: p.price, agentPrice: p.agentPrice, vipPrice: p.vipPrice };
       });
 
       FS_PRODUCTS = snap.docs.map(d => ({
@@ -3134,6 +3153,7 @@ if (cartListEl && cartListEl.children.length === 0) {
         pack: d.data().name || d.data().pack || 'สินค้า',
         price: Number(d.data().price) || 0,
         agentPrice: Number(d.data().agentPrice) || 0,
+        vipPrice: Number(d.data().vipPrice) || 0,
         image: d.data().image || '',
         requiresEmail: !!d.data().requiresEmail,
         requiresUsername: !!d.data().requiresUsername,
@@ -3150,7 +3170,7 @@ if (cartListEl && cartListEl.children.length === 0) {
           if(combined.includes('เติมเครดิต')) return 'credit';
           return 'normal';
         })()
-      })).filter(x => (Number(x.price) || 0) > 0 || (Number(x.agentPrice) || 0) > 0);
+      })).filter(x => (Number(x.price) || 0) > 0 || (Number(x.agentPrice) || 0) > 0 || (Number(x.vipPrice) || 0) > 0);
 
       // ✅ อัปเดตราคาในตะกร้า
       updateCartPrices(oldPriceMap);
@@ -3181,11 +3201,12 @@ if (cartListEl && cartListEl.children.length === 0) {
       const newPrice = getEffectivePrice(product);
       const oldPriceValue = oldPrice ? oldPrice.price : null;
       const oldAgentPrice = oldPrice ? oldPrice.agentPrice : null;
+      const oldVIPPrice = oldPrice ? oldPrice.vipPrice : null;
 
       // ✅ ตรวจสอบว่ามีการเปลี่ยนแปลงราคาหรือไม่
       // หากมี oldPrice แสดงว่ามีการเปลี่ยนแปลง
       // หากไม่มี oldPrice แต่ cartItem มีราคา แสดงว่าอาจจำเป็นต้องตรวจสอบ
-      if (oldPrice && (oldPrice.price !== product.price || oldPrice.agentPrice !== product.agentPrice)) {
+      if (oldPrice && (oldPrice.price !== product.price || oldPrice.agentPrice !== product.agentPrice || oldPrice.vipPrice !== product.vipPrice)) {
         cartItem.price = newPrice;
         hasChanges = true;
         //console.log(`✅ ราคาสินค้าเปลี่ยนแปลง: ${cartItem.pack} - ราคาเก่า: ${oldPrice.price}, ราคาใหม่: ${product.price}`);
@@ -3213,6 +3234,8 @@ if (cartListEl && cartListEl.children.length === 0) {
       CURRENT_USER=null; 
       CURRENT_USER_DOC=null; 
       IS_ADMIN=false; 
+      IS_AGENT=false;
+      IS_VIP=false;
       updateHeaderAuth(); 
       sanitizeSearchPrefill();
       stopActivityMonitoring(); // ⭐ เพิ่มบรรทัดนี้
@@ -3400,7 +3423,7 @@ if (cartListEl && cartListEl.children.length === 0) {
 
       const userInfo = document.createElement('div');
       userInfo.id = 'userInfo'; userInfo.className = 'text-sm text-slate-700'; 
-      userInfo.innerHTML = IS_AGENT ? `<span class="font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-md">ตัวแทน</span> ${CURRENT_USER.email||''}` : (CURRENT_USER.email||'');
+      userInfo.innerHTML = IS_VIP ? `<span class="font-bold bg-purple-100 text-purple-800 px-2 py-1 rounded-md">VIP</span> ${CURRENT_USER.email||''}` : (IS_AGENT ? `<span class="font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-md">ตัวแทน</span> ${CURRENT_USER.email||''}` : (CURRENT_USER.email||''));
       const balanceInfo = document.createElement('div');
       balanceInfo.id = 'balanceInfo'; balanceInfo.className = 'text-sm font-semibold text-indigo-700'; balanceInfo.textContent = `เครดิต: ${currencyTH(bal)}`;
 
@@ -4685,7 +4708,7 @@ Line: @825lhqmj`;
     try {
       if (!userId) return false;
       
-      // ✅ ตรวจสอบสถานะปัจจุบันก่อน - ถ้าเป็นตัวแทนอยู่แล้วไม่ต้องทำอะไร
+      // ✅ ตรวจสอบสถานะปัจจุบันก่อน - ถ้าเป็น VIP หรือตัวแทนอยู่แล้วตรวจเพื่ออัพเกรดเป็น VIP ได้
       const uref = doc(db, 'users', userId);
       const userSnap = await getDoc(uref);
       if (!userSnap.exists()) {
@@ -4694,10 +4717,11 @@ Line: @825lhqmj`;
       }
       
       const userData = userSnap.data();
-      const isAlreadyAgent = userData.isAgent === true && (userData.role === 2 || Number(userData.role) === 2);
+      const currentRole = Number(userData.role) || 0;
+      const isAlreadyVIP = userData.isVIP === true && currentRole === 3;
       
-      if (isAlreadyAgent) {
-        //console.log('checkAndUpgradeAgent:', userId, 'already an agent, skipping upgrade');
+      if (isAlreadyVIP) {
+        //console.log('checkAndUpgradeAgent:', userId, 'already VIP, skipping upgrade');
         return false;
       }
       
@@ -4712,8 +4736,97 @@ Line: @825lhqmj`;
       snap.forEach(s => { const d = s.data(); total += Number(d.amount || 0); });
       //console.log('checkAndUpgradeAgent:', userId, 'totalApprovedCredits=', total);
       
-      const THRESHOLD = 4500;
-      if (total >= THRESHOLD) {
+      const VIP_THRESHOLD = 15000;
+      const AGENT_THRESHOLD = 4500;
+      
+      // ✅ ตรวจสอบอัพเกรดเป็น VIP ก่อน
+      if (total >= VIP_THRESHOLD && currentRole !== 3) {
+        try {
+          // ✅ เปลี่ยนเป็น VIP: isVIP = true และ role = 3
+          await updateDoc(uref, { 
+            isVIP: true, 
+            isAgent: false,
+            role: 3,
+            vipActivatedAt: serverTimestamp() 
+          });
+          //console.log('✅ Upgraded user to VIP:', userId);
+        } catch(e){ 
+          console.warn('Failed to mark user isVIP in profile', e); 
+          return false;
+        }
+
+        // If current client user is the one upgraded, update client state immediately
+        if (CURRENT_USER && CURRENT_USER.uid === userId) {
+          CURRENT_USER_DOC = CURRENT_USER_DOC || {};
+          CURRENT_USER_DOC.isVIP = true;
+          CURRENT_USER_DOC.isAgent = false;
+          CURRENT_USER_DOC.role = 3;
+          IS_VIP = true;
+          IS_AGENT = false;
+          updateHeaderAuth();
+          render(groupByProgram(FS_PRODUCTS), searchEl?.value || "");
+        }
+
+              // Queue a polite notification email (non-blocking)
+              try{
+                const targetEmail = userData.email || '';
+                if (targetEmail) {
+                  const totalText = total.toLocaleString('th-TH');
+                  
+                  // Text version
+                  const textBody = `ยินดีด้วย! คุณได้รับการอัพเกรดเป็น VIP
+
+              ━━━━━━━━━━━━━━━━━━━━━━
+              สิทธิพิเศษ VIP
+              ━━━━━━━━━━━━━━━━━━━━━━
+
+              ยอดสะสมเติมเครดิต: ${totalText} เครดิต
+              สถานะ: VIP ✓
+              วันที่อัพเกรด: ${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}
+
+              สิทธิประโยชน์ที่คุณได้รับ:
+              • ราคาพิเศษสำหรับสินค้าทุกชนิด
+              • ส่วนลดเพิ่มเติมเทียบกับตัวแทน
+              • ได้รับความสำคัญในการให้บริการ
+
+              ขอขอบคุณที่เป็นลูกค้าประจำของเรา!`;
+                  
+                  const htmlBody = `
+                    <div style="font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 20px; border-radius: 8px;">
+                      <div style="background-color: white; padding: 20px; border-radius: 8px;">
+                        <h2 style="color: #7c3aed; margin: 0 0 15px 0;">🎉 ยินดีด้วย! อัพเกรดเป็น VIP</h2>
+                        <div style="font-weight:600; color:#1e40af; font-size:14px; margin-bottom:8px;">ℹ️ สิทธิพิเศษที่คุณได้รับ</div>
+                        <div style="color:#1e293b; font-size:14px; line-height:1.6;">
+                          • ใช้เครดิตสั่งซื้อสินค้าได้ทันที<br>
+                          • ตรวจสอบยอดเครดิตในหน้าบัญชีของคุณ<br>
+                          • ดูประวัติการทำรายการได้ทุกเมื่อ<br>
+                          • ราคาเฉพาะ VIP ที่ถูกกว่าตัวแทน
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                  
+                  await addDoc(collection(db, 'mail'), {
+                    to: [targetEmail],
+                    from: 'Elite Unlock <eliteunlockshop@gmail.com>',
+                    replyTo: 'eliteunlockshop@gmail.com',
+                    message: {
+                      subject: '🎉 ยินดีด้วย! คุณได้รับการอัพเกรดเป็น VIP - Elite Unlock',
+                      text: textBody,
+                      html: htmlBody
+                    },
+                    createdAt: serverTimestamp()
+                  });
+                }
+              }catch(e){
+                console.warn('Failed to send VIP upgrade email:', e);
+              }
+
+        return true;
+      }
+      
+      // ✅ ตรวจสอบอัพเกรดเป็นตัวแทน ถ้ายังไม่ใช่ VIP
+      if (total >= AGENT_THRESHOLD && currentRole !== 2 && currentRole !== 3) {
         try {
           // ✅ เปลี่ยนเป็นตัวแทน: isAgent = true และ role = 2
           await updateDoc(uref, { 
@@ -4743,30 +4856,22 @@ Line: @825lhqmj`;
                 if (targetEmail) {
                   const totalText = total.toLocaleString('th-TH');
                   
-                  // Text version
                   const textBody = `ยินดีด้วย! คุณได้รับการอัพเกรดเป็นตัวแทน
 
-              ━━━━━━━━━━━━━━━━━━━━━━
-              สิทธิพิเศษตัวแทน
-              ━━━━━━━━━━━━━━━━━━━━━━
+ยอดสะสมเติมเครดิต: ${totalText} เครดิต
+สถานะ: ตัวแทน (Agent)
+วันที่อัพเกรด: ${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}
 
-              ยอดสะสมเติมเครดิต: ${totalText} เครดิต
-              สถานะ: ตัวแทน (Agent) ✓
-              วันที่อัพเกรด: ${new Date().toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}
+สิทธิประโยชน์ที่คุณได้รับ:
+- ราคาพิเศษสำหรับตัวแทน
+- ส่วนลดอัตโนมัติเมื่อสั่งซื้อสินค้า
+- ดูแลเป็นพิเศษจากทีมงาน
+- ข้อเสนอพิเศษก่อนใคร
 
-              สิทธิประโยชน์ที่คุณได้รับ:
-              ✓ ราคาพิเศษสำหรับตัวแทน
-              ✓ ส่วนลดเมื่อสั่งซื้อสินค้าทุกรายการ
-              ✓ ดูแลเป็นพิเศษจากทีมงาน
-              ✓ ข้อเสนอพิเศษก่อนใคร
-
-              ราคาตัวแทนจะถูกใช้โดยอัตโนมัติเมื่อคุณสั่งซื้อสินค้า
-
-              ━━━━━━━━━━━━━━━━━━━━━━
-              — Elite Unlock
-              https://eliteunlock.shop/
-              Tel: 062-607-2670
-              Line: @825lhqmj`;
+ติดต่อเรา:
+- Line: @825lhqmj
+- Tel: 062-607-2670
+- Website: https://eliteunlock.shop/`;
 
                   // HTML version
                   const htmlBody = `
@@ -5386,6 +5491,7 @@ Line: @825lhqmj`;
       name: norm(p.name),
       price: Number(p.price)||0,
       agentPrice: Number(p.agentPrice)||0,
+      vipPrice: Number(p.vipPrice)||0,
       image: norm(p.image||''),
       requiresEmail: !!p.requiresEmail,
       requiresPassword: !!p.requiresPassword,
@@ -5471,6 +5577,7 @@ Line: @825lhqmj`;
         pack: d.data().name || d.data().pack || 'สินค้า',
         price: Number(d.data().price) || 0,
         agentPrice: Number(d.data().agentPrice) || 0,
+        vipPrice: Number(d.data().vipPrice) || 0,
         image: d.data().image || '',
         requiresEmail: !!d.data().requiresEmail,
         requiresUsername: !!d.data().requiresUsername,
@@ -5533,13 +5640,27 @@ Line: @825lhqmj`;
     // Set price display based on product type and agent pricing
     const priceLabel = document.getElementById('pdPriceLabel');
     const displayPrice = getEffectivePrice(p);
+    const isVIPDiscount = priceHasVIPDiscount(p);
     const isAgentDiscount = priceHasAgentDiscount(p);
     if(p.type === 'credit') {
       priceLabel.textContent = 'ราคาต่อเครดิต';
     } else {
       priceLabel.textContent = 'ราคา';
     }
-    document.getElementById('pdPrice').textContent = currencyTH(displayPrice||0);
+    const priceEl = document.getElementById('pdPrice');
+    priceEl.textContent = currencyTH(displayPrice||0);
+    
+    // Show badge if VIP or Agent discount applies
+    const pdPriceWrap = document.getElementById('pdPriceWrap');
+    const existingBadge = pdPriceWrap?.querySelector('.badge-discount');
+    if(existingBadge) existingBadge.remove();
+    
+    if(isVIPDiscount || isAgentDiscount) {
+      const badge = document.createElement('span');
+      badge.className = `badge-discount text-xs inline-block ml-2 px-2 py-0.5 rounded ${isVIPDiscount ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'}`;
+      badge.textContent = isVIPDiscount ? 'ราคา VIP' : 'ราคาตัวแทน';
+      priceEl.parentElement.appendChild(badge);
+    }
     renderProductSteps('pdInstructionsWrap', 'pdInstructions', p.details);
     const fields = document.getElementById('pdFields');
     fields.innerHTML='';
@@ -6172,6 +6293,7 @@ async function confirmCartOrders(){
   const singleName = document.getElementById('pName').value.trim();
   const singlePrice = document.getElementById('pPrice').value.trim();
   const agentPriceRaw = document.getElementById('pAgentPrice')?.value.trim() || '';
+  const vipPriceRaw = document.getElementById('pVIPPrice')?.value.trim() || '';
     const bulkRaw = document.getElementById('pBulkLines')?.value || '';
     const details = document.getElementById('pDetails')?.value.trim() || '';
 
@@ -6195,6 +6317,7 @@ async function confirmCartOrders(){
           name: trimmedName,
           price: priceNumber,
           agentPrice: Number(String(agentPriceRaw || '').replace(/[^\d.]/g, '')) || 0,
+          vipPrice: Number(String(vipPriceRaw || '').replace(/[^\d.]/g, '')) || 0,
           image,
           requiresEmail,
           requiresPassword,
@@ -6354,6 +6477,7 @@ async function confirmCartOrders(){
           <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.name ?? ''}" data-field="name"></td>
           <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${data.price ?? ''}" data-field="price"></td>
           <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${data.agentPrice ?? ''}" data-field="agentPrice"></td>
+          <td class="p-2"><input type="number" class="border rounded px-2 py-1 w-20" value="${data.vipPrice ?? ''}" data-field="vipPrice"></td>
           <td class="p-2"><input type="text" class="border rounded px-2 py-1 w-full" value="${data.image ?? ''}" data-field="image"></td>
           <td class="p-2"><input type="checkbox" data-field="requiresEmail" ${data.requiresEmail ? 'checked' : ''}></td>
           <td class="p-2"><input type="checkbox" data-field="requiresPassword" ${data.requiresPassword ? 'checked' : ''}></td>
@@ -6393,7 +6517,7 @@ async function confirmCartOrders(){
           adminEditedProducts.get(id).forEach(field => {
             const element = tr.querySelector(`[data-field="${field}"]`);
             if (!element) return;
-            if (field === 'price' || field === 'agentPrice') updates[field] = parseInt(element.value) || 0;
+            if (field === 'price' || field === 'agentPrice' || field === 'vipPrice') updates[field] = parseInt(element.value) || 0;
             else if (field.startsWith('requires')) updates[field] = element.checked;
             else updates[field] = (element.value || '').trim();
           });
@@ -6582,12 +6706,14 @@ async function confirmCartOrders(){
         CURRENT_USER_DOC = { email: (user.email||'').toLowerCase(), credits: 0, isAdmin: false };
       }
       IS_ADMIN = !!CURRENT_USER_DOC?.isAdmin || ADMIN_EMAILS.includes((user.email||'').toLowerCase());
-      // Determine agent role from custom claims (role===2 or agent flag) or from user profile
+      // Determine VIP role first, then agent role from custom claims (role===3 or role===2) or from user profile
       try{
         const idResult = await getIdTokenResult(user);
         const claims = idResult?.claims || {};
+        IS_VIP = (claims.role === 3) || !!claims.vip || !!CURRENT_USER_DOC?.isVIP || (Number(CURRENT_USER_DOC?.role) === 3);
         IS_AGENT = (claims.role === 2) || !!claims.agent || !!CURRENT_USER_DOC?.isAgent || (Number(CURRENT_USER_DOC?.role) === 2);
       }catch(_){
+        IS_VIP = !!CURRENT_USER_DOC?.isVIP || (Number(CURRENT_USER_DOC?.role) === 3);
         IS_AGENT = !!CURRENT_USER_DOC?.isAgent || (Number(CURRENT_USER_DOC?.role) === 2);
       }
       
@@ -6608,7 +6734,7 @@ async function confirmCartOrders(){
       wireProductManagement();
       startActivityMonitoring();
     }else{
-      CURRENT_USER_DOC = null; IS_ADMIN = false;
+      CURRENT_USER_DOC = null; IS_ADMIN = false; IS_AGENT = false; IS_VIP = false;
       // ✅ ยกเลิก balance listener เมื่อ logout
       if(BALANCE_LISTENER_UNSUB){ BALANCE_LISTENER_UNSUB(); BALANCE_LISTENER_UNSUB=null; }
       if(USER_ORDERS_UNSUB){ USER_ORDERS_UNSUB(); USER_ORDERS_UNSUB=null; }

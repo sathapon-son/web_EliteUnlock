@@ -34,12 +34,15 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin();
       
       allow create: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['email','displayName','credits','createdAt','isAdmin'])
+        && request.resource.data.keys().hasOnly(['email','displayName','credits','createdAt','isAdmin','isAgent','isVIP','role'])
         && request.resource.data.email is string
         && request.resource.data.email.lower() == request.auth.token.email.lower()
         && request.resource.data.credits is int
         && request.resource.data.credits == 0
-        && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+        && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false)
+        && (!('isAgent' in request.resource.data) || request.resource.data.isAgent == false)
+        && (!('isVIP' in request.resource.data) || request.resource.data.isVIP == false)
+        && (!('role' in request.resource.data) || (request.resource.data.role is int && request.resource.data.role == 0));
       
       // อนุญาตให้ user อัพเดต credits ของตัวเองได้ (สำหรับการซื้อสินค้า)
       allow update: if isAdmin()
@@ -51,7 +54,7 @@ service cloud.firestore {
         )
         || (
           isOwner(uid)
-          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits','isAdmin','isAgent','role']))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits','isAdmin','isAgent','isVIP','role']))
         );
       
       allow delete: if false;
