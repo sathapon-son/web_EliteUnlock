@@ -2026,6 +2026,23 @@ document.body.appendChild(forgotModal);
         <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center mb-4">
           <div class="text-emerald-800 font-medium">🏆 เครดิตสะสมทั้งหมด</div>
           <div id="userTotalTopup" class="text-2xl font-bold text-emerald-700 mt-1">0 เครดิต</div>
+          
+          <!-- Progress Bar Section -->
+          <div class="mt-4 space-y-2">
+            <!-- User to Agent Progress -->
+            <div id="progressContainer">
+              <div class="text-sm text-emerald-700 font-medium mb-1">
+                <span id="progressLabel">ตัวแทน (Agent)</span>
+                <span id="progressPercent" class="float-right">0%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div id="progressBar" class="bg-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <div class="text-xs text-gray-600 mt-1">
+                <span id="progressText">0 / 4,500 เครดิต</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Request history -->
@@ -3124,10 +3141,61 @@ if (cartListEl && cartListEl.children.length === 0) {
     } else {
       //console.log('ไม่พบ element userTotalTopup');
     }
+
+    // ✅ Update Progress Bar
+    updateProgressBar(totalCredits);
+
   } catch (err) {
     //console.error('❌ อัปเดตเครดิตสะสมล้มเหลว:', err);
     const totalEl = document.getElementById('userTotalTopup');
     if (totalEl) totalEl.textContent = 'ไม่สามารถโหลดข้อมูล';
+  }
+}
+
+// ✅ ฟังก์ชันอัปเดต Progress Bar
+function updateProgressBar(totalCredits) {
+  const AGENT_THRESHOLD = 4500;
+  const VIP_THRESHOLD = 15000;
+  
+  const progressBar = document.getElementById('progressBar');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressPercent = document.getElementById('progressPercent');
+  const progressText = document.getElementById('progressText');
+  
+  if (!progressBar) return;
+
+  let currentTarget = AGENT_THRESHOLD;
+  let progressPercent_value = 0;
+  let labelText = 'ตัวแทน (Agent)';
+
+  if (IS_VIP) {
+    // Already VIP
+    progressBar.style.width = '100%';
+    progressLabel.textContent = '🎉 VIP (บรรลุเป้าแล้ว)';
+    progressPercent.textContent = '100%';
+    progressText.textContent = `15,000 / 15,000 เครดิต`;
+    progressBar.classList.remove('bg-emerald-500');
+    progressBar.classList.add('bg-amber-500');
+  } else if (IS_AGENT) {
+    // Already Agent, show progress to VIP
+    currentTarget = VIP_THRESHOLD;
+    labelText = 'VIP';
+    progressPercent_value = Math.min(100, (totalCredits / VIP_THRESHOLD) * 100);
+    progressLabel.textContent = labelText;
+    progressPercent.textContent = Math.round(progressPercent_value) + '%';
+    progressText.textContent = `${totalCredits.toLocaleString('th-TH')} / 15,000 เครดิต`;
+    progressBar.style.width = progressPercent_value + '%';
+    progressBar.classList.remove('bg-emerald-500');
+    progressBar.classList.add('bg-blue-500');
+  } else {
+    // Regular user, show progress to Agent
+    progressPercent_value = Math.min(100, (totalCredits / AGENT_THRESHOLD) * 100);
+    progressLabel.textContent = labelText;
+    progressPercent.textContent = Math.round(progressPercent_value) + '%';
+    progressText.textContent = `${totalCredits.toLocaleString('th-TH')} / 4,500 เครดิต`;
+    progressBar.style.width = progressPercent_value + '%';
+    progressBar.classList.remove('bg-blue-500', 'bg-amber-500');
+    progressBar.classList.add('bg-emerald-500');
   }
 }
   // ✅ เรียกใช้งานเมื่อเปิด modal เติมเครดิต
