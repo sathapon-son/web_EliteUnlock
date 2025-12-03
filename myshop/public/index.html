@@ -479,8 +479,8 @@
           <li>• ไลเซนส์แท้ ตรวจสอบได้</li>
           <li>• ราคาเป็นมิตร คุ้มค่าการใช้งานระยะยาว</li>
           <li>• ติดต่อได้จริง หลายช่องทาง</li>
-          <li class="text-indigo-600 font-medium">• อัพเกรดเป็นตัวแทน เมื่อสะสมเครดิตครบ 4,500 เครดิต รับราคาพิเศษทันที</li>
-          <li class="text-indigo-600 font-medium">• อัพเกรดเป็น VIP เมื่อสะสมเครดิตครบ 15,000 เครดิต รับราคาพิเศษสุด ๆ ทันที</li>
+          <li class="text-indigo-600 font-medium">• อัพเกรดเป็นตัวแทน สะสมเครดิตครบ 4,500 เครดิต รับราคาพิเศษทันที</li>
+          <li class="text-indigo-600 font-medium">• อัพเกรดเป็น VIP สะสมเครดิตครบ 15,000 เครดิต รับราคาพิเศษสุด ๆ ทันที</li>
         </ul>
       </div>
       <div class="p-5 rounded-2xl bg-white shadow">
@@ -2018,7 +2018,7 @@ document.body.appendChild(forgotModal);
         <div class="rounded-lg p-4 bg-indigo-50 border-2 border-indigo-200 text-center">
           <div class="text-indigo-800 font-semibold mb-2">🌟 สิทธิพิเศษสำหรับลูกค้า</div>
           <div class="text-indigo-700 leading-relaxed">
-            เมื่อสะสมเครดิตครบ 4,500 เครดิต = ตัวแทน<br/>
+            สะสมเครดิตครบ 4,500 เครดิต = ตัวแทน<br/>
             สะสมเครดิตครบ 15,000 เครดิต = VIP<br/>
             พร้อมส่วนลดราคาพิเศษ!
           </div>
@@ -3700,6 +3700,38 @@ function updateProgressBar(totalCredits) {
     }
   }
 
+  // Show a simple confirmation dialog instantly (no CSS animation)
+  // Returns a Promise<boolean>
+  function immediateConfirm(message){
+    return new Promise((resolve)=>{
+      const wrapper = document.createElement('div');
+      // use modal styles but ensure no transition on the dialog
+      wrapper.className = 'modal';
+      wrapper.setAttribute('aria-hidden','false');
+      wrapper.style.display = 'flex';
+      wrapper.innerHTML = `
+        <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative" style="transition: none !important; transform: none !important; opacity: 1 !important;">
+          <div class="text-lg font-medium mb-4">${escapeHtml(String(message))}</div>
+          <div class="flex gap-2">
+            <button id="__im_confirm_ok" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-md">ยืนยัน</button>
+            <button id="__im_confirm_cancel" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ยกเลิก</button>
+          </div>
+        </div>`;
+      document.body.appendChild(wrapper);
+      // focus OK quickly
+      setTimeout(()=>{ wrapper.querySelector('#__im_confirm_ok')?.focus(); }, 10);
+      function cleanup(result){
+        try{ wrapper.remove(); }catch(e){}
+        resolve(Boolean(result));
+      }
+      wrapper.querySelector('#__im_confirm_ok')?.addEventListener('click', ()=>cleanup(true));
+      wrapper.querySelector('#__im_confirm_cancel')?.addEventListener('click', ()=>cleanup(false));
+      // close on Escape
+      const escHandler = (e)=>{ if(e.key === 'Escape'){ cleanup(false); document.removeEventListener('keydown', escHandler); } };
+      document.addEventListener('keydown', escHandler);
+    });
+  }
+
   async function bootstrapFirestoreAfterSignup(u){
     try{
       const cfgRef = doc(db,'config','app');
@@ -4027,9 +4059,7 @@ function updateProgressBar(totalCredits) {
           password: data.passwordForProduct || data.password || ''
         });
         const noteParts = noteString ? noteString.split('|').map(part => part.trim()).filter(Boolean) : [];
-        const noteHtml = noteParts.length
-          ? noteParts.map(part => `<div>${escapeHtml(part)}</div>`).join('')
-          : '<span class="text-slate-400">-</span>';
+        const noteHtml = buildNoteHtml(noteParts);
 
         const tr = document.createElement('tr');
         tr.className = 'border-b';
@@ -4072,7 +4102,7 @@ function updateProgressBar(totalCredits) {
       listEl.querySelectorAll('[data-accept-id]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           // popup ยืนยันก่อน
-          const ok = confirm('ยืนยัน Accept คำสั่งซื้อหรือไม่?');
+          const ok = await immediateConfirm('ยืนยัน Accept คำสั่งซื้อหรือไม่?');
           if (!ok) return;
 
           const id = btn.getAttribute('data-accept-id');
@@ -4101,7 +4131,7 @@ function updateProgressBar(totalCredits) {
       listEl.querySelectorAll('[data-reject-id]').forEach(btn=>{
         btn.addEventListener('click', async ()=>{
           // popup ยืนยันก่อน
-          const ok = confirm('ยืนยัน Reject คำสั่งซื้อหรือไม่?');
+          const ok = await immediateConfirm('ยืนยัน Reject คำสั่งซื้อหรือไม่?');
           if (!ok) return;
 
           const id = btn.getAttribute('data-reject-id');
@@ -6294,6 +6324,70 @@ async function confirmCartOrders(){
       .replace(/'/g,'&#039;');
   }
 
+  // สร้าง HTML สำหรับหมายเหตุ พร้อมปุ่มกดเพื่อคัดลอกเฉพาะค่า (เช่น SN, Email ฯลฯ)
+  function buildNoteHtml(noteParts){
+    if(!noteParts || !noteParts.length){
+      return '<span class="text-slate-400">-</span>';
+    }
+
+    return noteParts.map(rawPart => {
+      const part = (rawPart || '').trim();
+      if(!part) return '';
+
+      let label = '';
+      let value = part;
+      const colonIndex = part.indexOf(':');
+      if (colonIndex !== -1) {
+        label = part.slice(0, colonIndex).trim();
+        value = part.slice(colonIndex + 1).trim();
+      }
+
+      const lower = label.toLowerCase();
+      const isCopyable = ['email','sn','imei','username','password'].includes(lower);
+      if (isCopyable && value) {
+        const safeLabel = escapeHtml(label);
+        const safeValue = escapeHtml(value);
+        const attrValue = escapeHtml(value);
+
+        return `
+          <div class="text-sm text-slate-600">
+            <span>${safeLabel ? safeLabel + ': ' : ''}</span>
+            <button type="button"
+              class="copy-note underline decoration-dotted text-indigo-600 hover:text-indigo-800"
+              data-copy="${attrValue}">
+              ${safeValue}
+            </button>
+          </div>
+        `;
+      }
+
+      // อันที่ไม่อยู่ในลิสต์ copy ก็แสดงปกติ
+      return `<div class="text-sm text-slate-600">${escapeHtml(part)}</div>`;
+    }).join('');
+  }
+
+  // ดักคลิกปุ่ม copy-note เพื่อคัดลอกค่าไปยัง clipboard
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest && ev.target.closest('.copy-note');
+    if (!btn) return;
+
+    const text = btn.getAttribute('data-copy') || '';
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'คัดลอกแล้ว';
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1200);
+    } catch (err) {
+      alert('คัดลอกไม่สำเร็จ กรุณาคัดลอกเอง');
+    }
+  });
+
   function renderUserHistory(docs){
     const tbody = document.getElementById('ordersTbody');
     if(!tbody) return;
@@ -6330,9 +6424,7 @@ async function confirmCartOrders(){
         password: p.passwordForProduct || p.password || ''
       });
       const noteParts = noteString ? noteString.split('|').map(part => part.trim()).filter(Boolean) : [];
-      const noteHtml = noteParts.length
-        ? noteParts.map(part => `<div class="text-sm text-slate-600">${escapeHtml(part)}</div>`).join('')
-        : '<span class="text-slate-400">-</span>';
+      const noteHtml = buildNoteHtml(noteParts);
 
       tr.innerHTML = `
         <td class="p-2 align-top font-semibold">${escapeHtml(String(orderNum))}</td>
