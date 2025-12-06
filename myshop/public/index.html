@@ -3713,8 +3713,8 @@ function updateProgressBar(totalCredits) {
         <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative" style="transition: none !important; transform: none !important; opacity: 1 !important;">
           <div class="text-lg font-medium mb-4">${escapeHtml(String(message))}</div>
           <div class="flex gap-2">
-            <button id="__im_confirm_ok" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-md">ยืนยัน</button>
             <button id="__im_confirm_cancel" class="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-md">ยกเลิก</button>
+            <button id="__im_confirm_ok" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-md">ยืนยัน</button>
           </div>
         </div>`;
       document.body.appendChild(wrapper);
@@ -4390,6 +4390,11 @@ function generateAutoReply(orderData, manualReply = '') {
   const productName = orderData.product?.name || orderData.name || '';
   const program = orderData.product?.program || orderData.program || '';
   const sn = orderData.snForProduct || orderData.sn || '';
+  // ยกเว้นสินค้า "New Apple ID for @iCloud Mail Without Two-Factor"
+  // ให้ใช้ข้อความจาก admin เท่านั้น (manualReply) — ไม่ต้องใส่ข้อความอัตโนมัติใด ๆ
+  if (productName.trim() === 'New Apple ID for @iCloud Mail Without Two-Factor') {
+    return manualReply || '';
+  }
   
   // กรณี: A12+ iCloud Bypass
   if (program.includes('A12+ iCloud Bypass')) {
